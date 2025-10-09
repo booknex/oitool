@@ -15,9 +15,9 @@ interface UnlockData {
   [badgeId: number]: string;
 }
 
-const getUnlockedBadges = (): UnlockData => {
+const getUnlockedTrophies = (): UnlockData => {
   try {
-    const saved = localStorage.getItem("unlockedBadges");
+    const saved = localStorage.getItem("unlockedTrophies");
     if (!saved) return {};
     
     const parsed = JSON.parse(saved);
@@ -36,18 +36,18 @@ const getUnlockedBadges = (): UnlockData => {
   }
 };
 
-const saveUnlockedBadges = (data: UnlockData) => {
-  localStorage.setItem("unlockedBadges", JSON.stringify(data));
+const saveUnlockedTrophies = (data: UnlockData) => {
+  localStorage.setItem("unlockedTrophies", JSON.stringify(data));
 };
 
-export default function AchievementGallery() {
+export default function TrophyGallery() {
   const [badges, setBadges] = useState<BadgeWithMetadata[]>([]);
   const [animatingBadge, setAnimatingBadge] = useState<number | null>(null);
   const [hoveredBadge, setHoveredBadge] = useState<number | null>(null);
   const [isResetting, setIsResetting] = useState(false);
 
   useEffect(() => {
-    const unlockedData = getUnlockedBadges();
+    const unlockedData = getUnlockedTrophies();
     
     const initialBadges: BadgeWithMetadata[] = badgeMetadata.map((meta) => ({
       id: meta.id,
@@ -83,14 +83,14 @@ export default function AchievementGallery() {
       )
     );
 
-    const currentData = getUnlockedBadges();
+    const currentData = getUnlockedTrophies();
     const newData = { ...currentData, [badgeId]: unlockedAt };
-    saveUnlockedBadges(newData);
+    saveUnlockedTrophies(newData);
 
     try {
       await unlockMutation.mutateAsync(badgeId);
     } catch (error) {
-      console.error("Failed to unlock badge on server:", error);
+      console.error("Failed to unlock trophy on server:", error);
       
       setBadges(prev =>
         prev.map(b =>
@@ -101,7 +101,7 @@ export default function AchievementGallery() {
       );
       
       const { [badgeId]: _, ...restoredData } = currentData;
-      saveUnlockedBadges(restoredData);
+      saveUnlockedTrophies(restoredData);
     } finally {
       setTimeout(() => setAnimatingBadge(null), 500);
     }
@@ -113,12 +113,12 @@ export default function AchievementGallery() {
     setBadges(prev =>
       prev.map(b => ({ ...b, unlocked: false, unlockedAt: undefined }))
     );
-    saveUnlockedBadges({});
+    saveUnlockedTrophies({});
 
     try {
       await apiRequest("POST", "/api/badges/reset", {});
     } catch (error) {
-      console.error("Failed to reset badges on server:", error);
+      console.error("Failed to reset trophies on server:", error);
     } finally {
       setIsResetting(false);
     }
@@ -132,10 +132,10 @@ export default function AchievementGallery() {
       <div className="max-w-7xl mx-auto">
         <header className="mb-12 md:mb-16 text-center">
           <h1 className="text-4xl md:text-5xl font-display font-bold tracking-tight text-foreground mb-4">
-            Achievement Gallery
+            Trophy Gallery
           </h1>
           <p className="text-lg text-muted-foreground mb-8">
-            Hover over badges to see details • Click to unlock
+            Hover over trophies to see details • Click to unlock
           </p>
 
           <div className="max-w-md mx-auto">
@@ -165,7 +165,7 @@ export default function AchievementGallery() {
                 className="gap-2"
               >
                 <RotateCcw className="w-4 h-4" />
-                Reset All Badges
+                Reset All Trophies
               </Button>
             </div>
           )}
@@ -184,7 +184,7 @@ export default function AchievementGallery() {
               <button
                 onClick={() => handleUnlock(badge.id)}
                 disabled={badge.unlocked}
-                data-testid={`badge-${badge.id}`}
+                data-testid={`trophy-${badge.id}`}
                 className={`
                   relative aspect-square rounded-2xl overflow-hidden w-full
                   transition-all duration-200 ease-out
@@ -230,7 +230,7 @@ export default function AchievementGallery() {
           <div className="mt-12 text-center" data-testid="completion-message">
             <div className="inline-block px-8 py-4 bg-primary/20 border-2 border-primary rounded-xl">
               <p className="text-2xl font-bold text-primary">
-                All Achievements Unlocked!
+                All Trophies Unlocked!
               </p>
             </div>
           </div>
