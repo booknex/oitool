@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { unlockBadgeSchema } from "@shared/schema";
+import { unlockBadgeSchema, insertFamilySchema, updateFamilySchema, unlockLevelSchema } from "@shared/schema";
 import { readFile } from "fs/promises";
 import { join } from "path";
 
@@ -47,6 +47,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.send(imageBuffer);
     } catch (error) {
       res.status(404).json({ error: "Image not found" });
+    }
+  });
+
+  app.get("/api/families", async (_req, res) => {
+    try {
+      const families = await storage.getFamilies();
+      res.json(families);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch families" });
+    }
+  });
+
+  app.post("/api/families", async (req, res) => {
+    try {
+      const result = insertFamilySchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid request body" });
+      }
+
+      const family = await storage.createFamily(result.data.label);
+      res.json(family);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create family" });
+    }
+  });
+
+  app.delete("/api/families/:id", async (req, res) => {
+    try {
+      await storage.deleteFamily(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      if (error instanceof Error && error.message.includes("not found")) {
+        return res.status(404).json({ error: "Family not found" });
+      }
+      res.status(500).json({ error: "Failed to delete family" });
+    }
+  });
+
+  app.patch("/api/families/:id", async (req, res) => {
+    try {
+      const result = updateFamilySchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid request body" });
+      }
+
+      const family = await storage.updateFamily(req.params.id, result.data.label);
+      res.json(family);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update family" });
+    }
+  });
+
+  app.post("/api/families/unlock", async (req, res) => {
+    try {
+      const result = unlockLevelSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid request body" });
+      }
+
+      const family = await storage.unlockLevel(result.data.familyId, result.data.levelNumber);
+      res.json(family);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to unlock level" });
     }
   });
 
