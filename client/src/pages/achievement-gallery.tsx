@@ -42,7 +42,7 @@ export default function AchievementGallery() {
 
   const unlockMutation = useMutation({
     mutationFn: async (id: number) => {
-      return apiRequest<Badge>("POST", "/api/badges/unlock", { id });
+      return apiRequest("POST", "/api/badges/unlock", { id });
     },
   });
 
@@ -61,7 +61,7 @@ export default function AchievementGallery() {
     );
 
     const currentUnlocked = getUnlockedBadges();
-    const newUnlocked = [...new Set([...currentUnlocked, badgeId])];
+    const newUnlocked = Array.from(new Set([...currentUnlocked, badgeId]));
     saveUnlockedBadges(newUnlocked);
 
     try {
