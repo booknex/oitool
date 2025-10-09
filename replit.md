@@ -2,7 +2,21 @@
 
 ## Overview
 
-An interactive achievement badge gallery application with a gaming-inspired UI. Users can unlock achievement badges by clicking on them, with visual feedback and animations. The application features a dark mode gaming aesthetic inspired by Steam Achievements and PlayStation Trophy systems, built with React, TypeScript, and Express.
+An interactive dual gallery application with a gaming-inspired UI featuring both Achievement Gallery and Trophy Gallery. Users can unlock badges/trophies by clicking on them, with visual feedback and animations. Each gallery maintains independent state and progress tracking. The application features a dark mode gaming aesthetic inspired by Steam Achievements and PlayStation Trophy systems, built with React, TypeScript, and Express.
+
+## Features
+
+### Dual Gallery System
+- **Achievement Gallery** (/) - Main achievement tracking with 12 unlockable badges
+- **Trophy Gallery** (/trophies) - Independent trophy tracking with the same 12 badges
+- **Navigation** - Fixed header with buttons to switch between galleries
+- **Independent State** - Each gallery maintains separate unlock progress via localStorage
+
+### Badge Metadata
+- Rich metadata for all 12 badges including name, description, and category
+- Interactive tooltips showing badge details on hover
+- Unlock timestamps with date/time display
+- Categories: Starter, Progress, Commitment, Elite, Master, Legendary
 
 ## User Preferences
 
