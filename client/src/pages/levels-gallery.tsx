@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Lock, Plus, Trash2, Edit2, Check } from "lucide-react";
+import { Lock, Plus, Trash2, Edit2, Check, MoreVertical, RotateCcw } from "lucide-react";
 import { type Family } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export default function LevelsGallery() {
   const [animatingLevel, setAnimatingLevel] = useState<string | null>(null);
@@ -66,6 +72,15 @@ export default function LevelsGallery() {
     },
   });
 
+  const resetFamilyMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest("POST", `/api/families/${id}/reset`, {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/families"] });
+    },
+  });
+
   const handleUnlockLevel = async (familyId: string, levelNumber: number, isUnlocked: boolean) => {
     if (isUnlocked) return;
 
@@ -85,8 +100,14 @@ export default function LevelsGallery() {
     await createFamilyMutation.mutateAsync(newFamilyLabel);
   };
 
-  const handleDeleteFamily = async (id: string) => {
-    if (confirm("Are you sure you want to delete this job position family?")) {
+  const handleResetFamily = async (id: string, label: string) => {
+    if (confirm(`Are you sure you want to reset all levels for "${label}"?`)) {
+      await resetFamilyMutation.mutateAsync(id);
+    }
+  };
+
+  const handleDeleteFamily = async (id: string, label: string) => {
+    if (confirm(`Are you sure you want to delete "${label}"?`)) {
       await deleteFamilyMutation.mutateAsync(id);
     }
   };
@@ -203,14 +224,34 @@ export default function LevelsGallery() {
                     </Button>
                   </div>
                 )}
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  onClick={() => handleDeleteFamily(family.id)}
-                  data-testid={`button-delete-family-${family.id}`}
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      data-testid={`button-menu-${family.id}`}
+                    >
+                      <MoreVertical className="w-4 h-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      onClick={() => handleResetFamily(family.id, family.label)}
+                      data-testid={`button-reset-family-${family.id}`}
+                    >
+                      <RotateCcw className="w-4 h-4 mr-2" />
+                      Reset Levels
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => handleDeleteFamily(family.id, family.label)}
+                      className="text-destructive focus:text-destructive"
+                      data-testid={`button-delete-family-${family.id}`}
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Delete Family
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
 
               <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">

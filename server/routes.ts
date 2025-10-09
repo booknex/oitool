@@ -113,6 +113,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/families/:id/reset", async (req, res) => {
+    try {
+      const family = await storage.resetFamilyLevels(req.params.id);
+      res.json(family);
+    } catch (error) {
+      if (error instanceof Error && error.message.includes("not found")) {
+        return res.status(404).json({ error: "Family not found" });
+      }
+      res.status(500).json({ error: "Failed to reset family levels" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;

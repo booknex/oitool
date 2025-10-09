@@ -12,9 +12,11 @@ An interactive triple gallery application with a gaming-inspired UI featuring Ac
   - Create unlimited job position families (e.g., "Software Engineer", "Product Manager")
   - Each family has 4 progression levels (LEVEL 1-4)
   - Edit family labels to update job position names
+  - Reset all levels in a family back to locked state
   - Delete families when no longer needed
   - Unlock individual levels by clicking on them
   - Track total progress across all families
+  - Access family options via 3-dot menu (reset levels, delete family)
 - **Trophy Gallery** (/trophies) - Independent trophy tracking with the same 12 badges
 - **Navigation** - Fixed header with three buttons to switch between galleries (Achievement Gallery left, Levels middle, Trophies right)
 - **Independent State** - Achievement and Trophy galleries use localStorage; Levels gallery uses in-memory backend storage
@@ -82,6 +84,7 @@ Preferred communication style: Simple, everyday language.
     - `DELETE /api/families/:id` - Delete a family (returns 404 if not found)
     - `PATCH /api/families/:id` - Update family label/name
     - `POST /api/families/unlock` - Unlock a specific level within a family
+    - `POST /api/families/:id/reset` - Reset all levels in a family back to locked state
 
 **Validation**
 - Zod schemas for runtime type validation

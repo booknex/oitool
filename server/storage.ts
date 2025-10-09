@@ -10,6 +10,7 @@ export interface IStorage {
   deleteFamily(id: string): Promise<void>;
   updateFamily(id: string, label: string): Promise<Family>;
   unlockLevel(familyId: string, levelNumber: number): Promise<Family>;
+  resetFamilyLevels(familyId: string): Promise<Family>;
 }
 
 const initialBadges: Badge[] = Array.from({ length: 12 }, (_, i) => ({
@@ -122,6 +123,27 @@ export class MemStorage implements IStorage {
     const updatedFamily: Family = {
       ...family,
       levels: updatedLevels,
+    };
+
+    this.families.set(familyId, updatedFamily);
+    return updatedFamily;
+  }
+
+  async resetFamilyLevels(familyId: string): Promise<Family> {
+    const family = this.families.get(familyId);
+    if (!family) {
+      throw new Error(`Family with id ${familyId} not found`);
+    }
+
+    const resetLevels = family.levels.map(level => ({
+      ...level,
+      unlocked: false,
+      unlockedAt: undefined,
+    }));
+
+    const updatedFamily: Family = {
+      ...family,
+      levels: resetLevels,
     };
 
     this.families.set(familyId, updatedFamily);
