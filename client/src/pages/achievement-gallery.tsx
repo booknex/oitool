@@ -4,8 +4,12 @@ import { Lock, RotateCcw } from "lucide-react";
 import { Badge } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
+import { badgeMetadata } from "@/lib/badgeData";
+import { BadgeTooltip } from "@/components/badge-tooltip";
 
 const TOTAL_BADGES = 12;
+
+type BadgeWithMetadata = Badge & { name: string; description: string; category: string };
 
 const getUnlockedBadges = (): number[] => {
   try {
@@ -21,20 +25,22 @@ const saveUnlockedBadges = (ids: number[]) => {
 };
 
 export default function AchievementGallery() {
-  const [badges, setBadges] = useState<Badge[]>([]);
+  const [badges, setBadges] = useState<BadgeWithMetadata[]>([]);
   const [animatingBadge, setAnimatingBadge] = useState<number | null>(null);
+  const [hoveredBadge, setHoveredBadge] = useState<number | null>(null);
   const [isResetting, setIsResetting] = useState(false);
 
   useEffect(() => {
     const unlockedIds = getUnlockedBadges();
     
-    const initialBadges: Badge[] = Array.from({ length: TOTAL_BADGES }, (_, i) => ({
-      id: i + 1,
-      name: `Achievement ${i + 1}`,
-      description: `Unlock this badge by clicking on it`,
+    const initialBadges: BadgeWithMetadata[] = badgeMetadata.map((meta) => ({
+      id: meta.id,
+      name: meta.name,
+      description: meta.description,
+      category: meta.category,
       imageUrl: "/api/badge-image",
-      unlocked: unlockedIds.includes(i + 1),
-      unlockedAt: unlockedIds.includes(i + 1) ? new Date().toISOString() : undefined,
+      unlocked: unlockedIds.includes(meta.id),
+      unlockedAt: unlockedIds.includes(meta.id) ? new Date().toISOString() : undefined,
     }));
     
     setBadges(initialBadges);
@@ -52,10 +58,11 @@ export default function AchievementGallery() {
 
     setAnimatingBadge(badgeId);
 
+    const unlockedAt = new Date().toISOString();
     setBadges(prev =>
       prev.map(b =>
         b.id === badgeId
-          ? { ...b, unlocked: true, unlockedAt: new Date().toISOString() }
+          ? { ...b, unlocked: true, unlockedAt }
           : b
       )
     );
@@ -150,48 +157,56 @@ export default function AchievementGallery() {
 
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 md:gap-8">
           {badges.map((badge) => (
-            <button
+            <div
               key={badge.id}
-              onClick={() => handleUnlock(badge.id)}
-              disabled={badge.unlocked}
-              data-testid={`badge-${badge.id}`}
-              className={`
-                relative aspect-square rounded-2xl overflow-hidden
-                transition-all duration-200 ease-out
-                ${badge.unlocked ? "cursor-default" : "cursor-pointer hover:scale-105 active:scale-95"}
-                ${animatingBadge === badge.id ? "animate-unlock-pulse" : ""}
-              `}
+              className="relative"
+              onMouseEnter={() => setHoveredBadge(badge.id)}
+              onMouseLeave={() => setHoveredBadge(null)}
             >
-              <img
-                src={badge.imageUrl}
-                alt={badge.name}
+              <BadgeTooltip badge={badge} isVisible={hoveredBadge === badge.id} />
+              
+              <button
+                onClick={() => handleUnlock(badge.id)}
+                disabled={badge.unlocked}
+                data-testid={`badge-${badge.id}`}
                 className={`
-                  w-full h-full object-cover
-                  transition-all duration-500
-                  ${!badge.unlocked ? "grayscale opacity-40" : ""}
+                  relative aspect-square rounded-2xl overflow-hidden w-full
+                  transition-all duration-200 ease-out
+                  ${badge.unlocked ? "cursor-default" : "cursor-pointer hover:scale-105 active:scale-95"}
+                  ${animatingBadge === badge.id ? "animate-unlock-pulse" : ""}
                 `}
-                data-testid={`image-${badge.id}`}
-              />
+              >
+                <img
+                  src={badge.imageUrl}
+                  alt={badge.name}
+                  className={`
+                    w-full h-full object-cover
+                    transition-all duration-500
+                    ${!badge.unlocked ? "grayscale opacity-40" : ""}
+                  `}
+                  data-testid={`image-${badge.id}`}
+                />
 
-              {badge.unlocked && (
-                <div className="absolute inset-0 border-2 border-primary rounded-2xl shadow-lg shadow-primary/20" />
-              )}
+                {badge.unlocked && (
+                  <div className="absolute inset-0 border-2 border-primary rounded-2xl shadow-lg shadow-primary/20" />
+                )}
 
-              {!badge.unlocked && (
-                <>
-                  <div className="absolute inset-0 border-2 border-gray-700 rounded-2xl" />
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <Lock className="w-12 h-12 md:w-16 md:h-16 text-gray-500" data-testid={`lock-icon-${badge.id}`} />
+                {!badge.unlocked && (
+                  <>
+                    <div className="absolute inset-0 border-2 border-gray-700 rounded-2xl" />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <Lock className="w-12 h-12 md:w-16 md:h-16 text-gray-500" data-testid={`lock-icon-${badge.id}`} />
+                    </div>
+                  </>
+                )}
+
+                {badge.unlocked && (
+                  <div className="absolute inset-0 pointer-events-none">
+                    <div className="absolute inset-0 bg-primary/10 animate-glow-pulse rounded-2xl" />
                   </div>
-                </>
-              )}
-
-              {badge.unlocked && (
-                <div className="absolute inset-0 pointer-events-none">
-                  <div className="absolute inset-0 bg-primary/10 animate-glow-pulse rounded-2xl" />
-                </div>
-              )}
-            </button>
+                )}
+              </button>
+            </div>
           ))}
         </div>
 
