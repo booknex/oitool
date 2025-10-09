@@ -8,7 +8,7 @@ An interactive triple gallery application with a gaming-inspired UI featuring Ac
 
 ### Triple Gallery System
 - **Achievement Gallery** (/) - Main achievement tracking with 12 unlockable badges
-- **Levels** (/levels) - Independent level tracking with unique display: levels 1-4 show as text ("LEVEL 1" through "LEVEL 4"), levels 5-12 show badge images
+- **Levels** (/levels) - Independent level tracking with unique display: levels 1-4 show as text ("LEVEL 1" through "LEVEL 4") grouped in a bordered container, levels 5-12 show badge images below
 - **Trophy Gallery** (/trophies) - Independent trophy tracking with the same 12 badges
 - **Navigation** - Fixed header with three buttons to switch between galleries (Achievement Gallery left, Levels middle, Trophies right)
 - **Independent State** - Each gallery maintains completely separate unlock progress via localStorage (unlockedBadges, unlockedLevels, unlockedTrophies)
