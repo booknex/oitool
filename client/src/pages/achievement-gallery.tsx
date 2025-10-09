@@ -11,17 +11,33 @@ const TOTAL_BADGES = 12;
 
 type BadgeWithMetadata = Badge & { name: string; description: string; category: string };
 
-const getUnlockedBadges = (): number[] => {
+interface UnlockData {
+  [badgeId: number]: string;
+}
+
+const getUnlockedBadges = (): UnlockData => {
   try {
     const saved = localStorage.getItem("unlockedBadges");
-    return saved ? JSON.parse(saved) : [];
+    if (!saved) return {};
+    
+    const parsed = JSON.parse(saved);
+    if (Array.isArray(parsed)) {
+      const now = new Date().toISOString();
+      const converted: UnlockData = {};
+      parsed.forEach((id: number) => {
+        converted[id] = now;
+      });
+      return converted;
+    }
+    
+    return parsed;
   } catch {
-    return [];
+    return {};
   }
 };
 
-const saveUnlockedBadges = (ids: number[]) => {
-  localStorage.setItem("unlockedBadges", JSON.stringify(ids));
+const saveUnlockedBadges = (data: UnlockData) => {
+  localStorage.setItem("unlockedBadges", JSON.stringify(data));
 };
 
 export default function AchievementGallery() {
@@ -31,7 +47,7 @@ export default function AchievementGallery() {
   const [isResetting, setIsResetting] = useState(false);
 
   useEffect(() => {
-    const unlockedIds = getUnlockedBadges();
+    const unlockedData = getUnlockedBadges();
     
     const initialBadges: BadgeWithMetadata[] = badgeMetadata.map((meta) => ({
       id: meta.id,
@@ -39,8 +55,8 @@ export default function AchievementGallery() {
       description: meta.description,
       category: meta.category,
       imageUrl: "/api/badge-image",
-      unlocked: unlockedIds.includes(meta.id),
-      unlockedAt: unlockedIds.includes(meta.id) ? new Date().toISOString() : undefined,
+      unlocked: meta.id in unlockedData,
+      unlockedAt: unlockedData[meta.id],
     }));
     
     setBadges(initialBadges);
@@ -67,9 +83,9 @@ export default function AchievementGallery() {
       )
     );
 
-    const currentUnlocked = getUnlockedBadges();
-    const newUnlocked = Array.from(new Set([...currentUnlocked, badgeId]));
-    saveUnlockedBadges(newUnlocked);
+    const currentData = getUnlockedBadges();
+    const newData = { ...currentData, [badgeId]: unlockedAt };
+    saveUnlockedBadges(newData);
 
     try {
       await unlockMutation.mutateAsync(badgeId);
@@ -84,8 +100,8 @@ export default function AchievementGallery() {
         )
       );
       
-      const restored = currentUnlocked.filter(id => id !== badgeId);
-      saveUnlockedBadges(restored);
+      const { [badgeId]: _, ...restoredData } = currentData;
+      saveUnlockedBadges(restoredData);
     } finally {
       setTimeout(() => setAnimatingBadge(null), 500);
     }
@@ -97,7 +113,7 @@ export default function AchievementGallery() {
     setBadges(prev =>
       prev.map(b => ({ ...b, unlocked: false, unlockedAt: undefined }))
     );
-    saveUnlockedBadges([]);
+    saveUnlockedBadges({});
 
     try {
       await apiRequest("POST", "/api/badges/reset", {});
@@ -119,7 +135,7 @@ export default function AchievementGallery() {
             Achievement Gallery
           </h1>
           <p className="text-lg text-muted-foreground mb-8">
-            Click on any locked badge to unlock it and watch it transform
+            Hover over badges to see details • Click to unlock
           </p>
 
           <div className="max-w-md mx-auto">
