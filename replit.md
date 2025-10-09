@@ -2,16 +2,22 @@
 
 ## Overview
 
-An interactive triple gallery application with a gaming-inspired UI featuring Achievement Gallery, Levels, and Trophy Gallery. Users can unlock badges/trophies/levels by clicking on them, with visual feedback and animations. Each gallery maintains independent state and progress tracking. The application features a dark mode gaming aesthetic inspired by Steam Achievements and PlayStation Trophy systems, built with React, TypeScript, and Express.
+An interactive triple gallery application with a gaming-inspired UI featuring Achievement Gallery, Levels (Job Position Tracker), and Trophy Gallery. The Levels gallery has evolved into a dynamic job position tracking system where users can create custom job position families, each with 4 progression levels. Each gallery maintains independent state and progress tracking. The application features a dark mode gaming aesthetic inspired by Steam Achievements and PlayStation Trophy systems, built with React, TypeScript, and Express.
 
 ## Features
 
 ### Triple Gallery System
 - **Achievement Gallery** (/) - Main achievement tracking with 12 unlockable badges
-- **Levels** (/levels) - Independent level tracking with unique display: three bordered family groups each showing "LEVEL 1" through "LEVEL 4" as text (representing badges 1-4, 5-8, and 9-12)
+- **Levels** (/levels) - Dynamic job position tracking system where users can:
+  - Create unlimited job position families (e.g., "Software Engineer", "Product Manager")
+  - Each family has 4 progression levels (LEVEL 1-4)
+  - Edit family labels to update job position names
+  - Delete families when no longer needed
+  - Unlock individual levels by clicking on them
+  - Track total progress across all families
 - **Trophy Gallery** (/trophies) - Independent trophy tracking with the same 12 badges
 - **Navigation** - Fixed header with three buttons to switch between galleries (Achievement Gallery left, Levels middle, Trophies right)
-- **Independent State** - Each gallery maintains completely separate unlock progress via localStorage (unlockedBadges, unlockedLevels, unlockedTrophies)
+- **Independent State** - Achievement and Trophy galleries use localStorage; Levels gallery uses in-memory backend storage
 
 ### Badge Metadata
 - Rich metadata for all 12 badges including name, description, and category
@@ -57,16 +63,25 @@ Preferred communication style: Simple, everyday language.
 - Custom logging middleware for API request tracking
 
 **Data Storage**
-- In-memory storage (MemStorage class) for badge state
-- Badge data structure includes: id, name, description, imageUrl, unlocked status, and unlock timestamp
-- LocalStorage on client maintains persistence across page reloads
+- In-memory storage (MemStorage class) for both badge and family state
+- Badge data structure: id, name, description, imageUrl, unlocked status, and unlock timestamp
+- Family data structure: id, label, levels array (4 levels with unlock status)
+- LocalStorage on client maintains persistence for Achievement and Trophy galleries
+- Backend in-memory storage for Levels gallery (persists during server runtime)
 
 **API Design**
 - RESTful endpoints:
-  - `GET /api/badges` - Fetch all badges
-  - `POST /api/badges/unlock` - Unlock a specific badge
-  - `POST /api/badges/reset` - Reset all badges to locked state
-  - `GET /api/badge-image` - Serve badge image assets
+  - **Badges:**
+    - `GET /api/badges` - Fetch all badges
+    - `POST /api/badges/unlock` - Unlock a specific badge
+    - `POST /api/badges/reset` - Reset all badges to locked state
+    - `GET /api/badge-image` - Serve badge image assets
+  - **Families (Job Positions):**
+    - `GET /api/families` - Fetch all job position families
+    - `POST /api/families` - Create new job position family
+    - `DELETE /api/families/:id` - Delete a family (returns 404 if not found)
+    - `PATCH /api/families/:id` - Update family label/name
+    - `POST /api/families/unlock` - Unlock a specific level within a family
 
 **Validation**
 - Zod schemas for runtime type validation
