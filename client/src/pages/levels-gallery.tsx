@@ -284,59 +284,60 @@ export default function LevelsGallery() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 md:gap-8">
-            {badges.slice(8).map((badge) => (
-              <div
-                key={badge.id}
-                className="relative"
-                onMouseEnter={() => setHoveredBadge(badge.id)}
-                onMouseLeave={() => setHoveredBadge(null)}
-              >
-                <BadgeTooltip badge={badge} isVisible={hoveredBadge === badge.id} />
-                
-                <button
-                  onClick={() => handleUnlock(badge.id)}
-                  disabled={badge.unlocked}
-                  data-testid={`level-${badge.id}`}
-                  className={`
-                    relative aspect-square rounded-2xl overflow-hidden w-full
-                    transition-all duration-200 ease-out
-                    ${badge.unlocked ? "cursor-default" : "cursor-pointer hover:scale-105 active:scale-95"}
-                    ${animatingBadge === badge.id ? "animate-unlock-pulse" : ""}
-                  `}
+          <div className="border-2 border-primary/30 rounded-3xl p-6 md:p-8 bg-primary/5">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
+              {badges.slice(8).map((badge) => (
+                <div
+                  key={badge.id}
+                  className="relative"
+                  onMouseEnter={() => setHoveredBadge(badge.id)}
+                  onMouseLeave={() => setHoveredBadge(null)}
                 >
-                  <img
-                    src={badge.imageUrl}
-                    alt={badge.name}
+                  <BadgeTooltip badge={badge} isVisible={hoveredBadge === badge.id} />
+                  
+                  <button
+                    onClick={() => handleUnlock(badge.id)}
+                    disabled={badge.unlocked}
+                    data-testid={`level-${badge.id}`}
                     className={`
-                      w-full h-full object-cover
-                      transition-all duration-500
-                      ${!badge.unlocked ? "grayscale opacity-40" : ""}
+                      relative aspect-square rounded-2xl overflow-hidden w-full bg-gray-800
+                      transition-all duration-200 ease-out
+                      ${badge.unlocked ? "cursor-default" : "cursor-pointer hover:scale-105 active:scale-95"}
+                      ${animatingBadge === badge.id ? "animate-unlock-pulse" : ""}
                     `}
-                    data-testid={`image-${badge.id}`}
-                  />
-
-                  {badge.unlocked && (
-                    <div className="absolute inset-0 border-2 border-primary rounded-2xl shadow-lg shadow-primary/20" />
-                  )}
-
-                  {!badge.unlocked && (
-                    <>
-                      <div className="absolute inset-0 border-2 border-gray-700 rounded-2xl" />
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <Lock className="w-12 h-12 md:w-16 md:h-16 text-gray-500" data-testid={`lock-icon-${badge.id}`} />
-                      </div>
-                    </>
-                  )}
-
-                  {badge.unlocked && (
-                    <div className="absolute inset-0 pointer-events-none">
-                      <div className="absolute inset-0 bg-primary/10 animate-glow-pulse rounded-2xl" />
+                  >
+                    <div className="w-full h-full flex items-center justify-center">
+                      <span className={`
+                        text-2xl md:text-3xl font-display font-bold tracking-wide
+                        transition-all duration-500
+                        ${badge.unlocked ? "text-primary" : "text-gray-500 opacity-40"}
+                      `}>
+                        LEVEL {badge.id - 8}
+                      </span>
                     </div>
-                  )}
-                </button>
-              </div>
-            ))}
+
+                    {badge.unlocked && (
+                      <div className="absolute inset-0 border-2 border-primary rounded-2xl shadow-lg shadow-primary/20" />
+                    )}
+
+                    {!badge.unlocked && (
+                      <>
+                        <div className="absolute inset-0 border-2 border-gray-700 rounded-2xl" />
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <Lock className="w-12 h-12 md:w-16 md:h-16 text-gray-500" data-testid={`lock-icon-${badge.id}`} />
+                        </div>
+                      </>
+                    )}
+
+                    {badge.unlocked && (
+                      <div className="absolute inset-0 pointer-events-none">
+                        <div className="absolute inset-0 bg-primary/10 animate-glow-pulse rounded-2xl" />
+                      </div>
+                    )}
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
