@@ -190,18 +190,31 @@ export default function LevelsGallery() {
                   transition-all duration-200 ease-out
                   ${badge.unlocked ? "cursor-default" : "cursor-pointer hover:scale-105 active:scale-95"}
                   ${animatingBadge === badge.id ? "animate-unlock-pulse" : ""}
+                  ${badge.id <= 4 ? "bg-gray-800" : ""}
                 `}
               >
-                <img
-                  src={badge.imageUrl}
-                  alt={badge.name}
-                  className={`
-                    w-full h-full object-cover
-                    transition-all duration-500
-                    ${!badge.unlocked ? "grayscale opacity-40" : ""}
-                  `}
-                  data-testid={`image-${badge.id}`}
-                />
+                {badge.id <= 4 ? (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <span className={`
+                      text-2xl md:text-3xl font-display font-bold tracking-wide
+                      transition-all duration-500
+                      ${badge.unlocked ? "text-primary" : "text-gray-500 opacity-40"}
+                    `}>
+                      LEVEL {badge.id}
+                    </span>
+                  </div>
+                ) : (
+                  <img
+                    src={badge.imageUrl}
+                    alt={badge.name}
+                    className={`
+                      w-full h-full object-cover
+                      transition-all duration-500
+                      ${!badge.unlocked ? "grayscale opacity-40" : ""}
+                    `}
+                    data-testid={`image-${badge.id}`}
+                  />
+                )}
 
                 {badge.unlocked && (
                   <div className="absolute inset-0 border-2 border-primary rounded-2xl shadow-lg shadow-primary/20" />
