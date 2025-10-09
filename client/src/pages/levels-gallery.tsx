@@ -256,7 +256,7 @@ export default function LevelsGallery() {
                         transition-all duration-500
                         ${badge.unlocked ? "text-primary" : "text-gray-500 opacity-40"}
                       `}>
-                        LEVEL {badge.id}
+                        LEVEL {badge.id - 4}
                       </span>
                     </div>
 
