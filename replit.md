@@ -7,7 +7,7 @@ An interactive triple gallery application with a gaming-inspired UI featuring Ac
 ## Features
 
 ### Triple Gallery System
-- **Achievement Gallery** (/) - Main achievement tracking with 12 unlockable badges
+- **Achievement Gallery** (/) - Main achievement tracking with 12 unlockable custom-generated badges (bronze to rainbow iridescent metallic finishes)
 - **Levels** (/levels) - Dynamic job position tracking system where users can:
   - Create unlimited job position families (e.g., "Software Engineer", "Product Manager")
   - Each family has 4 progression levels (LEVEL 1-4)
@@ -17,15 +17,18 @@ An interactive triple gallery application with a gaming-inspired UI featuring Ac
   - Unlock individual levels by clicking on them
   - Track total progress across all families
   - Access family options via 3-dot menu (reset levels, delete family)
-- **Trophy Gallery** (/trophies) - Independent trophy tracking with the same 12 badges
+- **Trophy Gallery** (/trophies) - Independent trophy tracking with 12 custom-generated trophy cups (bronze to rainbow iridescent metallic finishes)
 - **Navigation** - Fixed header with three buttons to switch between galleries (Achievement Gallery left, Levels middle, Trophies right)
 - **Independent State** - Achievement and Trophy galleries use localStorage; Levels gallery uses in-memory backend storage
 
 ### Badge Metadata
 - Rich metadata for all 12 badges including name, description, and category
+- Custom-generated badge images with no backgrounds, designed to fit squares
+- Custom-generated trophy cup images distinct from badges
 - Interactive tooltips showing badge details on hover
 - Unlock timestamps with date/time display
 - Categories: Starter, Progress, Commitment, Elite, Master, Legendary
+- Metallic progression: Bronze → Silver → Gold → Platinum → Diamond → Legendary (gold/red) → Rainbow Iridescent
 
 ## User Preferences
 

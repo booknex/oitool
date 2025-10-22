@@ -54,7 +54,7 @@ export default function AchievementGallery() {
       name: meta.name,
       description: meta.description,
       category: meta.category,
-      imageUrl: "/api/badge-image",
+      imageUrl: meta.badgeImageUrl,
       unlocked: meta.id in unlockedData,
       unlockedAt: unlockedData[meta.id],
     }));

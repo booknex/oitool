@@ -54,7 +54,7 @@ export default function TrophyGallery() {
       name: meta.name,
       description: meta.description,
       category: meta.category,
-      imageUrl: "/api/badge-image",
+      imageUrl: meta.trophyImageUrl,
       unlocked: meta.id in unlockedData,
       unlockedAt: unlockedData[meta.id],
     }));
