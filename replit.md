@@ -65,9 +65,10 @@ Preferred communication style: Simple, everyday language.
 - Vite middleware integration for development hot reload
 
 **Data Storage**
-- In-memory storage (MemStorage class) for inventory items
-- Item data structure: id, name, description, category, stock, maxStock
+- PostgreSQL database with Drizzle ORM (DatabaseStorage class)
+- Table: inventory_items (id serial PK, name, description, category, stock, max_stock, visible)
 - Cart is client-side only; checkout validates and decrements server-side
+- Production deployment uses separate PostgreSQL instance on VPS
 
 **API Design**
 - RESTful endpoints:
@@ -75,6 +76,9 @@ Preferred communication style: Simple, everyday language.
   - `POST /api/cart/checkout` - Checkout cart items, validates stock and decrements
   - `POST /api/items/restock` - Restock a single item (by id, optional quantity)
   - `POST /api/items/restock-all` - Reset all items to max stock
+  - `POST /api/items` - Create a new item
+  - `PATCH /api/items/:id` - Update an existing item
+  - `DELETE /api/items/:id` - Delete an item
 
 **Validation**
 - Zod schemas for runtime type validation

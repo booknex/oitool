@@ -1,4 +1,8 @@
-import { type InventoryItem, type CartItem, type CreateItemPayload, type UpdateItemPayload } from "@shared/schema";
+import { eq, sql, and, gte } from "drizzle-orm";
+import { db } from "./db";
+import { pool } from "./db";
+import { drizzle } from "drizzle-orm/node-postgres";
+import { inventoryItems, type InventoryItem, type CartItem, type CreateItemPayload, type UpdateItemPayload } from "@shared/schema";
 
 export interface IStorage {
   getItems(): Promise<InventoryItem[]>;
@@ -11,125 +15,125 @@ export interface IStorage {
   deleteItem(id: number): Promise<void>;
 }
 
-const initialItems: InventoryItem[] = [
-  { id: 1, name: "All-Purpose Cleaner", description: "Multi-surface cleaning spray for counters, sinks, and appliances", category: "Sprays", stock: 8, maxStock: 10, visible: true },
-  { id: 2, name: "Glass Cleaner", description: "Streak-free window and mirror cleaning solution", category: "Sprays", stock: 6, maxStock: 10, visible: true },
-  { id: 3, name: "Disinfectant Spray", description: "Hospital-grade disinfectant for bathrooms and high-touch areas", category: "Sprays", stock: 5, maxStock: 10, visible: true },
-  { id: 4, name: "Microfiber Cloths", description: "Reusable lint-free cloths for dusting and polishing", category: "Cloths & Wipes", stock: 12, maxStock: 20, visible: true },
-  { id: 5, name: "Sponges", description: "Heavy-duty scrub sponges for kitchen and bathroom cleaning", category: "Cloths & Wipes", stock: 10, maxStock: 15, visible: true },
-  { id: 6, name: "Trash Bags", description: "Large 13-gallon drawstring trash bags", category: "Supplies", stock: 20, maxStock: 30, visible: true },
-  { id: 7, name: "Toilet Bowl Cleaner", description: "Deep cleaning gel for toilet bowls and rims", category: "Bathroom", stock: 4, maxStock: 10, visible: true },
-  { id: 8, name: "Floor Cleaner", description: "Concentrated multi-floor mopping solution", category: "Floors", stock: 3, maxStock: 8, visible: true },
-  { id: 9, name: "Dusting Spray", description: "Furniture polish and dusting spray", category: "Sprays", stock: 7, maxStock: 10, visible: true },
-  { id: 10, name: "Rubber Gloves", description: "Disposable nitrile gloves for hygiene protection", category: "Supplies", stock: 15, maxStock: 25, visible: true },
-  { id: 11, name: "Mop Heads", description: "Replacement mop heads for wet mopping", category: "Floors", stock: 2, maxStock: 6, visible: true },
-  { id: 12, name: "Vacuum Bags", description: "Replacement bags for commercial vacuum cleaners", category: "Supplies", stock: 5, maxStock: 10, visible: true },
-];
-
-export class MemStorage implements IStorage {
-  private items: Map<number, InventoryItem>;
-  private nextId: number;
-
-  constructor() {
-    this.items = new Map();
-    initialItems.forEach(item => this.items.set(item.id, { ...item }));
-    this.nextId = Math.max(...initialItems.map(i => i.id)) + 1;
-  }
-
+export class DatabaseStorage implements IStorage {
   async getItems(): Promise<InventoryItem[]> {
-    return Array.from(this.items.values());
+    return await db.select().from(inventoryItems);
   }
 
   async getItem(id: number): Promise<InventoryItem | undefined> {
-    return this.items.get(id);
+    const [item] = await db.select().from(inventoryItems).where(eq(inventoryItems.id, id));
+    return item;
   }
 
   async checkout(cartItems: CartItem[]): Promise<InventoryItem[]> {
-    for (const cartItem of cartItems) {
-      const item = this.items.get(cartItem.itemId);
-      if (!item) {
-        throw new Error(`Item with id ${cartItem.itemId} not found`);
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      const txDb = drizzle(client);
+
+      for (const cartItem of cartItems) {
+        const [item] = await txDb.select().from(inventoryItems).where(eq(inventoryItems.id, cartItem.itemId));
+        if (!item) {
+          throw new Error(`Item with id ${cartItem.itemId} not found`);
+        }
+        if (item.stock < cartItem.quantity) {
+          throw new Error(`Not enough stock for "${item.name}". Requested: ${cartItem.quantity}, Available: ${item.stock}`);
+        }
+
+        await txDb
+          .update(inventoryItems)
+          .set({ stock: sql`${inventoryItems.stock} - ${cartItem.quantity}` })
+          .where(and(eq(inventoryItems.id, cartItem.itemId), gte(inventoryItems.stock, cartItem.quantity)));
       }
-      if (item.stock < cartItem.quantity) {
-        throw new Error(`Not enough stock for "${item.name}". Requested: ${cartItem.quantity}, Available: ${item.stock}`);
-      }
+
+      await client.query("COMMIT");
+    } catch (e) {
+      await client.query("ROLLBACK");
+      throw e;
+    } finally {
+      client.release();
     }
 
-    for (const cartItem of cartItems) {
-      const item = this.items.get(cartItem.itemId)!;
-      this.items.set(cartItem.itemId, {
-        ...item,
-        stock: item.stock - cartItem.quantity,
-      });
-    }
-
-    return Array.from(this.items.values());
+    return this.getItems();
   }
 
   async restockItem(id: number, quantity?: number): Promise<InventoryItem> {
-    const item = this.items.get(id);
+    const item = await this.getItem(id);
     if (!item) {
       throw new Error(`Item with id ${id} not found`);
     }
 
-    const restocked: InventoryItem = {
-      ...item,
-      stock: quantity !== undefined ? Math.min(quantity, item.maxStock) : item.maxStock,
-    };
-
-    this.items.set(id, restocked);
-    return restocked;
+    const newStock = quantity !== undefined ? Math.min(quantity, item.maxStock) : item.maxStock;
+    const [updated] = await db
+      .update(inventoryItems)
+      .set({ stock: newStock })
+      .where(eq(inventoryItems.id, id))
+      .returning();
+    return updated;
   }
 
   async restockAll(): Promise<InventoryItem[]> {
-    for (const [id, item] of this.items) {
-      this.items.set(id, { ...item, stock: item.maxStock });
-    }
-    return Array.from(this.items.values());
+    await db
+      .update(inventoryItems)
+      .set({ stock: sql`${inventoryItems.maxStock}` });
+    return this.getItems();
   }
 
   async createItem(data: CreateItemPayload): Promise<InventoryItem> {
-    const id = this.nextId++;
-    const item: InventoryItem = {
-      id,
-      name: data.name,
-      description: data.description,
-      category: data.category,
-      maxStock: data.maxStock,
-      stock: data.stock !== undefined ? Math.min(data.stock, data.maxStock) : data.maxStock,
-      visible: true,
-    };
-    this.items.set(id, item);
+    const stock = data.stock !== undefined ? Math.min(data.stock, data.maxStock) : data.maxStock;
+    const [item] = await db
+      .insert(inventoryItems)
+      .values({
+        name: data.name,
+        description: data.description,
+        category: data.category,
+        maxStock: data.maxStock,
+        stock,
+        visible: true,
+      })
+      .returning();
     return item;
   }
 
   async updateItem(data: UpdateItemPayload): Promise<InventoryItem> {
-    const item = this.items.get(data.id);
+    const item = await this.getItem(data.id);
     if (!item) {
       throw new Error(`Item with id ${data.id} not found`);
     }
-    const updated: InventoryItem = {
-      ...item,
-      name: data.name ?? item.name,
-      description: data.description ?? item.description,
-      category: data.category ?? item.category,
-      maxStock: data.maxStock ?? item.maxStock,
-      stock: data.stock !== undefined ? data.stock : item.stock,
-      visible: data.visible !== undefined ? data.visible : item.visible,
-    };
-    if (updated.stock > updated.maxStock) {
-      updated.stock = updated.maxStock;
+
+    const updates: Partial<typeof inventoryItems.$inferInsert> = {};
+    if (data.name !== undefined) updates.name = data.name;
+    if (data.description !== undefined) updates.description = data.description;
+    if (data.category !== undefined) updates.category = data.category;
+    if (data.maxStock !== undefined) updates.maxStock = data.maxStock;
+    if (data.stock !== undefined) updates.stock = data.stock;
+    if (data.visible !== undefined) updates.visible = data.visible;
+
+    const newMaxStock = updates.maxStock ?? item.maxStock;
+    const newStock = updates.stock ?? item.stock;
+    if (newStock > newMaxStock) {
+      updates.stock = newMaxStock;
     }
-    this.items.set(data.id, updated);
+
+    if (Object.keys(updates).length === 0) {
+      return item;
+    }
+
+    const [updated] = await db
+      .update(inventoryItems)
+      .set(updates)
+      .where(eq(inventoryItems.id, data.id))
+      .returning();
     return updated;
   }
 
   async deleteItem(id: number): Promise<void> {
-    if (!this.items.has(id)) {
+    const item = await this.getItem(id);
+    if (!item) {
       throw new Error(`Item with id ${id} not found`);
     }
-    this.items.delete(id);
+    await db.delete(inventoryItems).where(eq(inventoryItems.id, id));
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();

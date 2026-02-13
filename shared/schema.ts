@@ -1,14 +1,20 @@
+import { pgTable, serial, text, integer, boolean } from "drizzle-orm/pg-core";
+import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-export const inventoryItemSchema = z.object({
-  id: z.number(),
-  name: z.string(),
-  description: z.string(),
-  category: z.string(),
-  stock: z.number().min(0),
-  maxStock: z.number().min(1),
-  visible: z.boolean(),
+export const inventoryItems = pgTable("inventory_items", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+  category: text("category").notNull(),
+  stock: integer("stock").notNull().default(0),
+  maxStock: integer("max_stock").notNull().default(10),
+  visible: boolean("visible").notNull().default(true),
 });
+
+export const insertItemSchema = createInsertSchema(inventoryItems).omit({ id: true });
+export type InsertItem = z.infer<typeof insertItemSchema>;
+export type InventoryItem = typeof inventoryItems.$inferSelect;
 
 export const cartItemSchema = z.object({
   itemId: z.number(),
@@ -42,7 +48,6 @@ export const updateItemSchema = z.object({
   visible: z.boolean().optional(),
 });
 
-export type InventoryItem = z.infer<typeof inventoryItemSchema>;
 export type CartItem = z.infer<typeof cartItemSchema>;
 export type CheckoutPayload = z.infer<typeof checkoutSchema>;
 export type RestockPayload = z.infer<typeof restockSchema>;

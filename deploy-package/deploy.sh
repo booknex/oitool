@@ -26,7 +26,7 @@ if [ ! -f /var/www/$APP_NAME/.env ]; then
     cp "$SCRIPT_DIR/.env.example" /var/www/$APP_NAME/.env
     echo ""
     echo ">>> .env file created from .env.example"
-    echo ">>> IMPORTANT: Edit /var/www/$APP_NAME/.env and set your SESSION_SECRET"
+    echo ">>> IMPORTANT: Edit /var/www/$APP_NAME/.env and set your SESSION_SECRET and DATABASE_URL"
     echo ""
 fi
 
@@ -42,7 +42,7 @@ cat > package.json << 'EOF'
 EOF
 
 echo "Installing dependencies..."
-npm install express@4 nanoid zod 2>&1 | tail -1
+npm install express@4 nanoid zod pg drizzle-orm 2>&1 | tail -1
 
 # Setup Nginx
 cp /var/www/$APP_NAME/nginx-site.conf /etc/nginx/sites-available/$APP_NAME
@@ -75,7 +75,7 @@ echo ""
 echo "  App running at: http://$DOMAIN"
 echo ""
 echo "  Next steps:"
-echo "  1. Edit /var/www/$APP_NAME/.env (set SESSION_SECRET)"
+echo "  1. Edit /var/www/$APP_NAME/.env (set SESSION_SECRET and DATABASE_URL)"
 echo "  2. Run: pm2 restart $APP_NAME"
 echo "  3. Setup SSL: certbot --nginx -d $DOMAIN"
 echo ""
