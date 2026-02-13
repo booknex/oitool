@@ -207,7 +207,7 @@ export default function Kiosk() {
                           style={{ animation: "blink-red 1s ease-in-out infinite" }}
                           data-testid={`last-item-warning-${item.id}`}
                         >
-                          <span className="text-red-500/60 font-bold text-6xl font-display select-none">
+                          <span className="text-red-500/80 font-bold text-8xl font-display select-none drop-shadow-[0_0_8px_rgba(239,68,68,0.5)]">
                             !
                           </span>
                         </div>
