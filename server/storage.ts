@@ -1,153 +1,86 @@
-import { type Badge, type Family } from "@shared/schema";
+import { type InventoryItem, type CartItem } from "@shared/schema";
 
 export interface IStorage {
-  getBadges(): Promise<Badge[]>;
-  unlockBadge(id: number): Promise<Badge>;
-  resetBadges(): Promise<void>;
-  
-  getFamilies(): Promise<Family[]>;
-  createFamily(label: string): Promise<Family>;
-  deleteFamily(id: string): Promise<void>;
-  updateFamily(id: string, label: string): Promise<Family>;
-  unlockLevel(familyId: string, levelNumber: number): Promise<Family>;
-  resetFamilyLevels(familyId: string): Promise<Family>;
+  getItems(): Promise<InventoryItem[]>;
+  getItem(id: number): Promise<InventoryItem | undefined>;
+  checkout(items: CartItem[]): Promise<InventoryItem[]>;
+  restockItem(id: number, quantity?: number): Promise<InventoryItem>;
+  restockAll(): Promise<InventoryItem[]>;
 }
 
-const initialBadges: Badge[] = Array.from({ length: 12 }, (_, i) => ({
-  id: i + 1,
-  name: `Achievement ${i + 1}`,
-  description: `Unlock this badge by clicking on it`,
-  imageUrl: "/api/badge-image",
-  unlocked: false,
-}));
+const initialItems: InventoryItem[] = [
+  { id: 1, name: "All-Purpose Cleaner", description: "Multi-surface cleaning spray for counters, sinks, and appliances", category: "Sprays", stock: 8, maxStock: 10 },
+  { id: 2, name: "Glass Cleaner", description: "Streak-free window and mirror cleaning solution", category: "Sprays", stock: 6, maxStock: 10 },
+  { id: 3, name: "Disinfectant Spray", description: "Hospital-grade disinfectant for bathrooms and high-touch areas", category: "Sprays", stock: 5, maxStock: 10 },
+  { id: 4, name: "Microfiber Cloths", description: "Reusable lint-free cloths for dusting and polishing", category: "Cloths & Wipes", stock: 12, maxStock: 20 },
+  { id: 5, name: "Sponges", description: "Heavy-duty scrub sponges for kitchen and bathroom cleaning", category: "Cloths & Wipes", stock: 10, maxStock: 15 },
+  { id: 6, name: "Trash Bags", description: "Large 13-gallon drawstring trash bags", category: "Supplies", stock: 20, maxStock: 30 },
+  { id: 7, name: "Toilet Bowl Cleaner", description: "Deep cleaning gel for toilet bowls and rims", category: "Bathroom", stock: 4, maxStock: 10 },
+  { id: 8, name: "Floor Cleaner", description: "Concentrated multi-floor mopping solution", category: "Floors", stock: 3, maxStock: 8 },
+  { id: 9, name: "Dusting Spray", description: "Furniture polish and dusting spray", category: "Sprays", stock: 7, maxStock: 10 },
+  { id: 10, name: "Rubber Gloves", description: "Disposable nitrile gloves for hygiene protection", category: "Supplies", stock: 15, maxStock: 25 },
+  { id: 11, name: "Mop Heads", description: "Replacement mop heads for wet mopping", category: "Floors", stock: 2, maxStock: 6 },
+  { id: 12, name: "Vacuum Bags", description: "Replacement bags for commercial vacuum cleaners", category: "Supplies", stock: 5, maxStock: 10 },
+];
 
 export class MemStorage implements IStorage {
-  private badges: Map<number, Badge>;
-  private families: Map<string, Family>;
-  private familyIdCounter: number;
+  private items: Map<number, InventoryItem>;
 
   constructor() {
-    this.badges = new Map();
-    this.families = new Map();
-    this.familyIdCounter = 0;
-    initialBadges.forEach(badge => this.badges.set(badge.id, { ...badge }));
+    this.items = new Map();
+    initialItems.forEach(item => this.items.set(item.id, { ...item }));
   }
 
-  async getBadges(): Promise<Badge[]> {
-    return Array.from(this.badges.values());
+  async getItems(): Promise<InventoryItem[]> {
+    return Array.from(this.items.values());
   }
 
-  async unlockBadge(id: number): Promise<Badge> {
-    const badge = this.badges.get(id);
-    if (!badge) {
-      throw new Error(`Badge with id ${id} not found`);
-    }
-
-    const unlockedBadge: Badge = {
-      ...badge,
-      unlocked: true,
-      unlockedAt: new Date().toISOString(),
-    };
-
-    this.badges.set(id, unlockedBadge);
-    return unlockedBadge;
+  async getItem(id: number): Promise<InventoryItem | undefined> {
+    return this.items.get(id);
   }
 
-  async resetBadges(): Promise<void> {
-    this.badges.clear();
-    initialBadges.forEach(badge => this.badges.set(badge.id, { ...badge }));
-  }
-
-  async getFamilies(): Promise<Family[]> {
-    return Array.from(this.families.values());
-  }
-
-  async createFamily(label: string): Promise<Family> {
-    this.familyIdCounter++;
-    const id = `family-${this.familyIdCounter}`;
-    
-    const newFamily: Family = {
-      id,
-      label,
-      levels: [
-        { levelNumber: 1, unlocked: false },
-        { levelNumber: 2, unlocked: false },
-        { levelNumber: 3, unlocked: false },
-        { levelNumber: 4, unlocked: false },
-      ],
-    };
-
-    this.families.set(id, newFamily);
-    return newFamily;
-  }
-
-  async deleteFamily(id: string): Promise<void> {
-    if (!this.families.has(id)) {
-      throw new Error(`Family with id ${id} not found`);
-    }
-    this.families.delete(id);
-  }
-
-  async updateFamily(id: string, label: string): Promise<Family> {
-    const family = this.families.get(id);
-    if (!family) {
-      throw new Error(`Family with id ${id} not found`);
-    }
-
-    const updatedFamily: Family = {
-      ...family,
-      label,
-    };
-
-    this.families.set(id, updatedFamily);
-    return updatedFamily;
-  }
-
-  async unlockLevel(familyId: string, levelNumber: number): Promise<Family> {
-    const family = this.families.get(familyId);
-    if (!family) {
-      throw new Error(`Family with id ${familyId} not found`);
-    }
-
-    const updatedLevels = family.levels.map(level => {
-      if (level.levelNumber === levelNumber) {
-        return {
-          ...level,
-          unlocked: true,
-          unlockedAt: new Date().toISOString(),
-        };
+  async checkout(cartItems: CartItem[]): Promise<InventoryItem[]> {
+    for (const cartItem of cartItems) {
+      const item = this.items.get(cartItem.itemId);
+      if (!item) {
+        throw new Error(`Item with id ${cartItem.itemId} not found`);
       }
-      return level;
-    });
-
-    const updatedFamily: Family = {
-      ...family,
-      levels: updatedLevels,
-    };
-
-    this.families.set(familyId, updatedFamily);
-    return updatedFamily;
-  }
-
-  async resetFamilyLevels(familyId: string): Promise<Family> {
-    const family = this.families.get(familyId);
-    if (!family) {
-      throw new Error(`Family with id ${familyId} not found`);
+      if (item.stock < cartItem.quantity) {
+        throw new Error(`Not enough stock for "${item.name}". Requested: ${cartItem.quantity}, Available: ${item.stock}`);
+      }
     }
 
-    const resetLevels = family.levels.map(level => ({
-      ...level,
-      unlocked: false,
-      unlockedAt: undefined,
-    }));
+    for (const cartItem of cartItems) {
+      const item = this.items.get(cartItem.itemId)!;
+      this.items.set(cartItem.itemId, {
+        ...item,
+        stock: item.stock - cartItem.quantity,
+      });
+    }
 
-    const updatedFamily: Family = {
-      ...family,
-      levels: resetLevels,
+    return Array.from(this.items.values());
+  }
+
+  async restockItem(id: number, quantity?: number): Promise<InventoryItem> {
+    const item = this.items.get(id);
+    if (!item) {
+      throw new Error(`Item with id ${id} not found`);
+    }
+
+    const restocked: InventoryItem = {
+      ...item,
+      stock: quantity !== undefined ? Math.min(quantity, item.maxStock) : item.maxStock,
     };
 
-    this.families.set(familyId, updatedFamily);
-    return updatedFamily;
+    this.items.set(id, restocked);
+    return restocked;
+  }
+
+  async restockAll(): Promise<InventoryItem[]> {
+    for (const [id, item] of this.items) {
+      this.items.set(id, { ...item, stock: item.maxStock });
+    }
+    return Array.from(this.items.values());
   }
 }
 

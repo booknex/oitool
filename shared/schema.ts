@@ -1,51 +1,29 @@
 import { z } from "zod";
 
-export const badgeSchema = z.object({
+export const inventoryItemSchema = z.object({
   id: z.number(),
   name: z.string(),
   description: z.string(),
-  imageUrl: z.string(),
-  unlocked: z.boolean(),
-  unlockedAt: z.string().optional(),
+  category: z.string(),
+  stock: z.number().min(0),
+  maxStock: z.number().min(1),
 });
 
-export const insertBadgeSchema = badgeSchema.omit({ unlocked: true, unlockedAt: true });
+export const cartItemSchema = z.object({
+  itemId: z.number(),
+  quantity: z.number().min(1),
+});
 
-export const unlockBadgeSchema = z.object({
+export const checkoutSchema = z.object({
+  items: z.array(cartItemSchema).min(1),
+});
+
+export const restockSchema = z.object({
   id: z.number(),
+  quantity: z.number().min(1).optional(),
 });
 
-export type Badge = z.infer<typeof badgeSchema>;
-export type InsertBadge = z.infer<typeof insertBadgeSchema>;
-export type UnlockBadge = z.infer<typeof unlockBadgeSchema>;
-
-export const levelSchema = z.object({
-  levelNumber: z.number().min(1).max(4),
-  unlocked: z.boolean(),
-  unlockedAt: z.string().optional(),
-});
-
-export const familySchema = z.object({
-  id: z.string(),
-  label: z.string(),
-  levels: z.array(levelSchema).length(4),
-});
-
-export const insertFamilySchema = z.object({
-  label: z.string().min(1).max(100),
-});
-
-export const updateFamilySchema = z.object({
-  label: z.string().min(1).max(100),
-});
-
-export const unlockLevelSchema = z.object({
-  familyId: z.string(),
-  levelNumber: z.number().min(1).max(4),
-});
-
-export type Level = z.infer<typeof levelSchema>;
-export type Family = z.infer<typeof familySchema>;
-export type InsertFamily = z.infer<typeof insertFamilySchema>;
-export type UpdateFamily = z.infer<typeof updateFamilySchema>;
-export type UnlockLevel = z.infer<typeof unlockLevelSchema>;
+export type InventoryItem = z.infer<typeof inventoryItemSchema>;
+export type CartItem = z.infer<typeof cartItemSchema>;
+export type CheckoutPayload = z.infer<typeof checkoutSchema>;
+export type RestockPayload = z.infer<typeof restockSchema>;
