@@ -1,0 +1,43 @@
+┌────┬─────────────────────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
+│ id │ name                    │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
+├────┼─────────────────────────┼─────────────┼─────────┼─────────┼──────────┼────────┼──────┼───────────┼──────────┼──────────┼──────────┼──────────┤
+│ 3  │ client-queue-manager    │ default     │ 1.0.0   │ fork    │ 29839    │ 23h    │ 7    │ online    │ 0%       │ 169.5mb  │ root     │ disabled │
+│ 0  │ meetingroadmap          │ default     │ N/A     │ fork    │ 21024    │ 37h    │ 16   │ online    │ 0%       │ 78.5mb   │ root     │ disabled │
+│ 8  │ office-inventory        │ default     │ 1.0.0   │ cluster │ 44627    │ 0s     │ 2    │ online    │ 0%       │ 46.3mb   │ root     │ disabled │
+│ 7  │ taxportal               │ default     │ N/A     │ fork    │ 37792    │ 12h    │ 2    │ online    │ 0%       │ 102.1mb  │ root     │ disabled │
+└────┴─────────────────────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
+root@srv1365851:/var/www# pm2 logs office-inventory --lines 30
+[TAILING] Tailing last 30 lines for [office-inventory] process (change the value with --lines option)
+/root/.pm2/logs/office-inventory-out-8.log last 30 lines:
+/root/.pm2/logs/office-inventory-error-8.log last 30 lines:
+8|office-i |     at #cachedDefaultResolve (node:internal/modules/esm/loader:719:20)
+8|office-i |     at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:736:38)
+8|office-i |     at ModuleLoader.resolveSync (node:internal/modules/esm/loader:765:52)
+8|office-i |     at #resolve (node:internal/modules/esm/loader:701:17)
+8|office-i |     at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:621:35)
+8|office-i |     at ModuleJob.syncLink (node:internal/modules/esm/module_job:160:33)
+8|office-i | You have triggered an unhandledRejection, you may have forgotten to catch a Promise rejection:
+8|office-i | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /var/www/office-inventory/dist/index.mjs
+8|office-i |     at Object.getPackageJSONURL (node:internal/modules/package_json_reader:301:9)
+8|office-i |     at packageResolve (node:internal/modules/esm/resolve:769:81)
+8|office-i |     at moduleResolve (node:internal/modules/esm/resolve:860:18)
+8|office-i |     at defaultResolve (node:internal/modules/esm/resolve:992:11)
+8|office-i |     at #cachedDefaultResolve (node:internal/modules/esm/loader:719:20)
+8|office-i |     at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:736:38)
+8|office-i |     at ModuleLoader.resolveSync (node:internal/modules/esm/loader:765:52)
+8|office-i |     at #resolve (node:internal/modules/esm/loader:701:17)
+8|office-i |     at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:621:35)
+8|office-i |     at ModuleJob.syncLink (node:internal/modules/esm/module_job:160:33)
+8|office-i | You have triggered an unhandledRejection, you may have forgotten to catch a Promise rejection:
+8|office-i | TypeError: Missing parameter name at index 1: *; visit https://git.new/pathToRegexpError for info
+8|office-i |     at name (/var/www/office-inventory/node_modules/path-to-regexp/dist/index.js:96:19)
+8|office-i |     at parse (/var/www/office-inventory/node_modules/path-to-regexp/dist/index.js:113:68)
+8|office-i |     at pathToRegexp (/var/www/office-inventory/node_modules/path-to-regexp/dist/index.js:267:58)
+8|office-i |     at Object.match (/var/www/office-inventory/node_modules/path-to-regexp/dist/index.js:237:30)
+8|office-i |     at matcher (/var/www/office-inventory/node_modules/router/lib/layer.js:86:23)
+8|office-i |     at new Layer (/var/www/office-inventory/node_modules/router/lib/layer.js:93:62)
+8|office-i |     at router.use (/var/www/office-inventory/node_modules/router/index.js:398:19)
+8|office-i |     at app.<anonymous> (/var/www/office-inventory/node_modules/express/lib/application.js:222:21)
+8|office-i |     at Array.forEach (<anonymous>)
+8|office-i |     at app.use (/var/www/office-inventory/node_modules/express/lib/application.js:219:7)
+
