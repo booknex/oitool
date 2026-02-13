@@ -173,7 +173,8 @@ export default function Kiosk() {
               return (
                 <Card
                   key={item.id}
-                  className={`relative overflow-visible p-0 ${outOfStock ? "opacity-50" : ""} ${inCart > 0 ? "ring-2 ring-yellow-400 shadow-[0_0_8px_rgba(250,204,21,0.3)]" : ""}`}
+                  className={`relative overflow-visible p-0 ${outOfStock ? "opacity-50" : ""} ${inCart > 0 ? "ring-2 ring-yellow-400 shadow-[0_0_8px_rgba(250,204,21,0.3)]" : ""} ${item.stock === 1 ? "border-2 border-red-500" : ""}`}
+                  style={item.stock === 1 ? { animation: "blink-red-border 1s ease-in-out infinite" } : undefined}
                   data-testid={`item-card-${item.id}`}
                 >
                   <button
@@ -200,6 +201,18 @@ export default function Kiosk() {
                         </div>
                       )}
 
+                      {item.stock === 1 && !outOfStock && (
+                        <div
+                          className="absolute inset-0 flex items-center justify-center pointer-events-none"
+                          style={{ animation: "blink-red 1s ease-in-out infinite" }}
+                          data-testid={`last-item-warning-${item.id}`}
+                        >
+                          <span className="text-red-500/60 font-bold text-6xl font-display select-none">
+                            !
+                          </span>
+                        </div>
+                      )}
+
                       {outOfStock && (
                         <div className="absolute inset-0 flex items-center justify-center bg-black/60">
                           <span className="text-red-400 font-bold text-xs font-display">
@@ -218,11 +231,10 @@ export default function Kiosk() {
                       </h3>
                       <div className="mt-1 flex items-center justify-between gap-1">
                         <span
-                          className={`text-sm font-display font-bold ${getStockColor(item.stock, item.maxStock)} ${item.stock === 1 ? "text-red-500" : ""}`}
-                          style={item.stock === 1 ? { animation: "blink-red 1s ease-in-out infinite" } : undefined}
+                          className={`text-sm font-display font-bold ${getStockColor(item.stock, item.maxStock)}`}
                           data-testid={`text-stock-${item.id}`}
                         >
-                          {item.stock === 1 ? `! ${item.stock}/${item.maxStock} !` : `${item.stock}/${item.maxStock}`}
+                          {item.stock}/{item.maxStock}
                         </span>
                       </div>
                     </div>

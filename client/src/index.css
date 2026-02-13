@@ -332,3 +332,8 @@
   0%, 100% { opacity: 1; }
   50% { opacity: 0.3; }
 }
+
+@keyframes blink-red-border {
+  0%, 100% { box-shadow: 0 0 12px rgba(239, 68, 68, 0.7); border-color: rgba(239, 68, 68, 0.9); }
+  50% { box-shadow: 0 0 4px rgba(239, 68, 68, 0.2); border-color: rgba(239, 68, 68, 0.3); }
+}
