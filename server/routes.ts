@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { checkoutSchema, restockSchema } from "@shared/schema";
+import { checkoutSchema, restockSchema, createItemSchema, updateItemSchema } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/items", async (_req, res) => {
@@ -53,6 +53,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(items);
     } catch (error) {
       res.status(500).json({ error: "Failed to restock all items" });
+    }
+  });
+
+  app.post("/api/items", async (req, res) => {
+    try {
+      const result = createItemSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid item data", details: result.error.issues });
+      }
+      const item = await storage.createItem(result.data);
+      res.json(item);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create item" });
+    }
+  });
+
+  app.patch("/api/items/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid item id" });
+      }
+      const result = updateItemSchema.safeParse({ ...req.body, id });
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid update data", details: result.error.issues });
+      }
+      const item = await storage.updateItem(result.data);
+      res.json(item);
+    } catch (error) {
+      if (error instanceof Error && error.message.includes("not found")) {
+        return res.status(404).json({ error: "Item not found" });
+      }
+      res.status(500).json({ error: "Failed to update item" });
+    }
+  });
+
+  app.delete("/api/items/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid item id" });
+      }
+      await storage.deleteItem(id);
+      res.json({ success: true });
+    } catch (error) {
+      if (error instanceof Error && error.message.includes("not found")) {
+        return res.status(404).json({ error: "Item not found" });
+      }
+      res.status(500).json({ error: "Failed to delete item" });
     }
   });
 

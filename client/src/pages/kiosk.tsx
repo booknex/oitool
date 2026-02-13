@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { ShoppingCart, Plus, Minus, Trash2, Package, CheckCircle, RotateCcw, ChevronDown } from "lucide-react";
+import { ShoppingCart, Plus, Minus, Trash2, Package, CheckCircle, RotateCcw, ChevronDown, Settings, X, Save, PlusCircle } from "lucide-react";
 import { type InventoryItem } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,10 @@ export default function Kiosk() {
   const [cart, setCart] = useState<CartEntry[]>([]);
   const [showSuccess, setShowSuccess] = useState(false);
   const [restockDropdownOpen, setRestockDropdownOpen] = useState(false);
+  const [manageOpen, setManageOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
+  const [addingItem, setAddingItem] = useState(false);
+  const [newItem, setNewItem] = useState({ name: "", description: "", category: "", maxStock: 10 });
   const restockDropdownRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -72,6 +76,40 @@ export default function Kiosk() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/items"] });
+    },
+  });
+
+  const updateItemMutation = useMutation({
+    mutationFn: async (data: { id: number; name?: string; description?: string; category?: string; maxStock?: number; stock?: number }) => {
+      return apiRequest("PATCH", `/api/items/${data.id}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/items"] });
+      setEditingItem(null);
+      toast({ title: "Item Updated", description: "Item has been updated successfully." });
+    },
+  });
+
+  const createItemMutation = useMutation({
+    mutationFn: async (data: { name: string; description: string; category: string; maxStock: number }) => {
+      return apiRequest("POST", "/api/items", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/items"] });
+      setAddingItem(false);
+      setNewItem({ name: "", description: "", category: "", maxStock: 10 });
+      toast({ title: "Item Added", description: "New item has been added to inventory." });
+    },
+  });
+
+  const deleteItemMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return apiRequest("DELETE", `/api/items/${id}`);
+    },
+    onSuccess: (_data, id) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/items"] });
+      setCart(prev => prev.filter(c => c.itemId !== id));
+      toast({ title: "Item Deleted", description: "Item has been removed from inventory." });
     },
   });
 
@@ -162,6 +200,16 @@ export default function Kiosk() {
           Select the supplies you need for your property
         </p>
         <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => { setManageOpen(true); setEditingItem(null); setAddingItem(false); }}
+            data-testid="button-manage-items"
+            className="gap-2"
+          >
+            <Settings className="w-4 h-4" />
+            Manage Items
+          </Button>
           <div className="relative" ref={restockDropdownRef}>
             <Button
               variant="outline"
@@ -456,6 +504,230 @@ export default function Kiosk() {
           )}
         </div>
       </div>
+
+      {manageOpen && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" data-testid="manage-modal-overlay">
+          <div className="bg-card border border-border rounded-md w-full max-w-2xl max-h-[80vh] flex flex-col" data-testid="manage-modal">
+            <div className="flex items-center justify-between gap-4 p-4 border-b border-border">
+              <h2 className="text-xl font-display font-bold text-foreground">Manage Items</h2>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => { setAddingItem(true); setEditingItem(null); }}
+                  data-testid="button-add-item"
+                  className="gap-2"
+                >
+                  <PlusCircle className="w-4 h-4" />
+                  Add Item
+                </Button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={() => setManageOpen(false)}
+                  data-testid="button-close-manage"
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              {addingItem && (
+                <div className="p-4 border border-primary/50 rounded-md bg-background space-y-3" data-testid="add-item-form">
+                  <h3 className="text-sm font-bold text-foreground">New Item</h3>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs text-muted-foreground">Name</label>
+                      <input
+                        className="w-full mt-1 px-3 py-2 bg-card border border-border rounded-md text-sm text-foreground"
+                        value={newItem.name}
+                        onChange={(e) => setNewItem(prev => ({ ...prev, name: e.target.value }))}
+                        placeholder="Item name"
+                        data-testid="input-new-name"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground">Category</label>
+                      <input
+                        className="w-full mt-1 px-3 py-2 bg-card border border-border rounded-md text-sm text-foreground"
+                        value={newItem.category}
+                        onChange={(e) => setNewItem(prev => ({ ...prev, category: e.target.value }))}
+                        placeholder="e.g. Sprays, Supplies"
+                        data-testid="input-new-category"
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <label className="text-xs text-muted-foreground">Description</label>
+                      <input
+                        className="w-full mt-1 px-3 py-2 bg-card border border-border rounded-md text-sm text-foreground"
+                        value={newItem.description}
+                        onChange={(e) => setNewItem(prev => ({ ...prev, description: e.target.value }))}
+                        placeholder="Brief description"
+                        data-testid="input-new-description"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground">Max Stock</label>
+                      <input
+                        type="number"
+                        min={1}
+                        className="w-full mt-1 px-3 py-2 bg-card border border-border rounded-md text-sm text-foreground"
+                        value={newItem.maxStock}
+                        onChange={(e) => setNewItem(prev => ({ ...prev, maxStock: parseInt(e.target.value) || 1 }))}
+                        data-testid="input-new-maxstock"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 justify-end">
+                    <Button variant="ghost" size="sm" onClick={() => setAddingItem(false)} data-testid="button-cancel-add">
+                      Cancel
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        if (!newItem.name || !newItem.description || !newItem.category) {
+                          toast({ title: "Missing Fields", description: "Please fill in all fields.", variant: "destructive" });
+                          return;
+                        }
+                        createItemMutation.mutate(newItem);
+                      }}
+                      disabled={createItemMutation.isPending}
+                      data-testid="button-save-new-item"
+                      className="gap-2"
+                    >
+                      <Save className="w-3 h-3" />
+                      {createItemMutation.isPending ? "Adding..." : "Add Item"}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {items.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex items-center gap-3 p-3 border border-border rounded-md bg-background"
+                  data-testid={`manage-item-${item.id}`}
+                >
+                  {itemImages[item.id] && (
+                    <img src={itemImages[item.id]} alt={item.name} className="w-10 h-10 object-contain rounded" />
+                  )}
+                  {editingItem?.id === item.id ? (
+                    <div className="flex-1 space-y-2">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-xs text-muted-foreground">Name</label>
+                          <input
+                            className="w-full mt-1 px-2 py-1 bg-card border border-border rounded-md text-sm text-foreground"
+                            value={editingItem.name}
+                            onChange={(e) => setEditingItem(prev => prev ? { ...prev, name: e.target.value } : null)}
+                            data-testid={`input-edit-name-${item.id}`}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-muted-foreground">Category</label>
+                          <input
+                            className="w-full mt-1 px-2 py-1 bg-card border border-border rounded-md text-sm text-foreground"
+                            value={editingItem.category}
+                            onChange={(e) => setEditingItem(prev => prev ? { ...prev, category: e.target.value } : null)}
+                            data-testid={`input-edit-category-${item.id}`}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-muted-foreground">Max Stock</label>
+                          <input
+                            type="number"
+                            min={1}
+                            className="w-full mt-1 px-2 py-1 bg-card border border-border rounded-md text-sm text-foreground"
+                            value={editingItem.maxStock}
+                            onChange={(e) => setEditingItem(prev => prev ? { ...prev, maxStock: parseInt(e.target.value) || 1 } : null)}
+                            data-testid={`input-edit-maxstock-${item.id}`}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-muted-foreground">Current Stock</label>
+                          <input
+                            type="number"
+                            min={0}
+                            className="w-full mt-1 px-2 py-1 bg-card border border-border rounded-md text-sm text-foreground"
+                            value={editingItem.stock}
+                            onChange={(e) => setEditingItem(prev => prev ? { ...prev, stock: parseInt(e.target.value) || 0 } : null)}
+                            data-testid={`input-edit-stock-${item.id}`}
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-xs text-muted-foreground">Description</label>
+                        <input
+                          className="w-full mt-1 px-2 py-1 bg-card border border-border rounded-md text-sm text-foreground"
+                          value={editingItem.description}
+                          onChange={(e) => setEditingItem(prev => prev ? { ...prev, description: e.target.value } : null)}
+                          data-testid={`input-edit-description-${item.id}`}
+                        />
+                      </div>
+                      <div className="flex items-center gap-2 justify-end">
+                        <Button variant="ghost" size="sm" onClick={() => setEditingItem(null)} data-testid={`button-cancel-edit-${item.id}`}>
+                          Cancel
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => updateItemMutation.mutate({
+                            id: editingItem.id,
+                            name: editingItem.name,
+                            description: editingItem.description,
+                            category: editingItem.category,
+                            maxStock: editingItem.maxStock,
+                            stock: editingItem.stock,
+                          })}
+                          disabled={updateItemMutation.isPending}
+                          data-testid={`button-save-edit-${item.id}`}
+                          className="gap-2"
+                        >
+                          <Save className="w-3 h-3" />
+                          {updateItemMutation.isPending ? "Saving..." : "Save"}
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-foreground truncate">{item.name}</p>
+                        <p className="text-xs text-muted-foreground truncate">{item.description}</p>
+                        <div className="flex items-center gap-3 mt-1">
+                          <span className="text-xs text-muted-foreground">{item.category}</span>
+                          <span className={`text-xs font-display font-bold ${getStockColor(item.stock, item.maxStock)}`}>
+                            {item.stock}/{item.maxStock}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => { setEditingItem({ ...item }); setAddingItem(false); }}
+                          data-testid={`button-edit-item-${item.id}`}
+                        >
+                          <Settings className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => deleteItemMutation.mutate(item.id)}
+                          disabled={deleteItemMutation.isPending}
+                          data-testid={`button-delete-item-${item.id}`}
+                          className="text-red-400"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

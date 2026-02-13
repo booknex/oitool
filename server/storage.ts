@@ -1,4 +1,4 @@
-import { type InventoryItem, type CartItem } from "@shared/schema";
+import { type InventoryItem, type CartItem, type CreateItemPayload, type UpdateItemPayload } from "@shared/schema";
 
 export interface IStorage {
   getItems(): Promise<InventoryItem[]>;
@@ -6,6 +6,9 @@ export interface IStorage {
   checkout(items: CartItem[]): Promise<InventoryItem[]>;
   restockItem(id: number, quantity?: number): Promise<InventoryItem>;
   restockAll(): Promise<InventoryItem[]>;
+  createItem(data: CreateItemPayload): Promise<InventoryItem>;
+  updateItem(data: UpdateItemPayload): Promise<InventoryItem>;
+  deleteItem(id: number): Promise<void>;
 }
 
 const initialItems: InventoryItem[] = [
@@ -25,10 +28,12 @@ const initialItems: InventoryItem[] = [
 
 export class MemStorage implements IStorage {
   private items: Map<number, InventoryItem>;
+  private nextId: number;
 
   constructor() {
     this.items = new Map();
     initialItems.forEach(item => this.items.set(item.id, { ...item }));
+    this.nextId = Math.max(...initialItems.map(i => i.id)) + 1;
   }
 
   async getItems(): Promise<InventoryItem[]> {
@@ -81,6 +86,47 @@ export class MemStorage implements IStorage {
       this.items.set(id, { ...item, stock: item.maxStock });
     }
     return Array.from(this.items.values());
+  }
+
+  async createItem(data: CreateItemPayload): Promise<InventoryItem> {
+    const id = this.nextId++;
+    const item: InventoryItem = {
+      id,
+      name: data.name,
+      description: data.description,
+      category: data.category,
+      maxStock: data.maxStock,
+      stock: data.stock !== undefined ? Math.min(data.stock, data.maxStock) : data.maxStock,
+    };
+    this.items.set(id, item);
+    return item;
+  }
+
+  async updateItem(data: UpdateItemPayload): Promise<InventoryItem> {
+    const item = this.items.get(data.id);
+    if (!item) {
+      throw new Error(`Item with id ${data.id} not found`);
+    }
+    const updated: InventoryItem = {
+      ...item,
+      name: data.name ?? item.name,
+      description: data.description ?? item.description,
+      category: data.category ?? item.category,
+      maxStock: data.maxStock ?? item.maxStock,
+      stock: data.stock !== undefined ? data.stock : item.stock,
+    };
+    if (updated.stock > updated.maxStock) {
+      updated.stock = updated.maxStock;
+    }
+    this.items.set(data.id, updated);
+    return updated;
+  }
+
+  async deleteItem(id: number): Promise<void> {
+    if (!this.items.has(id)) {
+      throw new Error(`Item with id ${id} not found`);
+    }
+    this.items.delete(id);
   }
 }
 
