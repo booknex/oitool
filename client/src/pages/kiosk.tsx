@@ -173,7 +173,7 @@ export default function Kiosk() {
               return (
                 <Card
                   key={item.id}
-                  className={`relative overflow-visible p-0 ${outOfStock ? "opacity-50" : ""}`}
+                  className={`relative overflow-visible p-0 ${outOfStock ? "opacity-50" : ""} ${inCart > 0 ? "ring-2 ring-yellow-400 shadow-[0_0_8px_rgba(250,204,21,0.3)]" : ""}`}
                   data-testid={`item-card-${item.id}`}
                 >
                   <button
