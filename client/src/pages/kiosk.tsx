@@ -218,10 +218,11 @@ export default function Kiosk() {
                       </h3>
                       <div className="mt-1 flex items-center justify-between gap-1">
                         <span
-                          className={`text-sm font-display font-bold ${getStockColor(item.stock, item.maxStock)}`}
+                          className={`text-sm font-display font-bold ${getStockColor(item.stock, item.maxStock)} ${item.stock === 1 ? "text-red-500" : ""}`}
+                          style={item.stock === 1 ? { animation: "blink-red 1s ease-in-out infinite" } : undefined}
                           data-testid={`text-stock-${item.id}`}
                         >
-                          {item.stock}/{item.maxStock}
+                          {item.stock === 1 ? `! ${item.stock}/${item.maxStock} !` : `${item.stock}/${item.maxStock}`}
                         </span>
                       </div>
                     </div>
