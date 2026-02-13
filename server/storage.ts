@@ -12,18 +12,18 @@ export interface IStorage {
 }
 
 const initialItems: InventoryItem[] = [
-  { id: 1, name: "All-Purpose Cleaner", description: "Multi-surface cleaning spray for counters, sinks, and appliances", category: "Sprays", stock: 8, maxStock: 10 },
-  { id: 2, name: "Glass Cleaner", description: "Streak-free window and mirror cleaning solution", category: "Sprays", stock: 6, maxStock: 10 },
-  { id: 3, name: "Disinfectant Spray", description: "Hospital-grade disinfectant for bathrooms and high-touch areas", category: "Sprays", stock: 5, maxStock: 10 },
-  { id: 4, name: "Microfiber Cloths", description: "Reusable lint-free cloths for dusting and polishing", category: "Cloths & Wipes", stock: 12, maxStock: 20 },
-  { id: 5, name: "Sponges", description: "Heavy-duty scrub sponges for kitchen and bathroom cleaning", category: "Cloths & Wipes", stock: 10, maxStock: 15 },
-  { id: 6, name: "Trash Bags", description: "Large 13-gallon drawstring trash bags", category: "Supplies", stock: 20, maxStock: 30 },
-  { id: 7, name: "Toilet Bowl Cleaner", description: "Deep cleaning gel for toilet bowls and rims", category: "Bathroom", stock: 4, maxStock: 10 },
-  { id: 8, name: "Floor Cleaner", description: "Concentrated multi-floor mopping solution", category: "Floors", stock: 3, maxStock: 8 },
-  { id: 9, name: "Dusting Spray", description: "Furniture polish and dusting spray", category: "Sprays", stock: 7, maxStock: 10 },
-  { id: 10, name: "Rubber Gloves", description: "Disposable nitrile gloves for hygiene protection", category: "Supplies", stock: 15, maxStock: 25 },
-  { id: 11, name: "Mop Heads", description: "Replacement mop heads for wet mopping", category: "Floors", stock: 2, maxStock: 6 },
-  { id: 12, name: "Vacuum Bags", description: "Replacement bags for commercial vacuum cleaners", category: "Supplies", stock: 5, maxStock: 10 },
+  { id: 1, name: "All-Purpose Cleaner", description: "Multi-surface cleaning spray for counters, sinks, and appliances", category: "Sprays", stock: 8, maxStock: 10, visible: true },
+  { id: 2, name: "Glass Cleaner", description: "Streak-free window and mirror cleaning solution", category: "Sprays", stock: 6, maxStock: 10, visible: true },
+  { id: 3, name: "Disinfectant Spray", description: "Hospital-grade disinfectant for bathrooms and high-touch areas", category: "Sprays", stock: 5, maxStock: 10, visible: true },
+  { id: 4, name: "Microfiber Cloths", description: "Reusable lint-free cloths for dusting and polishing", category: "Cloths & Wipes", stock: 12, maxStock: 20, visible: true },
+  { id: 5, name: "Sponges", description: "Heavy-duty scrub sponges for kitchen and bathroom cleaning", category: "Cloths & Wipes", stock: 10, maxStock: 15, visible: true },
+  { id: 6, name: "Trash Bags", description: "Large 13-gallon drawstring trash bags", category: "Supplies", stock: 20, maxStock: 30, visible: true },
+  { id: 7, name: "Toilet Bowl Cleaner", description: "Deep cleaning gel for toilet bowls and rims", category: "Bathroom", stock: 4, maxStock: 10, visible: true },
+  { id: 8, name: "Floor Cleaner", description: "Concentrated multi-floor mopping solution", category: "Floors", stock: 3, maxStock: 8, visible: true },
+  { id: 9, name: "Dusting Spray", description: "Furniture polish and dusting spray", category: "Sprays", stock: 7, maxStock: 10, visible: true },
+  { id: 10, name: "Rubber Gloves", description: "Disposable nitrile gloves for hygiene protection", category: "Supplies", stock: 15, maxStock: 25, visible: true },
+  { id: 11, name: "Mop Heads", description: "Replacement mop heads for wet mopping", category: "Floors", stock: 2, maxStock: 6, visible: true },
+  { id: 12, name: "Vacuum Bags", description: "Replacement bags for commercial vacuum cleaners", category: "Supplies", stock: 5, maxStock: 10, visible: true },
 ];
 
 export class MemStorage implements IStorage {
@@ -97,6 +97,7 @@ export class MemStorage implements IStorage {
       category: data.category,
       maxStock: data.maxStock,
       stock: data.stock !== undefined ? Math.min(data.stock, data.maxStock) : data.maxStock,
+      visible: true,
     };
     this.items.set(id, item);
     return item;
@@ -114,6 +115,7 @@ export class MemStorage implements IStorage {
       category: data.category ?? item.category,
       maxStock: data.maxStock ?? item.maxStock,
       stock: data.stock !== undefined ? data.stock : item.stock,
+      visible: data.visible !== undefined ? data.visible : item.visible,
     };
     if (updated.stock > updated.maxStock) {
       updated.stock = updated.maxStock;

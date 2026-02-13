@@ -274,7 +274,7 @@ export default function Kiosk() {
       <div className="flex flex-1 overflow-hidden">
         <div className="flex-1 overflow-y-auto p-3 md:p-4">
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 md:gap-3">
-            {items.map((item) => {
+            {items.filter(item => item.visible).map((item) => {
               const inCart = getCartQuantity(item.id);
               const outOfStock = item.stock <= 0;
 
@@ -606,9 +606,17 @@ export default function Kiosk() {
               {items.map((item) => (
                 <div
                   key={item.id}
-                  className="flex items-center gap-3 p-3 border border-border rounded-md bg-background"
+                  className={`flex items-center gap-3 p-3 border border-border rounded-md bg-background ${!item.visible ? "opacity-50" : ""}`}
                   data-testid={`manage-item-${item.id}`}
                 >
+                  <input
+                    type="checkbox"
+                    checked={item.visible}
+                    onChange={() => updateItemMutation.mutate({ id: item.id, visible: !item.visible })}
+                    className="w-4 h-4 accent-primary flex-shrink-0 cursor-pointer"
+                    title={item.visible ? "Visible on kiosk" : "Hidden from kiosk"}
+                    data-testid={`checkbox-visible-${item.id}`}
+                  />
                   {itemImages[item.id] && (
                     <img src={itemImages[item.id]} alt={item.name} className="w-10 h-10 object-contain rounded" />
                   )}

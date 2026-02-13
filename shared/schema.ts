@@ -7,6 +7,7 @@ export const inventoryItemSchema = z.object({
   category: z.string(),
   stock: z.number().min(0),
   maxStock: z.number().min(1),
+  visible: z.boolean(),
 });
 
 export const cartItemSchema = z.object({
@@ -38,6 +39,7 @@ export const updateItemSchema = z.object({
   category: z.string().min(1).optional(),
   maxStock: z.number().min(1).optional(),
   stock: z.number().min(0).optional(),
+  visible: z.boolean().optional(),
 });
 
 export type InventoryItem = z.infer<typeof inventoryItemSchema>;
