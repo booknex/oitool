@@ -1,0 +1,54 @@
+
+********************************************************************************
+Last login: Fri Feb 13 06:35:30 2026 from 169.254.0.1
+root@srv1365851:~# cd /var/www
+mkdir -p office-inventory-deploy && tar -xzf office-inventory-deploy.tar.gz -C office-inventory-deploy
+cd office-inventory-deploy
+sudo bash deploy.sh
+=========================================
+  Deploying: office-inventory
+  Domain:    app.cleanexinc.com
+  Port:      5004
+=========================================
+
+>>> .env file created from .env.example
+>>> IMPORTANT: Edit /var/www/office-inventory/.env and set your SESSION_SECRET
+
+Installing dependencies...
+found 0 vulnerabilities
+Testing Nginx configuration...
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+Nginx reloaded successfully.
+[PM2][WARN] Applications office-inventory not running, starting...
+[PM2] App [office-inventory] launched (1 instances)
+┌────┬─────────────────────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
+│ id │ name                    │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
+├────┼─────────────────────────┼─────────────┼─────────┼─────────┼──────────┼────────┼──────┼───────────┼──────────┼──────────┼──────────┼──────────┤
+│ 3  │ client-queue-manager    │ default     │ 1.0.0   │ fork    │ 29839    │ 23h    │ 7    │ online    │ 0%       │ 169.3mb  │ root     │ disabled │
+│ 0  │ meetingroadmap          │ default     │ N/A     │ fork    │ 21024    │ 36h    │ 16   │ online    │ 0%       │ 78.5mb   │ root     │ disabled │
+│ 8  │ office-inventory        │ default     │ 1.0.0   │ cluster │ 44400    │ 0s     │ 0    │ online    │ 0%       │ 46.5mb   │ root     │ disabled │
+│ 7  │ taxportal               │ default     │ N/A     │ fork    │ 37792    │ 12h    │ 2    │ online    │ 0%       │ 102.1mb  │ root     │ disabled │
+└────┴─────────────────────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
+[PM2] Saving current process list...
+[PM2] Successfully saved in /root/.pm2/dump.pm2
+
+=========================================
+  Deployment complete!
+=========================================
+
+  App running at: http://app.cleanexinc.com
+
+  Next steps:
+  1. Edit /var/www/office-inventory/.env (set SESSION_SECRET)
+  2. Run: pm2 restart office-inventory
+  3. Setup SSL: certbot --nginx -d app.cleanexinc.com
+
+  Useful commands:
+  - pm2 logs office-inventory     (view logs)
+  - pm2 restart office-inventory  (restart app)
+  - pm2 status             (check status)
+
+root@srv1365851:/var/www/office-inventory-deploy# 
+
+

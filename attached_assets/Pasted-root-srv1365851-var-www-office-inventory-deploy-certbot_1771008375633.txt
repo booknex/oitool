@@ -1,0 +1,55 @@
+root@srv1365851:/var/www/office-inventory-deploy# certbot --nginx -d app.cleanexinc.com
+Saving debug log to /var/log/letsencrypt/letsencrypt.log
+Requesting a certificate for app.cleanexinc.com
+An unexpected error occurred:
+No such authorization
+Ask for help or search for solutions at https://community.letsencrypt.org. See the logfile /var/log/letsencrypt/letsencrypt.log or re-run Certbot with -v for more details.
+root@srv1365851:/var/www/office-inventory-deploy# curl ifconfig.me
+2a02:4780:4:7b50::1root@srv1365851:/var/www/office-inventory-deploy# certbot --nginx -d app.cleanexinc.com
+Saving debug log to /var/log/letsencrypt/letsencrypt.log
+Requesting a certificate for app.cleanexinc.com
+
+Successfully received certificate.
+Certificate is saved at: /etc/letsencrypt/live/app.cleanexinc.com/fullchain.pem
+Key is saved at:         /etc/letsencrypt/live/app.cleanexinc.com/privkey.pem
+This certificate expires on 2026-05-14.
+These files will be updated when the certificate renews.
+Certbot has set up a scheduled task to automatically renew this certificate in the background.
+
+Deploying certificate
+Successfully deployed certificate for app.cleanexinc.com to /etc/nginx/sites-enabled/office-inventory
+Congratulations! You have successfully enabled HTTPS on https://app.cleanexinc.com
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+If you like Certbot, please consider supporting our work by:
+ * Donating to ISRG / Let's Encrypt:   https://letsencrypt.org/donate
+ * Donating to EFF:                    https://eff.org/donate-le
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+root@srv1365851:/var/www/office-inventory-deploy# pm2 logs office-inventory --lines 20
+[TAILING] Tailing last 20 lines for [office-inventory] process (change the value with --lines option)
+/root/.pm2/logs/office-inventory-out-8.log last 20 lines:
+/root/.pm2/logs/office-inventory-error-8.log last 20 lines:
+8|office-i |     at moduleResolve (node:internal/modules/esm/resolve:860:18)
+8|office-i |     at defaultResolve (node:internal/modules/esm/resolve:992:11)
+8|office-i |     at #cachedDefaultResolve (node:internal/modules/esm/loader:719:20)
+8|office-i |     at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:736:38)
+8|office-i |     at ModuleLoader.resolveSync (node:internal/modules/esm/loader:765:52)
+8|office-i |     at #resolve (node:internal/modules/esm/loader:701:17)
+8|office-i |     at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:621:35)
+8|office-i |     at ModuleJob.syncLink (node:internal/modules/esm/module_job:160:33)
+8|office-i | You have triggered an unhandledRejection, you may have forgotten to catch a Promise rejection:
+8|office-i | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vite' imported from /var/www/office-inventory/dist/index.mjs
+8|office-i |     at Object.getPackageJSONURL (node:internal/modules/package_json_reader:301:9)
+8|office-i |     at packageResolve (node:internal/modules/esm/resolve:769:81)
+8|office-i |     at moduleResolve (node:internal/modules/esm/resolve:860:18)
+8|office-i |     at defaultResolve (node:internal/modules/esm/resolve:992:11)
+8|office-i |     at #cachedDefaultResolve (node:internal/modules/esm/loader:719:20)
+8|office-i |     at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:736:38)
+8|office-i |     at ModuleLoader.resolveSync (node:internal/modules/esm/loader:765:52)
+8|office-i |     at #resolve (node:internal/modules/esm/loader:701:17)
+8|office-i |     at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:621:35)
+8|office-i |     at ModuleJob.syncLink (node:internal/modules/esm/module_job:160:33)
+
+
+
+
