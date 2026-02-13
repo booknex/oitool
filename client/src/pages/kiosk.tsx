@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { ShoppingCart, Plus, Minus, Trash2, Package, CheckCircle, RotateCcw } from "lucide-react";
+import { ShoppingCart, Plus, Minus, Trash2, Package, CheckCircle, RotateCcw, ChevronDown } from "lucide-react";
 import { type InventoryItem } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -16,7 +16,19 @@ interface CartEntry {
 export default function Kiosk() {
   const [cart, setCart] = useState<CartEntry[]>([]);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [restockDropdownOpen, setRestockDropdownOpen] = useState(false);
+  const restockDropdownRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (restockDropdownRef.current && !restockDropdownRef.current.contains(e.target as Node)) {
+        setRestockDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const { data: items = [], isLoading } = useQuery<InventoryItem[]>({
     queryKey: ["/api/items"],
@@ -149,17 +161,56 @@ export default function Kiosk() {
         <p className="text-sm text-muted-foreground hidden md:block">
           Select the supplies you need for your property
         </p>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => restockMutation.mutate()}
-          disabled={restockMutation.isPending}
-          data-testid="button-restock-all"
-          className="gap-2"
-        >
-          <RotateCcw className="w-4 h-4" />
-          Restock All
-        </Button>
+        <div className="flex items-center gap-2">
+          <div className="relative" ref={restockDropdownRef}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setRestockDropdownOpen(!restockDropdownOpen)}
+              data-testid="button-restock-item-toggle"
+              className="gap-2"
+            >
+              <RotateCcw className="w-4 h-4" />
+              Restock Item
+              <ChevronDown className="w-3 h-3" />
+            </Button>
+            {restockDropdownOpen && (
+              <div className="absolute right-0 top-full mt-1 w-56 bg-card border border-border rounded-md shadow-lg z-50 max-h-72 overflow-y-auto" data-testid="restock-item-dropdown">
+                {items.filter(i => i.stock < i.maxStock).length === 0 ? (
+                  <div className="p-3 text-sm text-muted-foreground text-center">All items fully stocked</div>
+                ) : (
+                  items.filter(i => i.stock < i.maxStock).map(item => (
+                    <button
+                      key={item.id}
+                      className="w-full text-left px-3 py-2 text-sm hover-elevate flex items-center justify-between gap-2"
+                      onClick={() => {
+                        restockItemMutation.mutate(item.id);
+                        setRestockDropdownOpen(false);
+                      }}
+                      data-testid={`button-restock-${item.id}`}
+                    >
+                      <span className="truncate text-foreground">{item.name}</span>
+                      <span className={`text-xs font-display font-bold ${getStockColor(item.stock, item.maxStock)}`}>
+                        {item.stock}/{item.maxStock}
+                      </span>
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => restockMutation.mutate()}
+            disabled={restockMutation.isPending}
+            data-testid="button-restock-all"
+            className="gap-2"
+          >
+            <RotateCcw className="w-4 h-4" />
+            Restock All
+          </Button>
+        </div>
       </header>
 
       {showSuccess && (
@@ -245,21 +296,6 @@ export default function Kiosk() {
                         >
                           {item.stock}/{item.maxStock}
                         </span>
-                        {item.stock < item.maxStock && (
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              e.preventDefault();
-                              restockItemMutation.mutate(item.id);
-                            }}
-                            data-testid={`button-restock-${item.id}`}
-                            className="h-5 w-5"
-                          >
-                            <RotateCcw className="w-3 h-3" />
-                          </Button>
-                        )}
                       </div>
                     </div>
                   </button>
