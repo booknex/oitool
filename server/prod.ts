@@ -65,7 +65,7 @@ app.use((req, res, next) => {
 
   app.use(express.static(distPath));
 
-  app.use("*", (_req, res) => {
+  app.use((_req, res) => {
     res.sendFile(path.resolve(distPath, "index.html"));
   });
 

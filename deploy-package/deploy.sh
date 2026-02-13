@@ -42,7 +42,7 @@ cat > package.json << 'EOF'
 EOF
 
 echo "Installing dependencies..."
-npm install express nanoid zod 2>&1 | tail -1
+npm install express@4 nanoid zod 2>&1 | tail -1
 
 # Setup Nginx
 cp /var/www/$APP_NAME/nginx-site.conf /etc/nginx/sites-available/$APP_NAME
