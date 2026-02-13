@@ -54,6 +54,15 @@ export default function Kiosk() {
     },
   });
 
+  const restockItemMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return apiRequest("POST", "/api/items/restock", { id });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/items"] });
+    },
+  });
+
   const addToCart = (itemId: number) => {
     const item = items.find((i) => i.id === itemId);
     if (!item) return;
@@ -236,6 +245,21 @@ export default function Kiosk() {
                         >
                           {item.stock}/{item.maxStock}
                         </span>
+                        {item.stock < item.maxStock && (
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                              restockItemMutation.mutate(item.id);
+                            }}
+                            data-testid={`button-restock-${item.id}`}
+                            className="h-5 w-5"
+                          >
+                            <RotateCcw className="w-3 h-3" />
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </button>
