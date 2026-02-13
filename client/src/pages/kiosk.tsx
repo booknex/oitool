@@ -192,7 +192,8 @@ export default function Kiosk() {
 
                       {inCart > 0 && (
                         <div
-                          className="absolute top-1 right-1 bg-primary text-primary-foreground text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center shadow-lg"
+                          className="absolute top-1 right-1 bg-yellow-400 text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center shadow-lg"
+                          style={{ WebkitTextStroke: "0.5px black", color: "black" }}
                           data-testid={`text-in-cart-${item.id}`}
                         >
                           {inCart}
