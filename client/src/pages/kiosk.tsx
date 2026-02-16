@@ -368,7 +368,7 @@ export default function Kiosk() {
                         </span>
                         {(Number(item.cost) || 0) > 0 && (
                           <span className="text-[10px] text-muted-foreground" data-testid={`text-cost-${item.id}`}>
-                            ${(Number(item.cost) || 0).toFixed(2)}
+                            Don't pay over ${(Number(item.cost) || 0).toFixed(2)}
                           </span>
                         )}
                       </div>
