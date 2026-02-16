@@ -20,6 +20,10 @@ A self-service inventory kiosk application for cleaning service operations. Maid
   - Shows total item count
 - **Checkout** - Deducts selected quantities from inventory with server-side validation
 - **Restock All** - Admin button to reset all items to full stock
+- **Cost Tracking** - Each item has a per-unit cost for restock budgeting
+  - Cost displayed on item cards (when > $0)
+  - Editable in manage modal and add item form
+  - Restock dropdown shows per-item and total restock costs
 
 ### Cleaning Supply Items (12 items)
 1. All-Purpose Cleaner (Sprays)
@@ -66,7 +70,7 @@ Preferred communication style: Simple, everyday language.
 
 **Data Storage**
 - PostgreSQL database with Drizzle ORM (DatabaseStorage class)
-- Table: inventory_items (id serial PK, name, description, category, stock, max_stock, visible)
+- Table: inventory_items (id serial PK, name, description, category, stock, max_stock, visible, cost numeric(10,2))
 - Cart is client-side only; checkout validates and decrements server-side
 - Production deployment uses separate PostgreSQL instance on VPS
 

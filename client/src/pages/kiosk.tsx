@@ -20,7 +20,7 @@ export default function Kiosk() {
   const [manageOpen, setManageOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
   const [addingItem, setAddingItem] = useState(false);
-  const [newItem, setNewItem] = useState({ name: "", description: "", category: "", maxStock: 10 });
+  const [newItem, setNewItem] = useState({ name: "", description: "", category: "", maxStock: 10, cost: "0.00" });
   const restockDropdownRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -80,7 +80,7 @@ export default function Kiosk() {
   });
 
   const updateItemMutation = useMutation({
-    mutationFn: async (data: { id: number; name?: string; description?: string; category?: string; maxStock?: number; stock?: number }) => {
+    mutationFn: async (data: { id: number; name?: string; description?: string; category?: string; maxStock?: number; stock?: number; cost?: string; visible?: boolean }) => {
       return apiRequest("PATCH", `/api/items/${data.id}`, data);
     },
     onSuccess: () => {
@@ -91,13 +91,13 @@ export default function Kiosk() {
   });
 
   const createItemMutation = useMutation({
-    mutationFn: async (data: { name: string; description: string; category: string; maxStock: number }) => {
+    mutationFn: async (data: { name: string; description: string; category: string; maxStock: number; cost: string }) => {
       return apiRequest("POST", "/api/items", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/items"] });
       setAddingItem(false);
-      setNewItem({ name: "", description: "", category: "", maxStock: 10 });
+      setNewItem({ name: "", description: "", category: "", maxStock: 10, cost: "0.00" });
       toast({ title: "Item Added", description: "New item has been added to inventory." });
     },
   });
@@ -227,22 +227,44 @@ export default function Kiosk() {
                 {items.filter(i => i.stock < i.maxStock).length === 0 ? (
                   <div className="p-3 text-sm text-muted-foreground text-center">All items fully stocked</div>
                 ) : (
-                  items.filter(i => i.stock < i.maxStock).map(item => (
-                    <button
-                      key={item.id}
-                      className="w-full text-left px-3 py-2 text-sm hover-elevate flex items-center justify-between gap-2"
-                      onClick={() => {
-                        restockItemMutation.mutate(item.id);
-                        setRestockDropdownOpen(false);
-                      }}
-                      data-testid={`button-restock-${item.id}`}
-                    >
-                      <span className="truncate text-foreground">{item.name}</span>
-                      <span className={`text-xs font-display font-bold ${getStockColor(item.stock, item.maxStock)}`}>
-                        {item.stock}/{item.maxStock}
-                      </span>
-                    </button>
-                  ))
+                  <>
+                    {items.filter(i => i.stock < i.maxStock).map(item => {
+                      const unitsNeeded = item.maxStock - item.stock;
+                      const restockCost = unitsNeeded * (Number(item.cost) || 0);
+                      return (
+                        <button
+                          key={item.id}
+                          className="w-full text-left px-3 py-2 text-sm hover-elevate flex items-center justify-between gap-2"
+                          onClick={() => {
+                            restockItemMutation.mutate(item.id);
+                            setRestockDropdownOpen(false);
+                          }}
+                          data-testid={`button-restock-${item.id}`}
+                        >
+                          <span className="truncate text-foreground">{item.name}</span>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            {restockCost > 0 && (
+                              <span className="text-[10px] text-muted-foreground">${restockCost.toFixed(2)}</span>
+                            )}
+                            <span className={`text-xs font-display font-bold ${getStockColor(item.stock, item.maxStock)}`}>
+                              {item.stock}/{item.maxStock}
+                            </span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                    {(() => {
+                      const totalRestockCost = items
+                        .filter(i => i.stock < i.maxStock)
+                        .reduce((sum, item) => sum + (item.maxStock - item.stock) * (Number(item.cost) || 0), 0);
+                      return totalRestockCost > 0 ? (
+                        <div className="px-3 py-2 border-t border-border text-xs font-bold text-foreground flex items-center justify-between">
+                          <span>Total Restock Cost</span>
+                          <span className="text-primary" data-testid="text-restock-total-cost">${totalRestockCost.toFixed(2)}</span>
+                        </div>
+                      ) : null;
+                    })()}
+                  </>
                 )}
               </div>
             )}
@@ -344,6 +366,11 @@ export default function Kiosk() {
                         >
                           {item.stock}/{item.maxStock}
                         </span>
+                        {(Number(item.cost) || 0) > 0 && (
+                          <span className="text-[10px] text-muted-foreground" data-testid={`text-cost-${item.id}`}>
+                            ${(Number(item.cost) || 0).toFixed(2)}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </button>
@@ -578,6 +605,18 @@ export default function Kiosk() {
                         data-testid="input-new-maxstock"
                       />
                     </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground">Cost per Unit ($)</label>
+                      <input
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        className="w-full mt-1 px-3 py-2 bg-card border border-border rounded-md text-sm text-foreground"
+                        value={newItem.cost}
+                        onChange={(e) => setNewItem(prev => ({ ...prev, cost: e.target.value }))}
+                        data-testid="input-new-cost"
+                      />
+                    </div>
                   </div>
                   <div className="flex items-center gap-2 justify-end">
                     <Button variant="ghost" size="sm" onClick={() => setAddingItem(false)} data-testid="button-cancel-add">
@@ -673,6 +712,18 @@ export default function Kiosk() {
                           data-testid={`input-edit-description-${item.id}`}
                         />
                       </div>
+                      <div>
+                        <label className="text-xs text-muted-foreground">Cost per Unit ($)</label>
+                        <input
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          className="w-full mt-1 px-2 py-1 bg-card border border-border rounded-md text-sm text-foreground"
+                          value={editingItem.cost}
+                          onChange={(e) => setEditingItem(prev => prev ? { ...prev, cost: e.target.value } : null)}
+                          data-testid={`input-edit-cost-${item.id}`}
+                        />
+                      </div>
                       <div className="flex items-center gap-2 justify-end">
                         <Button variant="ghost" size="sm" onClick={() => setEditingItem(null)} data-testid={`button-cancel-edit-${item.id}`}>
                           Cancel
@@ -686,6 +737,7 @@ export default function Kiosk() {
                             category: editingItem.category,
                             maxStock: editingItem.maxStock,
                             stock: editingItem.stock,
+                            cost: editingItem.cost,
                           })}
                           disabled={updateItemMutation.isPending}
                           data-testid={`button-save-edit-${item.id}`}
