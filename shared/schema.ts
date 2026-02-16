@@ -11,6 +11,7 @@ export const inventoryItems = pgTable("inventory_items", {
   maxStock: integer("max_stock").notNull().default(10),
   visible: boolean("visible").notNull().default(true),
   cost: numeric("cost", { precision: 10, scale: 2 }).notNull().default("0"),
+  itemType: text("item_type").notNull().default("consumable"),
 });
 
 export const insertItemSchema = createInsertSchema(inventoryItems).omit({ id: true });
@@ -38,6 +39,7 @@ export const createItemSchema = z.object({
   maxStock: z.number().min(1),
   stock: z.number().min(0).optional(),
   cost: z.string().optional(),
+  itemType: z.enum(["consumable", "cleaning"]).optional(),
 });
 
 export const updateItemSchema = z.object({
@@ -49,6 +51,7 @@ export const updateItemSchema = z.object({
   stock: z.number().min(0).optional(),
   visible: z.boolean().optional(),
   cost: z.string().optional(),
+  itemType: z.enum(["consumable", "cleaning"]).optional(),
 });
 
 export type CartItem = z.infer<typeof cartItemSchema>;

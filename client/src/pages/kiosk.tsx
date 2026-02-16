@@ -20,7 +20,7 @@ export default function Kiosk() {
   const [manageOpen, setManageOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
   const [addingItem, setAddingItem] = useState(false);
-  const [newItem, setNewItem] = useState({ name: "", description: "", category: "", maxStock: 10, cost: "0.00" });
+  const [newItem, setNewItem] = useState({ name: "", description: "", category: "", maxStock: 10, cost: "0.00", itemType: "consumable" as "consumable" | "cleaning" });
   const restockDropdownRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -80,7 +80,7 @@ export default function Kiosk() {
   });
 
   const updateItemMutation = useMutation({
-    mutationFn: async (data: { id: number; name?: string; description?: string; category?: string; maxStock?: number; stock?: number; cost?: string; visible?: boolean }) => {
+    mutationFn: async (data: { id: number; name?: string; description?: string; category?: string; maxStock?: number; stock?: number; cost?: string; visible?: boolean; itemType?: string }) => {
       return apiRequest("PATCH", `/api/items/${data.id}`, data);
     },
     onSuccess: () => {
@@ -91,13 +91,13 @@ export default function Kiosk() {
   });
 
   const createItemMutation = useMutation({
-    mutationFn: async (data: { name: string; description: string; category: string; maxStock: number; cost: string }) => {
+    mutationFn: async (data: { name: string; description: string; category: string; maxStock: number; cost: string; itemType: string }) => {
       return apiRequest("POST", "/api/items", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/items"] });
       setAddingItem(false);
-      setNewItem({ name: "", description: "", category: "", maxStock: 10, cost: "0.00" });
+      setNewItem({ name: "", description: "", category: "", maxStock: 10, cost: "0.00", itemType: "consumable" });
       toast({ title: "Item Added", description: "New item has been added to inventory." });
     },
   });
@@ -295,8 +295,20 @@ export default function Kiosk() {
 
       <div className="flex flex-1 overflow-hidden">
         <div className="flex-1 overflow-y-auto p-3 md:p-4">
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 md:gap-3">
-            {items.filter(item => item.visible).map((item) => {
+          {[
+            { type: "consumable" as const, label: "Consumable Items", subtitle: "Used every cleaning" },
+            { type: "cleaning" as const, label: "Cleaning Items", subtitle: "Used over time" },
+          ].map(section => {
+            const sectionItems = items.filter(item => item.visible && item.itemType === section.type);
+            if (sectionItems.length === 0) return null;
+            return (
+              <div key={section.type} className="mb-4" data-testid={`section-${section.type}`}>
+                <div className="flex items-baseline gap-2 mb-2">
+                  <h2 className="text-sm font-display font-bold uppercase tracking-wider text-foreground">{section.label}</h2>
+                  <span className="text-[10px] text-muted-foreground">{section.subtitle}</span>
+                </div>
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 md:gap-3">
+          {sectionItems.map((item) => {
               const inCart = getCartQuantity(item.id);
               const outOfStock = item.stock <= 0;
 
@@ -413,7 +425,10 @@ export default function Kiosk() {
                 </Card>
               );
             })}
-          </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
 
         <div
@@ -617,6 +632,27 @@ export default function Kiosk() {
                         data-testid="input-new-cost"
                       />
                     </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground">Type</label>
+                      <div className="flex mt-1 rounded-md overflow-visible border border-border">
+                        <button
+                          type="button"
+                          className={`flex-1 px-3 py-2 text-sm font-bold ${newItem.itemType === "consumable" ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground"}`}
+                          onClick={() => setNewItem(prev => ({ ...prev, itemType: "consumable" }))}
+                          data-testid="button-new-type-consumable"
+                        >
+                          Consumable
+                        </button>
+                        <button
+                          type="button"
+                          className={`flex-1 px-3 py-2 text-sm font-bold ${newItem.itemType === "cleaning" ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground"}`}
+                          onClick={() => setNewItem(prev => ({ ...prev, itemType: "cleaning" }))}
+                          data-testid="button-new-type-cleaning"
+                        >
+                          Cleaning
+                        </button>
+                      </div>
+                    </div>
                   </div>
                   <div className="flex items-center gap-2 justify-end">
                     <Button variant="ghost" size="sm" onClick={() => setAddingItem(false)} data-testid="button-cancel-add">
@@ -712,17 +748,40 @@ export default function Kiosk() {
                           data-testid={`input-edit-description-${item.id}`}
                         />
                       </div>
-                      <div>
-                        <label className="text-xs text-muted-foreground">Cost per Unit ($)</label>
-                        <input
-                          type="number"
-                          min={0}
-                          step="0.01"
-                          className="w-full mt-1 px-2 py-1 bg-card border border-border rounded-md text-sm text-foreground"
-                          value={editingItem.cost}
-                          onChange={(e) => setEditingItem(prev => prev ? { ...prev, cost: e.target.value } : null)}
-                          data-testid={`input-edit-cost-${item.id}`}
-                        />
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-xs text-muted-foreground">Cost per Unit ($)</label>
+                          <input
+                            type="number"
+                            min={0}
+                            step="0.01"
+                            className="w-full mt-1 px-2 py-1 bg-card border border-border rounded-md text-sm text-foreground"
+                            value={editingItem.cost}
+                            onChange={(e) => setEditingItem(prev => prev ? { ...prev, cost: e.target.value } : null)}
+                            data-testid={`input-edit-cost-${item.id}`}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-muted-foreground">Type</label>
+                          <div className="flex mt-1 rounded-md overflow-visible border border-border">
+                            <button
+                              type="button"
+                              className={`flex-1 px-2 py-1 text-xs font-bold ${editingItem.itemType === "consumable" ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground"}`}
+                              onClick={() => setEditingItem(prev => prev ? { ...prev, itemType: "consumable" } : null)}
+                              data-testid={`button-type-consumable-${item.id}`}
+                            >
+                              Consumable
+                            </button>
+                            <button
+                              type="button"
+                              className={`flex-1 px-2 py-1 text-xs font-bold ${editingItem.itemType === "cleaning" ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground"}`}
+                              onClick={() => setEditingItem(prev => prev ? { ...prev, itemType: "cleaning" } : null)}
+                              data-testid={`button-type-cleaning-${item.id}`}
+                            >
+                              Cleaning
+                            </button>
+                          </div>
+                        </div>
                       </div>
                       <div className="flex items-center gap-2 justify-end">
                         <Button variant="ghost" size="sm" onClick={() => setEditingItem(null)} data-testid={`button-cancel-edit-${item.id}`}>
@@ -738,6 +797,7 @@ export default function Kiosk() {
                             maxStock: editingItem.maxStock,
                             stock: editingItem.stock,
                             cost: editingItem.cost,
+                            itemType: editingItem.itemType,
                           })}
                           disabled={updateItemMutation.isPending}
                           data-testid={`button-save-edit-${item.id}`}
@@ -753,10 +813,13 @@ export default function Kiosk() {
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-bold text-foreground truncate">{item.name}</p>
                         <p className="text-xs text-muted-foreground truncate">{item.description}</p>
-                        <div className="flex items-center gap-3 mt-1">
+                        <div className="flex items-center gap-2 flex-wrap mt-1">
                           <span className="text-xs text-muted-foreground">{item.category}</span>
                           <span className={`text-xs font-display font-bold ${getStockColor(item.stock, item.maxStock)}`}>
                             {item.stock}/{item.maxStock}
+                          </span>
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${item.itemType === "consumable" ? "bg-blue-500/20 text-blue-400" : "bg-emerald-500/20 text-emerald-400"}`} data-testid={`badge-type-${item.id}`}>
+                            {item.itemType === "consumable" ? "Consumable" : "Cleaning"}
                           </span>
                         </div>
                       </div>
