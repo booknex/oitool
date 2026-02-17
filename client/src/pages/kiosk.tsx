@@ -325,7 +325,7 @@ export default function Kiosk() {
                     className={`w-full text-left ${outOfStock ? "cursor-not-allowed" : "cursor-pointer"}`}
                     data-testid={`button-add-item-${item.id}`}
                   >
-                    <div className="aspect-square relative bg-muted/60 rounded-t-md overflow-hidden flex items-center justify-center p-2">
+                    <div className="aspect-square relative rounded-t-md overflow-hidden flex items-center justify-center p-2" style={{ backgroundColor: "#E8F4FD" }}>
                       <img
                         src={itemImages[item.id]}
                         alt={item.name}
