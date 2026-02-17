@@ -471,7 +471,7 @@ export default function Kiosk() {
                       <img
                         src={itemImages[item.id]}
                         alt={item.name}
-                        className="w-20 h-20 object-contain rounded-lg"
+                        className="w-[7.5rem] h-[7.5rem] object-contain rounded-lg flex-shrink-0"
                         style={{ backgroundColor: "#E8F4FD" }}
                       />
                       <div className="flex-1 min-w-0">
