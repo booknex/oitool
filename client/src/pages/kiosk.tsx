@@ -449,7 +449,7 @@ export default function Kiosk() {
             )}
           </div>
 
-          <div className="flex-1 overflow-y-auto p-3 scrollbar-hide">
+          <div className="flex-1 overflow-y-auto p-3">
             {cart.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
                 <ShoppingCart className="w-10 h-10 mb-2 opacity-30" />
