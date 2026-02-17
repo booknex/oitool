@@ -294,7 +294,7 @@ export default function Kiosk() {
       )}
 
       <div className="flex flex-1 overflow-hidden">
-        <div className="flex-1 overflow-y-auto p-3 md:p-4">
+        <div className="flex-1 overflow-y-auto p-3 md:p-4 scrollbar-hide">
           {[
             { type: "consumable" as const, label: "Consumable Items", subtitle: "Used every cleaning" },
             { type: "cleaning" as const, label: "Cleaning Items", subtitle: "Used over time" },
@@ -449,7 +449,7 @@ export default function Kiosk() {
             )}
           </div>
 
-          <div className="flex-1 overflow-y-auto p-3">
+          <div className="flex-1 overflow-y-auto p-3 scrollbar-hide">
             {cart.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
                 <ShoppingCart className="w-10 h-10 mb-2 opacity-30" />
