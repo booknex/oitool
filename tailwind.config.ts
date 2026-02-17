@@ -83,10 +83,10 @@ export default {
         },
       },
       fontFamily: {
-        sans: ["Inter", "var(--font-sans)"],
-        serif: ["var(--font-serif)"],
-        mono: ["var(--font-mono)"],
-        display: ["Orbitron", "sans-serif"],
+        sans: ["-apple-system", "BlinkMacSystemFont", "SF Pro Display", "SF Pro Text", "Inter", "system-ui", "sans-serif"],
+        serif: ["New York", "Georgia", "serif"],
+        mono: ["SF Mono", "Menlo", "monospace"],
+        display: ["-apple-system", "BlinkMacSystemFont", "SF Pro Display", "Inter", "system-ui", "sans-serif"],
       },
       keyframes: {
         "accordion-down": {

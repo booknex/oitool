@@ -190,7 +190,7 @@ export default function Kiosk() {
         <div className="flex items-center gap-2">
           <Package className="w-6 h-6 text-primary" />
           <h1
-            className="text-2xl md:text-3xl font-display font-bold tracking-tight text-foreground"
+            className="text-2xl md:text-3xl font-semibold tracking-tight text-foreground"
             data-testid="text-heading"
           >
             Supply Kiosk
@@ -246,7 +246,7 @@ export default function Kiosk() {
                             {restockCost > 0 && (
                               <span className="text-[10px] text-muted-foreground">${restockCost.toFixed(2)}</span>
                             )}
-                            <span className={`text-xs font-display font-bold ${getStockColor(item.stock, item.maxStock)}`}>
+                            <span className={`text-xs font-semibold ${getStockColor(item.stock, item.maxStock)}`}>
                               {item.stock}/{item.maxStock}
                             </span>
                           </div>
@@ -285,7 +285,7 @@ export default function Kiosk() {
 
       {showSuccess && (
         <div
-          className="flex items-center justify-center gap-2 px-4 py-2 bg-emerald-100 border-b border-emerald-400 text-emerald-700 font-bold text-sm flex-shrink-0"
+          className="flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-50 border-b border-emerald-200 text-emerald-600 font-medium text-sm flex-shrink-0"
           data-testid="checkout-success"
         >
           <CheckCircle className="w-4 h-4" />
@@ -302,10 +302,10 @@ export default function Kiosk() {
             const sectionItems = items.filter(item => item.visible && item.itemType === section.type);
             if (sectionItems.length === 0) return null;
             return (
-              <div key={section.type} className="mb-4 border border-border rounded-md p-3 bg-muted/40" data-testid={`section-${section.type}`}>
+              <div key={section.type} className="mb-5 rounded-xl p-4 bg-card border border-border/60" data-testid={`section-${section.type}`}>
                 <div className="flex items-baseline gap-2 mb-3">
-                  <h2 className="text-sm font-display font-bold uppercase tracking-wider text-foreground">{section.label}</h2>
-                  <span className="text-[10px] text-muted-foreground">{section.subtitle}</span>
+                  <h2 className="text-base font-semibold text-foreground">{section.label}</h2>
+                  <span className="text-xs text-muted-foreground">{section.subtitle}</span>
                 </div>
                 <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 md:gap-3">
           {sectionItems.map((item) => {
@@ -325,7 +325,7 @@ export default function Kiosk() {
                     className={`w-full text-left ${outOfStock ? "cursor-not-allowed" : "cursor-pointer"}`}
                     data-testid={`button-add-item-${item.id}`}
                   >
-                    <div className="aspect-square relative bg-gray-800/50 rounded-t-md overflow-hidden flex items-center justify-center p-2">
+                    <div className="aspect-square relative bg-muted/60 rounded-t-md overflow-hidden flex items-center justify-center p-2">
                       <img
                         src={itemImages[item.id]}
                         alt={item.name}
@@ -348,15 +348,15 @@ export default function Kiosk() {
                           style={{ animation: "blink-red 1s ease-in-out infinite" }}
                           data-testid={`last-item-warning-${item.id}`}
                         >
-                          <span className="text-red-500/60 font-bold text-8xl font-display select-none">
+                          <span className="text-red-500/60 font-bold text-8xl select-none">
                             !
                           </span>
                         </div>
                       )}
 
                       {outOfStock && (
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/60">
-                          <span className="text-red-600 font-bold text-xs font-display">
+                        <div className="absolute inset-0 flex items-center justify-center bg-white/70 dark:bg-black/60">
+                          <span className="text-red-500 font-semibold text-xs">
                             OUT OF STOCK
                           </span>
                         </div>
@@ -372,7 +372,7 @@ export default function Kiosk() {
                       </h3>
                       <div className="mt-1 flex items-center justify-between gap-1">
                         <span
-                          className={`text-sm font-display font-bold ${getStockColor(item.stock, item.maxStock)}`}
+                          className={`text-sm font-semibold ${getStockColor(item.stock, item.maxStock)}`}
                           data-testid={`text-stock-${item.id}`}
                         >
                           {item.stock}/{item.maxStock}
@@ -436,7 +436,7 @@ export default function Kiosk() {
         >
           <div className="flex items-center gap-2 p-3 border-b border-border">
             <ShoppingCart className="w-5 h-5 text-primary" />
-            <h2 className="text-lg font-display font-bold text-foreground" data-testid="text-cart-heading">
+            <h2 className="text-lg font-semibold text-foreground" data-testid="text-cart-heading">
               Your Cart
             </h2>
             {totalCartItems > 0 && (
@@ -526,7 +526,7 @@ export default function Kiosk() {
               <div className="flex items-center justify-between mb-3">
                 <span className="text-sm text-muted-foreground">Total Items</span>
                 <span
-                  className="text-lg font-display font-bold text-foreground"
+                  className="text-lg font-semibold text-foreground"
                   data-testid="text-cart-total"
                 >
                   {totalCartItems}
@@ -547,10 +547,10 @@ export default function Kiosk() {
       </div>
 
       {manageOpen && (
-        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" data-testid="manage-modal-overlay">
-          <div className="bg-card border border-border rounded-md w-full max-w-2xl max-h-[80vh] flex flex-col" data-testid="manage-modal">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" data-testid="manage-modal-overlay">
+          <div className="bg-card border border-border/60 rounded-2xl shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col" data-testid="manage-modal">
             <div className="flex items-center justify-between gap-4 p-4 border-b border-border">
-              <h2 className="text-xl font-display font-bold text-foreground">Manage Items</h2>
+              <h2 className="text-xl font-semibold text-foreground">Manage Items</h2>
               <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
@@ -814,7 +814,7 @@ export default function Kiosk() {
                         <p className="text-xs text-muted-foreground truncate">{item.description}</p>
                         <div className="flex items-center gap-2 flex-wrap mt-1">
                           <span className="text-xs text-muted-foreground">{item.category}</span>
-                          <span className={`text-xs font-display font-bold ${getStockColor(item.stock, item.maxStock)}`}>
+                          <span className={`text-xs font-semibold ${getStockColor(item.stock, item.maxStock)}`}>
                             {item.stock}/{item.maxStock}
                           </span>
                           <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${item.itemType === "consumable" ? "bg-blue-100 text-blue-700" : "bg-emerald-100 text-emerald-700"}`} data-testid={`badge-type-${item.id}`}>
