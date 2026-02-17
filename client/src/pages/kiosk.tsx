@@ -431,7 +431,7 @@ export default function Kiosk() {
         </div>
 
         <div
-          className="w-72 md:w-80 border-l border-border bg-card flex flex-col flex-shrink-0"
+          className="w-80 md:w-96 border-l border-border bg-card flex flex-col flex-shrink-0"
           data-testid="cart-panel"
         >
           <div className="flex items-center gap-2 p-3 border-b border-border">
