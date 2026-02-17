@@ -170,10 +170,10 @@ export default function Kiosk() {
 
   const getStockColor = (stock: number, maxStock: number) => {
     const ratio = stock / maxStock;
-    if (ratio <= 0) return "text-red-500";
-    if (ratio <= 0.25) return "text-red-400";
-    if (ratio <= 0.5) return "text-yellow-400";
-    return "text-emerald-400";
+    if (ratio <= 0) return "text-red-600";
+    if (ratio <= 0.25) return "text-red-500";
+    if (ratio <= 0.5) return "text-yellow-600";
+    return "text-emerald-600";
   };
 
   if (isLoading) {
@@ -285,7 +285,7 @@ export default function Kiosk() {
 
       {showSuccess && (
         <div
-          className="flex items-center justify-center gap-2 px-4 py-2 bg-emerald-500/20 border-b border-emerald-500 text-emerald-400 font-bold text-sm flex-shrink-0"
+          className="flex items-center justify-center gap-2 px-4 py-2 bg-emerald-100 border-b border-emerald-400 text-emerald-700 font-bold text-sm flex-shrink-0"
           data-testid="checkout-success"
         >
           <CheckCircle className="w-4 h-4" />
@@ -302,7 +302,7 @@ export default function Kiosk() {
             const sectionItems = items.filter(item => item.visible && item.itemType === section.type);
             if (sectionItems.length === 0) return null;
             return (
-              <div key={section.type} className="mb-4 border border-border rounded-md p-3 bg-card/30" data-testid={`section-${section.type}`}>
+              <div key={section.type} className="mb-4 border border-border rounded-md p-3 bg-muted/40" data-testid={`section-${section.type}`}>
                 <div className="flex items-baseline gap-2 mb-3">
                   <h2 className="text-sm font-display font-bold uppercase tracking-wider text-foreground">{section.label}</h2>
                   <span className="text-[10px] text-muted-foreground">{section.subtitle}</span>
@@ -315,7 +315,7 @@ export default function Kiosk() {
               return (
                 <Card
                   key={item.id}
-                  className={`relative overflow-visible p-0 ${outOfStock ? "opacity-50" : ""} ${inCart > 0 ? "ring-2 ring-yellow-400 shadow-[0_0_8px_rgba(250,204,21,0.3)]" : ""} ${item.stock === 1 ? "border-2 border-red-500" : ""}`}
+                  className={`relative overflow-visible p-0 ${outOfStock ? "opacity-50" : ""} ${inCart > 0 ? "ring-2 ring-primary shadow-md" : ""} ${item.stock === 1 ? "border-2 border-red-500" : ""}`}
                   style={item.stock === 1 ? { animation: "blink-red-border 1s ease-in-out infinite" } : undefined}
                   data-testid={`item-card-${item.id}`}
                 >
@@ -335,8 +335,7 @@ export default function Kiosk() {
 
                       {inCart > 0 && (
                         <div
-                          className="absolute top-1 right-1 bg-yellow-400 text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center shadow-lg"
-                          style={{ WebkitTextStroke: "0.5px black", color: "black" }}
+                          className="absolute top-1 right-1 bg-primary text-primary-foreground text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center shadow-lg"
                           data-testid={`text-in-cart-${item.id}`}
                         >
                           {inCart}
@@ -349,7 +348,7 @@ export default function Kiosk() {
                           style={{ animation: "blink-red 1s ease-in-out infinite" }}
                           data-testid={`last-item-warning-${item.id}`}
                         >
-                          <span className="text-red-500/80 font-bold text-8xl font-display select-none drop-shadow-[0_0_8px_rgba(239,68,68,0.5)]">
+                          <span className="text-red-500/60 font-bold text-8xl font-display select-none">
                             !
                           </span>
                         </div>
@@ -357,7 +356,7 @@ export default function Kiosk() {
 
                       {outOfStock && (
                         <div className="absolute inset-0 flex items-center justify-center bg-black/60">
-                          <span className="text-red-400 font-bold text-xs font-display">
+                          <span className="text-red-600 font-bold text-xs font-display">
                             OUT OF STOCK
                           </span>
                         </div>
@@ -818,7 +817,7 @@ export default function Kiosk() {
                           <span className={`text-xs font-display font-bold ${getStockColor(item.stock, item.maxStock)}`}>
                             {item.stock}/{item.maxStock}
                           </span>
-                          <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${item.itemType === "consumable" ? "bg-blue-500/20 text-blue-400" : "bg-emerald-500/20 text-emerald-400"}`} data-testid={`badge-type-${item.id}`}>
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${item.itemType === "consumable" ? "bg-blue-100 text-blue-700" : "bg-emerald-100 text-emerald-700"}`} data-testid={`badge-type-${item.id}`}>
                             {item.itemType === "consumable" ? "Consumable" : "Cleaning"}
                           </span>
                         </div>
@@ -838,7 +837,7 @@ export default function Kiosk() {
                           onClick={() => deleteItemMutation.mutate(item.id)}
                           disabled={deleteItemMutation.isPending}
                           data-testid={`button-delete-item-${item.id}`}
-                          className="text-red-400"
+                          className="text-red-500"
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
