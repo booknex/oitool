@@ -465,33 +465,33 @@ export default function Kiosk() {
                   return (
                     <div
                       key={entry.itemId}
-                      className="flex items-center gap-2 p-2 bg-background rounded-md border border-border"
+                      className="flex items-center gap-3 p-3 bg-background rounded-xl border border-border"
                       data-testid={`cart-item-${entry.itemId}`}
                     >
                       <img
                         src={itemImages[item.id]}
                         alt={item.name}
-                        className="w-9 h-9 object-contain rounded"
+                        className="w-20 h-20 object-contain rounded-lg"
+                        style={{ backgroundColor: "#E8F4FD" }}
                       />
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-bold text-foreground truncate">
+                        <p className="text-sm font-semibold text-foreground truncate">
                           {item.name}
                         </p>
-                        <p className="text-[10px] text-muted-foreground">
+                        <p className="text-xs text-muted-foreground mt-0.5">
                           Qty: {entry.quantity}
                         </p>
                       </div>
-                      <div className="flex items-center gap-0.5">
+                      <div className="flex items-center gap-1">
                         <Button
                           size="icon"
                           variant="ghost"
                           onClick={() => removeFromCart(entry.itemId)}
                           data-testid={`button-cart-decrease-${entry.itemId}`}
-                          className="h-6 w-6"
                         >
-                          <Minus className="w-3 h-3" />
+                          <Minus className="w-4 h-4" />
                         </Button>
-                        <span className="w-5 text-center text-xs font-bold text-foreground">
+                        <span className="w-6 text-center text-sm font-semibold text-foreground">
                           {entry.quantity}
                         </span>
                         <Button
@@ -500,18 +500,16 @@ export default function Kiosk() {
                           onClick={() => addToCart(entry.itemId)}
                           disabled={entry.quantity >= item.stock}
                           data-testid={`button-cart-increase-${entry.itemId}`}
-                          className="h-6 w-6"
                         >
-                          <Plus className="w-3 h-3" />
+                          <Plus className="w-4 h-4" />
                         </Button>
                         <Button
                           size="icon"
                           variant="ghost"
                           onClick={() => removeItemFromCart(entry.itemId)}
                           data-testid={`button-cart-remove-${entry.itemId}`}
-                          className="h-6 w-6"
                         >
-                          <Trash2 className="w-3 h-3" />
+                          <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>
                     </div>
