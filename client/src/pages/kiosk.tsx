@@ -302,7 +302,7 @@ export default function Kiosk() {
             const sectionItems = items.filter(item => item.visible && item.itemType === section.type);
             if (sectionItems.length === 0) return null;
             return (
-              <div key={section.type} className="mb-5 rounded-xl p-4 bg-card border border-border/60" data-testid={`section-${section.type}`}>
+              <div key={section.type} className="mb-5 rounded-xl p-4 bg-muted/50 border border-border/40" data-testid={`section-${section.type}`}>
                 <div className="flex items-baseline gap-2 mb-3">
                   <h2 className="text-base font-semibold text-foreground">{section.label}</h2>
                   <span className="text-xs text-muted-foreground">{section.subtitle}</span>
