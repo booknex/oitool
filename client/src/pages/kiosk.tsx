@@ -8,6 +8,48 @@ import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { itemImages } from "@/lib/itemData";
 
+const spanishNames: Record<string, string> = {
+  "All-Purpose Cleaner": "Limpiador Multiusos",
+  "Glass Cleaner": "Limpiador de Vidrios",
+  "Disinfectant Spray": "Spray Desinfectante",
+  "Microfiber Cloths": "Pa\u00f1os de Microfibra",
+  "Sponges": "Esponjas",
+  "Trash Bags": "Bolsas de Basura",
+  "Toilet Bowl Cleaner": "Limpiador de Inodoro",
+  "Floor Cleaner": "Limpiador de Pisos",
+  "Dusting Spray": "Spray para Polvo",
+  "Rubber Gloves": "Guantes de Goma",
+  "Mop Heads": "Cabezas de Trapeador",
+  "Vacuum Bags": "Bolsas de Aspiradora",
+  "Water Bottles": "Botellas de Agua",
+  "Wash Cloths": "Pa\u00f1os de Lavado",
+  "Paper Towels": "Toallas de Papel",
+  "Salt": "Sal",
+  "Pepper": "Pimienta",
+  "Diffuser Oil": "Aceite para Difusor",
+  "Bleach": "Cloro",
+  "Dish Soap Re-fill": "Recarga de Jab\u00f3n para Platos",
+  "Mini Dish Soap": "Mini Jab\u00f3n para Platos",
+  "Broom": "Escoba",
+  "Mop": "Trapeador",
+  "Dust Pan": "Recogedor",
+  "Mop Bucket": "Cubeta para Trapeador",
+  "Glass Cook Top": "Limpiador de Estufa de Vidrio",
+  "Scorch Pad": "Estropajo",
+  "Hand Soap Refill": "Recarga de Jab\u00f3n de Manos",
+  "Coffee Packs": "Paquetes de Caf\u00e9",
+  "Bathroom Trash Bags": "Bolsas de Basura para Ba\u00f1o",
+  "Scrub Brushes": "Cepillos de Fregar",
+  "Masks": "Mascarillas",
+  "Spray Bottle": "Botella Rociadora",
+  "Shampoo": "Champ\u00fa",
+  "Body Soap": "Jab\u00f3n Corporal",
+  "Body Bar Soap": "Jab\u00f3n en Barra",
+  "Lotion": "Loci\u00f3n",
+  "Conditioner": "Acondicionador",
+  "Laundry Soap": "Jab\u00f3n para Ropa",
+};
+
 interface CartEntry {
   itemId: number;
   quantity: number;
@@ -370,6 +412,9 @@ export default function Kiosk() {
                       >
                         {item.name}
                       </h3>
+                      {spanishNames[item.name] && (
+                        <p className="text-[10px] text-muted-foreground truncate italic">{spanishNames[item.name]}</p>
+                      )}
                       <div className="mt-1 flex items-center justify-between gap-1">
                         <span
                           className={`text-sm font-semibold ${getStockColor(item.stock, item.maxStock)}`}
