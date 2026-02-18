@@ -2,7 +2,7 @@ module.exports = {
   apps: [
     {
       name: "office-inventory",
-      script: "dist/index.mjs",
+      script: "dist/index.js",
       cwd: "/var/www/office-inventory",
       env: {
         NODE_ENV: "production",

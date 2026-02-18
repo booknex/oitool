@@ -4,7 +4,7 @@ import { z } from "zod";
 
 export const inventoryItems = pgTable("inventory_items", {
   id: serial("id").primaryKey(),
-  name: text("name").notNull(),
+  name: text("name").notNull().unique(),
   description: text("description").notNull(),
   category: text("category").notNull(),
   stock: integer("stock").notNull().default(0),
