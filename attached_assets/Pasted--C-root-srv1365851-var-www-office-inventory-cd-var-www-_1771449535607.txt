@@ -1,0 +1,25 @@
+^C
+root@srv1365851:/var/www/office-inventory# cd /var/www/office-inventory
+pm2 start ecosystem.config.cjs
+[PM2][WARN] Applications office-inventory not running, starting...
+[PM2] App [office-inventory] launched (1 instances)
+┌────┬─────────────────────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
+│ id │ name                    │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
+├────┼─────────────────────────┼─────────────┼─────────┼─────────┼──────────┼────────┼──────┼───────────┼──────────┼──────────┼──────────┼──────────┤
+│ 10 │ christmas-bonus         │ default     │ N/A     │ fork    │ 97722    │ 39h    │ 0    │ online    │ 0%       │ 94.7mb   │ root     │ disabled │
+│ 3  │ client-queue-manager    │ default     │ 1.0.0   │ fork    │ 29839    │ 6D     │ 7    │ online    │ 0%       │ 175.8mb  │ root     │ disabled │
+│ 0  │ meetingroadmap          │ default     │ N/A     │ fork    │ 21024    │ 6D     │ 16   │ online    │ 0%       │ 78.7mb   │ root     │ disabled │
+│ 11 │ office-inventory        │ default     │ 1.0.0   │ cluster │ 124298   │ 0s     │ 0    │ online    │ 0%       │ 44.0mb   │ root     │ disabled │
+│ 7  │ taxportal               │ default     │ 1.0.0   │ fork    │ 101149   │ 35h    │ 5    │ online    │ 0%       │ 104.0mb  │ root     │ disabled │
+└────┴─────────────────────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
+root@srv1365851:/var/www/office-inventory# pm2 logs office-inventory --lines 5
+[TAILING] Tailing last 5 lines for [office-inventory] process (change the value with --lines option)
+/root/.pm2/logs/office-inventory-out-11.log last 5 lines:
+/root/.pm2/logs/office-inventory-error-11.log last 5 lines:
+11|office- |     at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:736:38)
+11|office- |     at ModuleLoader.resolveSync (node:internal/modules/esm/loader:765:52)
+11|office- |     at #resolve (node:internal/modules/esm/loader:701:17)
+11|office- |     at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:621:35)
+11|office- |     at ModuleJob.syncLink (node:internal/modules/esm/module_job:160:33)
+
+                                   

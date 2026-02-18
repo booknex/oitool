@@ -1,0 +1,34 @@
+
+^C
+root@srv1365851:/var/www/office-inventory# cp /var/www/office-inventory/dist/index.js /var/www/office-inventory/dist/index.mjs
+pm2 restart office-inventory
+Use --update-env to update environment variables
+[PM2] Applying action restartProcessId on app [office-inventory](ids: [ 8 ])
+[PM2] [office-inventory](8) ✓
+┌────┬─────────────────────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
+│ id │ name                    │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
+├────┼─────────────────────────┼─────────────┼─────────┼─────────┼──────────┼────────┼──────┼───────────┼──────────┼──────────┼──────────┼──────────┤
+│ 10 │ christmas-bonus         │ default     │ N/A     │ fork    │ 97722    │ 39h    │ 0    │ online    │ 0%       │ 94.7mb   │ root     │ disabled │
+│ 3  │ client-queue-manager    │ default     │ 1.0.0   │ fork    │ 29839    │ 6D     │ 7    │ online    │ 0%       │ 175.8mb  │ root     │ disabled │
+│ 0  │ meetingroadmap          │ default     │ N/A     │ fork    │ 21024    │ 6D     │ 16   │ online    │ 0%       │ 78.7mb   │ root     │ disabled │
+│ 8  │ office-inventory        │ default     │ 1.0.0   │ cluster │ 124193   │ 0s     │ 6    │ online    │ 0%       │ 46.3mb   │ root     │ disabled │
+│ 7  │ taxportal               │ default     │ 1.0.0   │ fork    │ 101149   │ 34h    │ 5    │ online    │ 0%       │ 104.0mb  │ root     │ disabled │
+└────┴─────────────────────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
+root@srv1365851:/var/www/office-inventory# pm2 delete office-inventory
+[PM2] Applying action deleteProcessId on app [office-inventory](ids: [ 8 ])
+[PM2] [office-inventory](8) ✓
+┌────┬─────────────────────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
+│ id │ name                    │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
+├────┼─────────────────────────┼─────────────┼─────────┼─────────┼──────────┼────────┼──────┼───────────┼──────────┼──────────┼──────────┼──────────┤
+│ 10 │ christmas-bonus         │ default     │ N/A     │ fork    │ 97722    │ 39h    │ 0    │ online    │ 0%       │ 94.7mb   │ root     │ disabled │
+│ 3  │ client-queue-manager    │ default     │ 1.0.0   │ fork    │ 29839    │ 6D     │ 7    │ online    │ 0%       │ 175.8mb  │ root     │ disabled │
+│ 0  │ meetingroadmap          │ default     │ N/A     │ fork    │ 21024    │ 6D     │ 16   │ online    │ 0%       │ 78.7mb   │ root     │ disabled │
+│ 7  │ taxportal               │ default     │ 1.0.0   │ fork    │ 101149   │ 34h    │ 5    │ online    │ 0%       │ 104.0mb  │ root     │ disabled │
+└────┴─────────────────────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
+root@srv1365851:/var/www/office-inventory# nano /var/www/office-inventory/ecosystem.config.cjs
+root@srv1365851:/var/www/office-inventory# cp /var/www/office-inventory/dist/index.js /var/www/office-inventory/dist/index.mjs
+pm2 restart office-inventory
+Use --update-env to update environment variables
+[PM2][ERROR] Process or Namespace office-inventory not found
+root@srv1365851:/var/www/office-inventory# pm2 logs office-inventory --lines 5
+[TAILING] Tailing last 5 lines for [office-inventory] process (change the value with --lines option)

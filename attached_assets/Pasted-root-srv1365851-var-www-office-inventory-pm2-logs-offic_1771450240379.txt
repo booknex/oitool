@@ -1,0 +1,39 @@
+root@srv1365851:/var/www/office-inventory# pm2 logs office-inventory --lines 20 --err
+[TAILING] Tailing last 20 lines for [office-inventory] process (change the value with --lines option)
+/root/.pm2/logs/office-inventory-error-11.log last 20 lines:
+11|office- |     at moduleResolve (node:internal/modules/esm/resolve:860:18)
+11|office- |     at defaultResolve (node:internal/modules/esm/resolve:992:11)
+11|office- |     at #cachedDefaultResolve (node:internal/modules/esm/loader:719:20)
+11|office- |     at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:736:38)
+11|office- |     at ModuleLoader.resolveSync (node:internal/modules/esm/loader:765:52)
+11|office- |     at #resolve (node:internal/modules/esm/loader:701:17)
+11|office- |     at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:621:35)
+11|office- |     at ModuleJob.syncLink (node:internal/modules/esm/module_job:160:33)
+11|office- | You have triggered an unhandledRejection, you may have forgotten to catch a Promise rejection:
+11|office- | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'drizzle-orm' imported from /var/www/office-inventory/dist/index.mjs
+11|office- |     at Object.getPackageJSONURL (node:internal/modules/package_json_reader:301:9)
+11|office- |     at packageResolve (node:internal/modules/esm/resolve:769:81)
+11|office- |     at moduleResolve (node:internal/modules/esm/resolve:860:18)
+11|office- |     at defaultResolve (node:internal/modules/esm/resolve:992:11)
+11|office- |     at #cachedDefaultResolve (node:internal/modules/esm/loader:719:20)
+11|office- |     at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:736:38)
+11|office- |     at ModuleLoader.resolveSync (node:internal/modules/esm/loader:765:52)
+11|office- |     at #resolve (node:internal/modules/esm/loader:701:17)
+11|office- |     at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:621:35)
+11|office- |     at ModuleJob.syncLink (node:internal/modules/esm/module_job:160:33)
+
+cat /var/www/office-inventory/package.json | head -30
+^C
+root@srv1365851:/var/www/office-inventory# cat /var/www/office-inventory/package.json | head -30
+{
+  "name": "office-inventory",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "express": "^4.22.1",
+    "nanoid": "^5.1.6",
+    "zod": "^4.3.6"
+  }
+}
+root@srv1365851:/var/www/office-inventory# 

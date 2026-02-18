@@ -1,0 +1,75 @@
+^C
+root@srv1365851:/var/www/office-inventory# cp /var/www/office-inventory/dist/index.js /var/www/office-inventory/dist/index.mjs
+pm2 restart office-inventory
+Use --update-env to update environment variables
+[PM2] Applying action restartProcessId on app [office-inventory](ids: [ 8 ])
+[PM2] [office-inventory](8) ✓
+┌────┬─────────────────────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
+│ id │ name                    │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
+├────┼─────────────────────────┼─────────────┼─────────┼─────────┼──────────┼────────┼──────┼───────────┼──────────┼──────────┼──────────┼──────────┤
+│ 10 │ christmas-bonus         │ default     │ N/A     │ fork    │ 97722    │ 39h    │ 0    │ online    │ 0%       │ 94.7mb   │ root     │ disabled │
+│ 3  │ client-queue-manager    │ default     │ 1.0.0   │ fork    │ 29839    │ 6D     │ 7    │ online    │ 0%       │ 175.8mb  │ root     │ disabled │
+│ 0  │ meetingroadmap          │ default     │ N/A     │ fork    │ 21024    │ 6D     │ 16   │ online    │ 0%       │ 78.7mb   │ root     │ disabled │
+│ 8  │ office-inventory        │ default     │ 1.0.0   │ cluster │ 124193   │ 0s     │ 6    │ online    │ 0%       │ 46.3mb   │ root     │ disabled │
+│ 7  │ taxportal               │ default     │ 1.0.0   │ fork    │ 101149   │ 34h    │ 5    │ online    │ 0%       │ 104.0mb  │ root     │ disabled │
+└────┴─────────────────────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
+root@srv1365851:/var/www/office-inventory# pm2 delete office-inventory
+[PM2] Applying action deleteProcessId on app [office-inventory](ids: [ 8 ])
+[PM2] [office-inventory](8) ✓
+┌────┬─────────────────────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
+│ id │ name                    │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
+├────┼─────────────────────────┼─────────────┼─────────┼─────────┼──────────┼────────┼──────┼───────────┼──────────┼──────────┼──────────┼──────────┤
+│ 10 │ christmas-bonus         │ default     │ N/A     │ fork    │ 97722    │ 39h    │ 0    │ online    │ 0%       │ 94.7mb   │ root     │ disabled │
+│ 3  │ client-queue-manager    │ default     │ 1.0.0   │ fork    │ 29839    │ 6D     │ 7    │ online    │ 0%       │ 175.8mb  │ root     │ disabled │
+│ 0  │ meetingroadmap          │ default     │ N/A     │ fork    │ 21024    │ 6D     │ 16   │ online    │ 0%       │ 78.7mb   │ root     │ disabled │
+│ 7  │ taxportal               │ default     │ 1.0.0   │ fork    │ 101149   │ 34h    │ 5    │ online    │ 0%       │ 104.0mb  │ root     │ disabled │
+└────┴─────────────────────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
+root@srv1365851:/var/www/office-inventory# nano /var/www/office-inventory/ecosystem.config.cjs
+root@srv1365851:/var/www/office-inventory# cp /var/www/office-inventory/dist/index.js /var/www/office-inventory/dist/index.mjs
+pm2 restart office-inventory
+Use --update-env to update environment variables
+[PM2][ERROR] Process or Namespace office-inventory not found
+root@srv1365851:/var/www/office-inventory# pm2 logs office-inventory --lines 5
+[TAILING] Tailing last 5 lines for [office-inventory] process (change the value with --lines option)
+
+^C
+root@srv1365851:/var/www/office-inventory# cd /var/www/office-inventory
+pm2 start ecosystem.config.cjs
+[PM2][WARN] Applications office-inventory not running, starting...
+[PM2] App [office-inventory] launched (1 instances)
+┌────┬─────────────────────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
+│ id │ name                    │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
+├────┼─────────────────────────┼─────────────┼─────────┼─────────┼──────────┼────────┼──────┼───────────┼──────────┼──────────┼──────────┼──────────┤
+│ 10 │ christmas-bonus         │ default     │ N/A     │ fork    │ 97722    │ 39h    │ 0    │ online    │ 0%       │ 94.7mb   │ root     │ disabled │
+│ 3  │ client-queue-manager    │ default     │ 1.0.0   │ fork    │ 29839    │ 6D     │ 7    │ online    │ 0%       │ 175.8mb  │ root     │ disabled │
+│ 0  │ meetingroadmap          │ default     │ N/A     │ fork    │ 21024    │ 6D     │ 16   │ online    │ 0%       │ 78.7mb   │ root     │ disabled │
+│ 11 │ office-inventory        │ default     │ 1.0.0   │ cluster │ 124298   │ 0s     │ 0    │ online    │ 0%       │ 44.0mb   │ root     │ disabled │
+│ 7  │ taxportal               │ default     │ 1.0.0   │ fork    │ 101149   │ 35h    │ 5    │ online    │ 0%       │ 104.0mb  │ root     │ disabled │
+└────┴─────────────────────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
+root@srv1365851:/var/www/office-inventory# pm2 logs office-inventory --lines 5
+[TAILING] Tailing last 5 lines for [office-inventory] process (change the value with --lines option)
+/root/.pm2/logs/office-inventory-out-11.log last 5 lines:
+/root/.pm2/logs/office-inventory-error-11.log last 5 lines:
+11|office- |     at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:736:38)
+11|office- |     at ModuleLoader.resolveSync (node:internal/modules/esm/loader:765:52)
+11|office- |     at #resolve (node:internal/modules/esm/loader:701:17)
+11|office- |     at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:621:35)
+11|office- |     at ModuleJob.syncLink (node:internal/modules/esm/module_job:160:33)
+
+^C                                 
+root@srv1365851:/var/www/office-inventory# pm2 logs office-inventory --lines 20 --err
+[TAILING] Tailing last 20 lines for [office-inventory] process (change the value with --lines option)
+/root/.pm2/logs/office-inventory-error-11.log last 20 lines:
+11|office- | You have triggered an unhandledRejection, you may have forgotten to catch a Promise rejection:
+11|office- | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'drizzle-orm' imported from /var/www/office-inventory/dist/index.mjs
+11|office- |     at Object.getPackageJSONURL (node:internal/modules/package_json_reader:301:9)
+11|office- |     at packageResolve (node:internal/modules/esm/resolve:769:81)
+11|office- |     at moduleResolve (node:internal/modules/esm/resolve:860:18)
+11|office- |     at defaultResolve (node:internal/modules/esm/resolve:992:11)
+11|office- |     at #cachedDefaultResolve (node:internal/modules/esm/loader:719:20)
+11|office- |     at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:736:38)
+11|office- |     at ModuleLoader.resolveSync (node:internal/modules/esm/loader:765:52)
+11|office- |     at #resolve (node:internal/modules/esm/loader:701:17)
+11|office- |     at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:621:35)
+11|office- |     at ModuleJob.syncLink (node:internal/modules/esm/module_job:160:33)
+

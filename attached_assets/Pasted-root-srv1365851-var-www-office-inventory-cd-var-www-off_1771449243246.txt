@@ -1,0 +1,69 @@
+root@srv1365851:/var/www/office-inventory# cd /var/www/office-inventory
+DATABASE_URL="postgresql://postgres@localhost:5432/office_inventory" pm2 start ecosystem.config.cjs
+[PM2] Applying action restartProcessId on app [office-inventory](ids: [ 8 ])
+[PM2] [office-inventory](8) ✓
+┌────┬─────────────────────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
+│ id │ name                    │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
+├────┼─────────────────────────┼─────────────┼─────────┼─────────┼──────────┼────────┼──────┼───────────┼──────────┼──────────┼──────────┼──────────┤
+│ 10 │ christmas-bonus         │ default     │ N/A     │ fork    │ 97722    │ 39h    │ 0    │ online    │ 0%       │ 94.7mb   │ root     │ disabled │
+│ 3  │ client-queue-manager    │ default     │ 1.0.0   │ fork    │ 29839    │ 6D     │ 7    │ online    │ 0%       │ 175.8mb  │ root     │ disabled │
+│ 0  │ meetingroadmap          │ default     │ N/A     │ fork    │ 21024    │ 6D     │ 16   │ online    │ 0%       │ 78.7mb   │ root     │ disabled │
+│ 8  │ office-inventory        │ default     │ 1.0.0   │ cluster │ 124020   │ 0s     │ 5    │ online    │ 0%       │ 45.8mb   │ root     │ disabled │
+│ 7  │ taxportal               │ default     │ 1.0.0   │ fork    │ 101149   │ 34h    │ 5    │ online    │ 0%       │ 104.0mb  │ root     │ disabled │
+└────┴─────────────────────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
+root@srv1365851:/var/www/office-inventory# pm2 status
+┌────┬─────────────────────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
+│ id │ name                    │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
+├────┼─────────────────────────┼─────────────┼─────────┼─────────┼──────────┼────────┼──────┼───────────┼──────────┼──────────┼──────────┼──────────┤
+│ 10 │ christmas-bonus         │ default     │ N/A     │ fork    │ 97722    │ 39h    │ 0    │ online    │ 0%       │ 94.7mb   │ root     │ disabled │
+│ 3  │ client-queue-manager    │ default     │ 1.0.0   │ fork    │ 29839    │ 6D     │ 7    │ online    │ 0%       │ 175.8mb  │ root     │ disabled │
+│ 0  │ meetingroadmap          │ default     │ N/A     │ fork    │ 21024    │ 6D     │ 16   │ online    │ 0%       │ 78.7mb   │ root     │ disabled │
+│ 8  │ office-inventory        │ default     │ 1.0.0   │ cluster │ 124020   │ 7m     │ 5    │ online    │ 0%       │ 64.9mb   │ root     │ disabled │
+│ 7  │ taxportal               │ default     │ 1.0.0   │ fork    │ 101149   │ 34h    │ 5    │ online    │ 0%       │ 104.0mb  │ root     │ disabled │
+└────┴─────────────────────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
+root@srv1365851:/var/www/office-inventory# pm2 logs office-inventory --lines 20
+[TAILING] Tailing last 20 lines for [office-inventory] process (change the value with --lines option)
+/root/.pm2/logs/office-inventory-out-8.log last 20 lines:
+8|office-i | 2:40:54 AM [express] GET /api/login 200 in 0ms
+8|office-i | 2:40:54 AM [express] GET /api/auth 200 in 2ms
+8|office-i | 2:40:54 AM [express] GET /api/authentication 200 in 1ms
+8|office-i | 2:40:54 AM [express] GET /api/auth/v1/pin/verify 200 in 1ms
+8|office-i | 2:40:54 AM [express] GET /api/register 200 in 1ms
+8|office-i | 2:40:54 AM [express] GET /api/resetpassword 200 in 1ms
+8|office-i | 2:41:13 AM [express] GET /api/config.json 200 in 1ms
+8|office-i | 2:41:18 AM [express] GET /api/secrets.json 200 in 1ms
+8|office-i | 3:42:48 AM [express] GET /api/items 200 in 1ms :: [{"id":1,"name":"All-Purpose Cleaner","description…
+8|office-i | 3:42:54 AM [express] GET /api/items 200 in 1ms :: [{"id":1,"name":"All-Purpose Cleaner","description…
+8|office-i | 10:28:22 AM [express] GET /api/items 200 in 16ms :: [{"id":1,"name":"All-Purpose Cleaner","descriptio…
+8|office-i | 11:33:55 AM [express] GET /api/items 200 in 7ms :: [{"id":1,"name":"All-Purpose Cleaner","description…
+8|office-i | 5:38:13 PM [express] GET /api/items 200 in 16ms :: [{"id":1,"name":"All-Purpose Cleaner","descriptio…
+8|office-i | 5:56:19 PM [express] GET /api/items 200 in 1ms :: [{"id":1,"name":"All-Purpose Cleaner","description…
+8|office-i | 9:08:20 AM [express] GET /api/items 200 in 20ms :: [{"id":1,"name":"All-Purpose Cleaner","descriptio…
+8|office-i | 8:35:57 PM [express] GET /api/items 304 in 18ms :: [{"id":1,"name":"All-Purpose Cleaner","descriptio…
+8|office-i | 6:32:12 PM [express] GET /api/items 200 in 19ms :: [{"id":1,"name":"All-Purpose Cleaner","descriptio…
+8|office-i | 6:51:06 PM [express] GET /api/items 200 in 1ms :: [{"id":1,"name":"All-Purpose Cleaner","description…
+8|office-i | 12:43:01 PM [express] GET /api/items 200 in 23ms :: [{"id":1,"name":"All-Purpose Cleaner","descriptio…
+8|office-i | 3:41:34 PM [express] GET /api/items 200 in 2ms :: [{"id":1,"name":"All-Purpose Cleaner","description…
+
+/root/.pm2/logs/office-inventory-error-8.log last 20 lines:
+8|office-i |     at defaultResolve (node:internal/modules/esm/resolve:992:11)
+8|office-i |     at #cachedDefaultResolve (node:internal/modules/esm/loader:719:20)
+8|office-i |     at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:736:38)
+8|office-i |     at ModuleLoader.resolveSync (node:internal/modules/esm/loader:765:52)
+8|office-i |     at #resolve (node:internal/modules/esm/loader:701:17)
+8|office-i |     at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:621:35)
+8|office-i |     at onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:650:32)
+8|office-i |     at TracingChannel.tracePromise (node:diagnostics_channel:350:14)
+8|office-i | You have triggered an unhandledRejection, you may have forgotten to catch a Promise rejection:
+8|office-i | Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/var/www/office-inventory/dist/index.mjs' imported from /usr/lib/node_modules/pm2/lib/ProcessContainer.js
+8|office-i |     at finalizeResolution (node:internal/modules/esm/resolve:275:11)
+8|office-i |     at moduleResolve (node:internal/modules/esm/resolve:866:10)
+8|office-i |     at defaultResolve (node:internal/modules/esm/resolve:992:11)
+8|office-i |     at #cachedDefaultResolve (node:internal/modules/esm/loader:719:20)
+8|office-i |     at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:736:38)
+8|office-i |     at ModuleLoader.resolveSync (node:internal/modules/esm/loader:765:52)
+8|office-i |     at #resolve (node:internal/modules/esm/loader:701:17)
+8|office-i |     at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:621:35)
+8|office-i |     at onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:650:32)
+8|office-i |     at TracingChannel.tracePromise (node:diagnostics_channel:350:14)
+

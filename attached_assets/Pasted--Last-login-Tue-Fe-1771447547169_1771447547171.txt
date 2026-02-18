@@ -1,0 +1,30 @@
+********************************************************************************
+Last login: Tue Feb 17 10:26:56 2026 from 169.254.0.1
+root@srv1365851:~# psql -d your_database_name -f /tmp/migrate-add-new-items.sql
+psql: error: connection to server on socket "/var/run/postgresql/.s.PGSQL.5432" failed: FATAL:  role "root" does not exist
+root@srv1365851:~# ^C
+root@srv1365851:~# sudo -u postgres psql -l
+                                                         List of databases
+         Name         |  Owner   | Encoding | Locale Provider | Collate |  Ctype  | ICU Locale | ICU Rules |   Access privileges   
+----------------------+----------+----------+-----------------+---------+---------+------------+-----------+-----------------------
+ christmas_bonus_db   | postgres | UTF8     | libc            | C.UTF-8 | C.UTF-8 |            |           | 
+ client_queue_manager | postgres | UTF8     | libc            | C.UTF-8 | C.UTF-8 |            |           | =Tc/postgres         +
+                      |          |          |                 |         |         |            |           | postgres=CTc/postgres+
+                      |          |          |                 |         |         |            |           | cqm_user=CTc/postgres
+ meetingroadmap       | myapp    | UTF8     | libc            | C.UTF-8 | C.UTF-8 |            |           | 
+ postgres             | postgres | UTF8     | libc            | C.UTF-8 | C.UTF-8 |            |           | 
+ taxportal            | postgres | UTF8     | libc            | C.UTF-8 | C.UTF-8 |            |           | 
+ template0            | postgres | UTF8     | libc            | C.UTF-8 | C.UTF-8 |            |           | =c/postgres          +
+                      |          |          |                 |         |         |            |           | postgres=CTc/postgres
+ template1            | postgres | UTF8     | libc            | C.UTF-8 | C.UTF-8 |            |           | =c/postgres          +
+                      |          |          |                 |         |         |            |           | postgres=CTc/postgres
+(7 rows)
+
+root@srv1365851:~# sudo -u postgres createdb office_inventory
+root@srv1365851:~# sudo -u postgres psql -d office_inventory -f /tmp/migrate-add-new-items.sql
+psql: error: /tmp/migrate-add-new-items.sql: No such file or directory
+root@srv1365851:~# sudo -u postgres psql -d office_inventory -f /path/to/seed.sql
+psql: error: /path/to/seed.sql: No such file or directory
+root@srv1365851:~# sudo -u postgres psql -d office_inventory -f /tmp/seed.sql
+psql: error: /tmp/seed.sql: No such file or directory
+root@srv1365851:~# 
