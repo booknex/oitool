@@ -1,0 +1,70 @@
+VPS Deployment Prompt:
+
+I need you to help me deploy this app to my self-hosted VPS. Here are the details:
+
+VPS Info:
+
+IP: 187.77.21.175
+OS: Ubuntu with Nginx, PM2, Node.js, and PostgreSQL already installed
+SSH: root@187.77.21.175
+Apps directory: /var/www/
+What I need you to do:
+
+Build the app for production:
+
+Bundle the server code into a single file (e.g., dist/index.cjs) using esbuild with --platform=node --bundle --format=cjs
+Build the frontend with Vite (output to dist/public/)
+Make sure to use bcryptjs instead of bcrypt (pure JS, no native modules)
+Use the standard pg package instead of @neondatabase/serverless so it works with local PostgreSQL
+Generate deployment files:
+
+Create an ecosystem.config.cjs for PM2 that reads from a .env file
+Create a .env.example with all needed environment variables (DATABASE_URL, PORT, SESSION_SECRET, etc.)
+Use a port in the range 5003-5005 (ports 5000-5002 are taken by other apps)
+Generate a database migration SQL file (migration-export.sql):
+
+Export all custom enum types with DO $$ BEGIN CREATE TYPE ... EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+Export all CREATE TABLE IF NOT EXISTS statements
+Export all CREATE INDEX IF NOT EXISTS statements
+Export all data as INSERT statements with ON CONFLICT (id) DO NOTHING
+Make it a single file I can run with psql -d dbname -f migration-export.sql
+Generate an Nginx config file (nginx-site.conf):
+
+Server name: [MY_DOMAIN]
+Proxy pass to localhost:[CHOSEN_PORT]
+Include WebSocket support headers
+Include standard proxy headers (X-Real-IP, X-Forwarded-For, etc.)
+Generate a single deployment script (deploy.sh) that I can paste into my VPS terminal:
+
+#!/bin/bash
+APP_NAME="myapp"
+APP_PORT=5003
+DOMAIN="mydomain.com"
+DB_NAME="myapp_db"
+DB_PASSWORD="change_me"
+# Create directory
+mkdir -p /var/www/$APP_NAME
+# Create PostgreSQL database
+sudo -u postgres psql -c "CREATE DATABASE $DB_NAME;" 2>/dev/null
+sudo -u postgres psql -c "ALTER USER postgres PASSWORD '$DB_PASSWORD';"
+# Run migration
+sudo -u postgres psql -d $DB_NAME -f /var/www/$APP_NAME/migration-export.sql
+# Setup Nginx
+cp /var/www/$APP_NAME/nginx-site.conf /etc/nginx/sites-available/$APP_NAME
+ln -sf /etc/nginx/sites-available/$APP_NAME /etc/nginx/sites-enabled/
+nginx -t && systemctl reload nginx
+# Start with PM2
+cd /var/www/$APP_NAME && pm2 start ecosystem.config.cjs
+pm2 save
+# SSL
+certbot --nginx -d $DOMAIN
+Package everything into a tar.gz file I can download and upload to the VPS:
+
+dist/ (server + frontend build)
+ecosystem.config.cjs
+.env.example
+migration-export.sql
+nginx-site.conf
+deploy.sh
+uploads/ (if the app has user-uploaded files)
+The goal is: download one file, upload to VPS, extract, edit .env, run deploy.sh, and it's live.
