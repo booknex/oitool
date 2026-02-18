@@ -1,29 +1,28 @@
 import { build } from 'esbuild';
 import { execSync } from 'child_process';
-import { copyFileSync } from 'fs';
 
 console.log('Building frontend with Vite...');
 execSync('npx vite build', { stdio: 'inherit' });
 
-console.log('Building server bundle (all dependencies included)...');
+console.log('Building server bundle (CJS, all dependencies included)...');
 await build({
-  entryPoints: ['server/index.ts'],
+  entryPoints: ['server/prod.ts'],
   platform: 'node',
   bundle: true,
-  format: 'esm',
-  outdir: 'dist',
+  format: 'cjs',
+  outfile: 'dist/index.cjs',
   external: [
-    'vite',
-    '@vitejs/plugin-react',
-    '@replit/vite-plugin-runtime-error-modal',
-    '@replit/vite-plugin-cartographer',
-    '@replit/vite-plugin-dev-banner',
     'pg-native',
   ],
   define: {
     'process.env.NODE_ENV': '"production"',
+    'import.meta.dirname': '__dirname',
+  },
+  banner: {
+    js: '// Production bundle - all dependencies included\n',
   },
 });
 
-copyFileSync('dist/index.js', 'dist/index.mjs');
-console.log('Production build complete! Files: dist/index.js and dist/index.mjs');
+console.log('Production build complete!');
+console.log('  Server: dist/index.cjs');
+console.log('  Frontend: dist/public/');
