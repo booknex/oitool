@@ -92,6 +92,7 @@ export class DatabaseStorage implements IStorage {
         visible: true,
         cost: data.cost ?? "0",
         itemType: data.itemType ?? "consumable",
+        lowStockThreshold: data.lowStockThreshold ?? null,
       })
       .returning();
     return item;
@@ -112,6 +113,7 @@ export class DatabaseStorage implements IStorage {
     if (data.visible !== undefined) updates.visible = data.visible;
     if (data.cost !== undefined) updates.cost = data.cost;
     if (data.itemType !== undefined) updates.itemType = data.itemType;
+    if (data.lowStockThreshold !== undefined) updates.lowStockThreshold = data.lowStockThreshold;
 
     const newMaxStock = updates.maxStock ?? item.maxStock;
     const newStock = updates.stock ?? item.stock;

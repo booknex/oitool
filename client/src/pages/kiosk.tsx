@@ -62,7 +62,7 @@ export default function Kiosk() {
   const [manageOpen, setManageOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
   const [addingItem, setAddingItem] = useState(false);
-  const [newItem, setNewItem] = useState({ name: "", description: "", category: "", maxStock: 10, cost: "0.00", itemType: "consumable" as "consumable" | "cleaning" });
+  const [newItem, setNewItem] = useState({ name: "", description: "", category: "", maxStock: 10, cost: "0.00", itemType: "consumable" as "consumable" | "cleaning", lowStockThreshold: null as number | null });
   const restockDropdownRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -122,7 +122,7 @@ export default function Kiosk() {
   });
 
   const updateItemMutation = useMutation({
-    mutationFn: async (data: { id: number; name?: string; description?: string; category?: string; maxStock?: number; stock?: number; cost?: string; visible?: boolean; itemType?: string }) => {
+    mutationFn: async (data: { id: number; name?: string; description?: string; category?: string; maxStock?: number; stock?: number; cost?: string; visible?: boolean; itemType?: string; lowStockThreshold?: number | null }) => {
       return apiRequest("PATCH", `/api/items/${data.id}`, data);
     },
     onSuccess: () => {
@@ -133,13 +133,13 @@ export default function Kiosk() {
   });
 
   const createItemMutation = useMutation({
-    mutationFn: async (data: { name: string; description: string; category: string; maxStock: number; cost: string; itemType: string }) => {
+    mutationFn: async (data: { name: string; description: string; category: string; maxStock: number; cost: string; itemType: string; lowStockThreshold?: number | null }) => {
       return apiRequest("POST", "/api/items", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/items"] });
       setAddingItem(false);
-      setNewItem({ name: "", description: "", category: "", maxStock: 10, cost: "0.00", itemType: "consumable" });
+      setNewItem({ name: "", description: "", category: "", maxStock: 10, cost: "0.00", itemType: "consumable", lowStockThreshold: null });
       toast({ title: "Item Added", description: "New item has been added to inventory." });
     },
   });
@@ -210,12 +210,25 @@ export default function Kiosk() {
     checkoutMutation.mutate(cart);
   };
 
-  const getStockColor = (stock: number, maxStock: number) => {
+  const getStockColor = (stock: number, maxStock: number, lowStockThreshold?: number | null) => {
+    if (stock <= 0) return "text-red-600";
+    if (lowStockThreshold != null && lowStockThreshold > 0) {
+      if (stock <= lowStockThreshold) return "text-red-500";
+      if (stock <= lowStockThreshold * 2) return "text-yellow-600";
+      return "text-emerald-600";
+    }
     const ratio = stock / maxStock;
-    if (ratio <= 0) return "text-red-600";
     if (ratio <= 0.25) return "text-red-500";
     if (ratio <= 0.5) return "text-yellow-600";
     return "text-emerald-600";
+  };
+
+  const isLowStock = (item: InventoryItem) => {
+    if (item.stock <= 0) return false;
+    if (item.lowStockThreshold != null && item.lowStockThreshold > 0) {
+      return item.stock <= item.lowStockThreshold;
+    }
+    return item.stock === 1;
   };
 
   if (isLoading) {
@@ -288,7 +301,7 @@ export default function Kiosk() {
                             {restockCost > 0 && (
                               <span className="text-[10px] text-muted-foreground">${restockCost.toFixed(2)}</span>
                             )}
-                            <span className={`text-xs font-semibold ${getStockColor(item.stock, item.maxStock)}`}>
+                            <span className={`text-xs font-semibold ${getStockColor(item.stock, item.maxStock, item.lowStockThreshold)}`}>
                               {item.stock}/{item.maxStock}
                             </span>
                           </div>
@@ -357,8 +370,8 @@ export default function Kiosk() {
               return (
                 <Card
                   key={item.id}
-                  className={`relative overflow-visible p-0 ${outOfStock ? "opacity-50" : ""} ${inCart > 0 ? "ring-2 ring-primary shadow-md" : ""} ${item.stock === 1 ? "border-2 border-red-500" : ""}`}
-                  style={item.stock === 1 ? { animation: "blink-red-border 1s ease-in-out infinite" } : undefined}
+                  className={`relative overflow-visible p-0 ${outOfStock ? "opacity-50" : ""} ${inCart > 0 ? "ring-2 ring-primary shadow-md" : ""} ${isLowStock(item) ? "border-2 border-red-500" : ""}`}
+                  style={isLowStock(item) ? { animation: "blink-red-border 1s ease-in-out infinite" } : undefined}
                   data-testid={`item-card-${item.id}`}
                 >
                   <button
@@ -384,7 +397,7 @@ export default function Kiosk() {
                         </div>
                       )}
 
-                      {item.stock === 1 && !outOfStock && (
+                      {isLowStock(item) && (
                         <div
                           className="absolute inset-0 flex items-center justify-center pointer-events-none"
                           style={{ animation: "blink-red 1s ease-in-out infinite" }}
@@ -417,7 +430,7 @@ export default function Kiosk() {
                       )}
                       <div className="mt-1 flex items-center justify-between gap-1">
                         <span
-                          className={`text-sm font-semibold ${getStockColor(item.stock, item.maxStock)}`}
+                          className={`text-sm font-semibold ${getStockColor(item.stock, item.maxStock, item.lowStockThreshold)}`}
                           data-testid={`text-stock-${item.id}`}
                         >
                           {item.stock}/{item.maxStock}
@@ -696,6 +709,21 @@ export default function Kiosk() {
                       </div>
                     </div>
                   </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground">Low Stock Alert (red warning when stock reaches this number)</label>
+                    <input
+                      type="number"
+                      min={0}
+                      className="w-full mt-1 px-3 py-2 bg-card border border-border rounded-md text-sm text-foreground"
+                      value={newItem.lowStockThreshold ?? ""}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setNewItem(prev => ({ ...prev, lowStockThreshold: val === "" ? null : parseInt(val) || 0 }));
+                      }}
+                      placeholder="Leave empty for default (stock = 1)"
+                      data-testid="input-new-low-stock"
+                    />
+                  </div>
                   <div className="flex items-center gap-2 justify-end">
                     <Button variant="ghost" size="sm" onClick={() => setAddingItem(false)} data-testid="button-cancel-add">
                       Cancel
@@ -825,6 +853,21 @@ export default function Kiosk() {
                           </div>
                         </div>
                       </div>
+                      <div>
+                        <label className="text-xs text-muted-foreground">Low Stock Alert (red warning when stock reaches this number)</label>
+                        <input
+                          type="number"
+                          min={0}
+                          className="w-full mt-1 px-2 py-1 bg-card border border-border rounded-md text-sm text-foreground"
+                          value={editingItem.lowStockThreshold ?? ""}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setEditingItem(prev => prev ? { ...prev, lowStockThreshold: val === "" ? null : parseInt(val) || 0 } : null);
+                          }}
+                          placeholder="Leave empty for default (stock = 1)"
+                          data-testid={`input-edit-low-stock-${item.id}`}
+                        />
+                      </div>
                       <div className="flex items-center gap-2 justify-end">
                         <Button variant="ghost" size="sm" onClick={() => setEditingItem(null)} data-testid={`button-cancel-edit-${item.id}`}>
                           Cancel
@@ -840,6 +883,7 @@ export default function Kiosk() {
                             stock: editingItem.stock,
                             cost: editingItem.cost,
                             itemType: editingItem.itemType,
+                            lowStockThreshold: editingItem.lowStockThreshold,
                           })}
                           disabled={updateItemMutation.isPending}
                           data-testid={`button-save-edit-${item.id}`}
@@ -857,12 +901,17 @@ export default function Kiosk() {
                         <p className="text-xs text-muted-foreground truncate">{item.description}</p>
                         <div className="flex items-center gap-2 flex-wrap mt-1">
                           <span className="text-xs text-muted-foreground">{item.category}</span>
-                          <span className={`text-xs font-semibold ${getStockColor(item.stock, item.maxStock)}`}>
+                          <span className={`text-xs font-semibold ${getStockColor(item.stock, item.maxStock, item.lowStockThreshold)}`}>
                             {item.stock}/{item.maxStock}
                           </span>
                           <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${item.itemType === "consumable" ? "bg-blue-100 text-blue-700" : "bg-emerald-100 text-emerald-700"}`} data-testid={`badge-type-${item.id}`}>
                             {item.itemType === "consumable" ? "Consumable" : "Cleaning"}
                           </span>
+                          {item.lowStockThreshold != null && item.lowStockThreshold > 0 && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded font-bold bg-red-100 text-red-700" data-testid={`badge-threshold-${item.id}`}>
+                              Alert: {item.lowStockThreshold}
+                            </span>
+                          )}
                         </div>
                       </div>
                       <div className="flex items-center gap-1">
