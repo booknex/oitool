@@ -1,0 +1,66 @@
+VPS Deployment Guide — Replit to VPS (PM2 + Nginx + PostgreSQL)
+Prerequisites on VPS
+Node.js installed (v18+)
+PM2 installed globally (npm install -g pm2)
+Nginx installed and running
+PostgreSQL installed and running
+Certbot installed (for SSL)
+STEP 1: Build the Production Package on Replit
+Ask the Replit AI:
+
+"Build a production deployment package for my app. Bundle everything into a single dist/index.cjs file with all dependencies included (no npm install needed on VPS). Output the frontend to dist/public/. Create a tar.gz file at /tmp/office-inventory-deploy.tar.gz containing: dist/ folder, ecosystem.config.cjs, .env.example, migration-export.sql, and nginx-site.conf."
+
+This should produce a single .tar.gz file you can download.
+
+STEP 2: Transfer to VPS
+Download the .tar.gz from Replit, then upload it to your VPS:
+
+scp office-inventory-deploy.tar.gz root@187.77.21.175:/tmp/
+STEP 3: Extract and Set Up on VPS
+# Stop the old version
+pm2 stop office-inventory
+# Back up the old version (just in case)
+cp -r /var/www/office-inventory /var/www/office-inventory-backup
+# Extract new files (overwrite dist/ and config files)
+cd /tmp
+tar -xzf office-inventory-deploy.tar.gz
+cp -r office-inventory/dist /var/www/office-inventory/dist
+# DO NOT overwrite .env — it has your production database credentials
+# Only copy new config files if needed:
+# cp office-inventory/ecosystem.config.cjs /var/www/office-inventory/
+STEP 4: Run Database Migration (only if schema changed)
+PGPASSWORD=calc psql -U postgres -h 127.0.0.1 -d office_inventory -f /var/www/office-inventory/migration-export.sql
+STEP 5: Restart the App
+# Delete and recreate the PM2 process (ensures fresh environment)
+pm2 delete office-inventory
+cd /var/www/office-inventory && pm2 start ecosystem.config.cjs
+# Verify it's running
+pm2 logs office-inventory --lines 10
+# Test the API
+curl -s http://localhost:5004/api/items | head -50
+STEP 6: Verify in Browser
+Visit https://app.cleanexinc.com — your updated app should be live.
+
+Troubleshooting Checklist
+Problem	Fix
+App shows 500 errors	Check .env has correct DATABASE_URL with password calc and host 127.0.0.1 or localhost
+PM2 uses old environment	pm2 delete office-inventory then pm2 start ecosystem.config.cjs (don't just restart)
+Wrong site showing in browser	sudo nginx -s reload and try incognito window
+Database connection fails	Test with: PGPASSWORD=calc psql -U postgres -h 127.0.0.1 -d office_inventory -c "SELECT 1;"
+SSL errors	Run: sudo certbot --nginx -d app.cleanexinc.com
+Your .env File (on VPS at /var/www/office-inventory/.env)
+NODE_ENV=production
+PORT=5004
+SESSION_SECRET=calc
+DATABASE_URL=postgresql://postgres:calc@localhost:5432/office_inventory
+Never overwrite this file during deployment — it has your production credentials.
+
+Quick Update (When Only Code Changed, No DB Changes)
+# On your computer:
+scp office-inventory-deploy.tar.gz root@187.77.21.175:/tmp/
+# On VPS:
+cd /tmp && tar -xzf office-inventory-deploy.tar.gz
+cp -r office-inventory/dist /var/www/office-inventory/dist
+pm2 delete office-inventory
+cd /var/www/office-inventory && pm2 start ecosystem.config.cjs
+That's just 4 commands on the VPS for a quick update.
