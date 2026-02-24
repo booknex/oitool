@@ -1,0 +1,77 @@
+root@srv1365851:/var/www/office-inventory# ls -la /var/www/office-inventory/dist/
+ls -la /var/www/office-inventory/dist/public/
+total 5004
+drwxr-xr-x 3 root root    4096 Feb 24 19:13 .
+drwxr-xr-x 5 root root    4096 Feb 24 19:13 ..
+-rw-r--r-- 1 root root 1698872 Feb 24 19:13 index.cjs
+-rw-r--r-- 1 root root 1701505 Feb 24 19:13 index.js
+-rw-r--r-- 1 root root 1701505 Feb 24 19:13 index.mjs
+-rw-r--r-- 1 root root     560 Feb 24 19:13 nginx-site.conf
+drwxr-xr-x 3 root root    4096 Feb 24 19:13 public
+total 16
+drwxr-xr-x 3 root root 4096 Feb 24 19:13 .
+drwxr-xr-x 3 root root 4096 Feb 24 19:13 ..
+drwxr-xr-x 2 root root 4096 Feb 24 19:13 assets
+-rw-r--r-- 1 root root  858 Feb 24 19:13 index.html
+root@srv1365851:/var/www/office-inventory# stat /var/www/office-inventory/dist/index.cjs
+  File: /var/www/office-inventory/dist/index.cjs
+  Size: 1698872         Blocks: 3320       IO Block: 4096   regular file
+Device: 8,1     Inode: 853732      Links: 1
+Access: (0644/-rw-r--r--)  Uid: (    0/    root)   Gid: (    0/    root)
+Access: 2026-02-24 19:13:44.198239742 +0000
+Modify: 2026-02-24 19:13:27.710177467 +0000
+Change: 2026-02-24 19:13:27.710177467 +0000
+ Birth: 2026-02-24 19:13:27.699177426 +0000
+root@srv1365851:/var/www/office-inventory# cat /var/www/office-inventory/ecosystem.config.cjs
+const fs = require('fs');
+const path = require('path');
+
+const envFile = path.resolve(__dirname, '.env');
+const env = {};
+if (fs.existsSync(envFile)) {
+  fs.readFileSync(envFile, 'utf8').split('\n').forEach(line => {
+    line = line.trim();
+    if (line && !line.startsWith('#')) {
+      const [key, ...rest] = line.split('=');
+      env[key.trim()] = rest.join('=').trim();
+    }
+  });
+}
+
+module.exports = {
+  apps: [
+    {
+      name: "office-inventory",
+      script: "dist/index.cjs",
+      cwd: "/var/www/office-inventory",
+      env: {
+        NODE_ENV: "production",
+        PORT: env.PORT || "5004",
+        DATABASE_URL: env.DATABASE_URL,
+        SESSION_SECRET: env.SESSION_SECRET,
+      },
+      watch: false,
+      instances: 1,
+      autorestart: true,
+      max_memory_restart: "256M",
+    },
+  ],
+};
+root@srv1365851:/var/www/office-inventory# curl -s http://localhost:5004/ | head -20
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+    <title>Supply Kiosk - Inventory Management</title>
+    <meta name="description" content="Self-service inventory kiosk for cleaning supply management. Track stock levels, manage supplies, and streamline operations.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script type="module" crossorigin src="/assets/index-hAya7yfM.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-vR_6bB1g.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>root@srv1365851:/var/www/office-inventory# 
