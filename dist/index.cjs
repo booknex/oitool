@@ -39452,7 +39452,8 @@ var inventoryItems = pgTable("inventory_items", {
   maxStock: integer("max_stock").notNull().default(10),
   visible: boolean("visible").notNull().default(true),
   cost: numeric("cost", { precision: 10, scale: 2 }).notNull().default("0"),
-  itemType: text("item_type").notNull().default("consumable")
+  itemType: text("item_type").notNull().default("consumable"),
+  lowStockThreshold: integer("low_stock_threshold")
 });
 var insertItemSchema = createInsertSchema(inventoryItems).omit({ id: true });
 var cartItemSchema = z.object({
@@ -39473,7 +39474,8 @@ var createItemSchema = z.object({
   maxStock: z.number().min(1),
   stock: z.number().min(0).optional(),
   cost: z.string().optional(),
-  itemType: z.enum(["consumable", "cleaning"]).optional()
+  itemType: z.enum(["consumable", "cleaning"]).optional(),
+  lowStockThreshold: z.number().min(0).nullable().optional()
 });
 var updateItemSchema = z.object({
   id: z.number(),
@@ -39484,7 +39486,8 @@ var updateItemSchema = z.object({
   stock: z.number().min(0).optional(),
   visible: z.boolean().optional(),
   cost: z.string().optional(),
-  itemType: z.enum(["consumable", "cleaning"]).optional()
+  itemType: z.enum(["consumable", "cleaning"]).optional(),
+  lowStockThreshold: z.number().min(0).nullable().optional()
 });
 
 // server/db.ts
@@ -39550,7 +39553,8 @@ var DatabaseStorage = class {
       stock,
       visible: true,
       cost: data.cost ?? "0",
-      itemType: data.itemType ?? "consumable"
+      itemType: data.itemType ?? "consumable",
+      lowStockThreshold: data.lowStockThreshold ?? null
     }).returning();
     return item;
   }
@@ -39568,6 +39572,7 @@ var DatabaseStorage = class {
     if (data.visible !== void 0) updates.visible = data.visible;
     if (data.cost !== void 0) updates.cost = data.cost;
     if (data.itemType !== void 0) updates.itemType = data.itemType;
+    if (data.lowStockThreshold !== void 0) updates.lowStockThreshold = data.lowStockThreshold;
     const newMaxStock = updates.maxStock ?? item.maxStock;
     const newStock = updates.stock ?? item.stock;
     if (newStock > newMaxStock) {
