@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { ShoppingCart, Plus, Minus, Trash2, Package, CheckCircle, RotateCcw, ChevronDown, Settings, X, Save, PlusCircle } from "lucide-react";
+import { ShoppingCart, Plus, Minus, Trash2, Package, CheckCircle, RotateCcw, ChevronDown, Settings, X, Save, PlusCircle, Maximize, Minimize } from "lucide-react";
 import { type InventoryItem } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -63,6 +63,7 @@ export default function Kiosk() {
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
   const [addingItem, setAddingItem] = useState(false);
   const [newItem, setNewItem] = useState({ name: "", description: "", category: "", maxStock: 10, cost: "0.00", itemType: "consumable" as "consumable" | "cleaning", lowStockThreshold: null as number | null });
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const restockDropdownRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -75,6 +76,22 @@ export default function Kiosk() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    function onFsChange() {
+      setIsFullscreen(!!document.fullscreenElement);
+    }
+    document.addEventListener("fullscreenchange", onFsChange);
+    return () => document.removeEventListener("fullscreenchange", onFsChange);
+  }, []);
+
+  function toggleFullscreen() {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen();
+    } else {
+      document.exitFullscreen();
+    }
+  }
 
   const { data: items = [], isLoading } = useQuery<InventoryItem[]>({
     queryKey: ["/api/items"],
@@ -241,20 +258,25 @@ export default function Kiosk() {
 
   return (
     <div className="h-screen bg-background flex flex-col overflow-hidden">
-      <header className="px-4 py-3 border-b border-border flex items-center justify-between gap-4 flex-shrink-0">
-        <div className="flex items-center gap-2">
-          <Package className="w-6 h-6 text-primary" />
+      <header className="px-3 py-1.5 border-b border-border flex items-center justify-between gap-2 flex-shrink-0">
+        <div className="flex items-center gap-1.5">
+          <Package className="w-5 h-5 text-primary" />
           <h1
-            className="text-2xl md:text-3xl font-semibold tracking-tight text-foreground"
+            className="text-lg font-semibold tracking-tight text-foreground"
             data-testid="text-heading"
           >
             Supply Kiosk
           </h1>
         </div>
-        <p className="text-sm text-muted-foreground hidden md:block">
-          Select the supplies you need for your property
-        </p>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleFullscreen}
+            data-testid="button-fullscreen-toggle"
+          >
+            {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
+          </Button>
           <Button
             variant="outline"
             size="sm"
