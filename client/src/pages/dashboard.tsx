@@ -93,15 +93,15 @@ function LowStockModule({ onNavigateKiosk }: { onNavigateKiosk: () => void }) {
           style={{ borderBottom: "1px solid rgba(147,197,253,0.20)" }}
         >
           <div>
-            <p className="text-slate-400 text-[9px] uppercase tracking-[0.12em] font-semibold mb-0.5">
+            <p className="text-slate-400 text-[11px] uppercase tracking-[0.10em] font-semibold mb-0.5">
               Order Summary
             </p>
-            <h3 className="text-slate-800 text-[15px] font-semibold tracking-tight">Items to Restock</h3>
+            <h3 className="text-slate-800 text-[18px] font-semibold tracking-tight">Items to Restock</h3>
           </div>
 
           {/* Count pill */}
           <div
-            className="px-3 py-1 rounded-full text-[11px] font-bold tabular-nums"
+            className="px-3 py-1.5 rounded-full text-xs font-bold tabular-nums"
             style={{
               background: isLoading
                 ? "rgba(148,163,184,0.12)"
@@ -142,8 +142,8 @@ function LowStockModule({ onNavigateKiosk }: { onNavigateKiosk: () => void }) {
               >
                 <Check className="w-5 h-5 text-green-500" />
               </div>
-              <p className="text-slate-700 text-sm font-semibold">All stocked up!</p>
-              <p className="text-slate-400 text-xs mt-1 leading-relaxed">No items need restocking.</p>
+              <p className="text-slate-700 text-base font-semibold">All stocked up!</p>
+              <p className="text-slate-400 text-sm mt-1 leading-relaxed">No items need restocking.</p>
             </div>
           ) : (
             <div className="p-3 space-y-2">
@@ -178,19 +178,19 @@ function LowStockModule({ onNavigateKiosk }: { onNavigateKiosk: () => void }) {
 
                     {/* Name + status pill + action */}
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-slate-800 truncate leading-snug">
+                      <p className="text-[15px] font-semibold text-slate-800 truncate leading-snug">
                         {item.name}
                       </p>
-                      <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                      <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
                         {/* Status pill — English */}
                         <span
-                          className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide"
+                          className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wide"
                           style={{ background: statusBg, border: `1px solid ${statusBorder}`, color: statusColor }}
                         >
                           {isOut ? "Out of Stock" : "Low Stock"}
                         </span>
                         {/* Action label — Spanish */}
-                        <span className="text-[10px] text-slate-400 font-medium">
+                        <span className="text-xs text-slate-400 font-medium">
                           {isOut ? "Sin Stock · Ordenar" : `Stock Bajo · ${item.stock}/${item.maxStock}`}
                         </span>
                       </div>
@@ -199,12 +199,12 @@ function LowStockModule({ onNavigateKiosk }: { onNavigateKiosk: () => void }) {
                     {/* Quantity needed */}
                     <div className="flex-shrink-0 text-right">
                       <div
-                        className="px-2.5 py-1 rounded-lg text-[12px] font-bold tabular-nums"
+                        className="px-3 py-1.5 rounded-lg text-[13px] font-bold tabular-nums"
                         style={{ background: qtyBg, border: `1px solid ${qtyBorder}`, color: qtyColor }}
                       >
                         +{needed}
                       </div>
-                      <p className="text-[9px] text-slate-400 mt-0.5 text-center">
+                      <p className="text-[11px] text-slate-400 mt-1 text-center">
                         {isOut ? "order · ordenar" : "restock · reponer"}
                       </p>
                     </div>
