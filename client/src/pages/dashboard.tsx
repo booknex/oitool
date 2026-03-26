@@ -127,6 +127,19 @@ export default function Dashboard() {
       </div>
 
       <div className="flex-1 flex flex-col bg-white overflow-hidden">
+        <div
+          className="md:hidden flex items-center gap-2 px-5 py-3 flex-shrink-0"
+          style={{
+            background: "linear-gradient(135deg, #0F4C5C 0%, #0A3240 100%)",
+          }}
+        >
+          <div className="w-6 h-6 rounded-md bg-white/10 flex items-center justify-center">
+            <Sparkles className="w-3 h-3 text-white" />
+          </div>
+          <span className="text-white font-semibold text-sm tracking-tight">Cleanex</span>
+          <span className="text-white/40 text-xs ml-1">Operations Platform</span>
+        </div>
+
         <div className="flex items-center justify-between px-6 pt-5 pb-4 flex-shrink-0 border-b border-black/5">
           <div>
             <h1 className="text-xl font-semibold text-foreground">Select App</h1>
