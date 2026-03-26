@@ -182,16 +182,16 @@ function LowStockModule({ onNavigateKiosk }: { onNavigateKiosk: () => void }) {
                         {item.name}
                       </p>
                       <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                        {/* Status pill */}
+                        {/* Status pill — English */}
                         <span
                           className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide"
                           style={{ background: statusBg, border: `1px solid ${statusBorder}`, color: statusColor }}
                         >
-                          {isOut ? "Sin Stock" : "Stock Bajo"}
+                          {isOut ? "Out of Stock" : "Low Stock"}
                         </span>
-                        {/* Action label */}
+                        {/* Action label — Spanish */}
                         <span className="text-[10px] text-slate-400 font-medium">
-                          {isOut ? "Necesita ordenarse" : `${item.stock}/${item.maxStock} disponible`}
+                          {isOut ? "Sin Stock · Ordenar" : `Stock Bajo · ${item.stock}/${item.maxStock}`}
                         </span>
                       </div>
                     </div>
@@ -205,7 +205,7 @@ function LowStockModule({ onNavigateKiosk }: { onNavigateKiosk: () => void }) {
                         +{needed}
                       </div>
                       <p className="text-[9px] text-slate-400 mt-0.5 text-center">
-                        {isOut ? "ordenar" : "reponer"}
+                        {isOut ? "order · ordenar" : "restock · reponer"}
                       </p>
                     </div>
                   </div>
