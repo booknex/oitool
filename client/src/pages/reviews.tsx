@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { ArrowLeft, Plus, ExternalLink, Star, Pencil, Trash2, Check, X, RefreshCw } from "lucide-react";
+import { ArrowLeft, Plus, ExternalLink, Star, Pencil, Trash2, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -135,7 +135,6 @@ export default function Reviews() {
   const [deleteId, setDeleteId]     = useState<number | null>(null);
   const [editMode, setEditMode]     = useState(false);
   const [viewingProp, setViewingProp] = useState<Property | null>(null);
-  const [iframeKey, setIframeKey]   = useState(0);
 
   const { data: props = [], isLoading } = useQuery<Property[]>({
     queryKey: ["/api/properties"],
@@ -181,86 +180,63 @@ export default function Reviews() {
 
   const accent = (color: string) => ACCENT_MAP[color] ?? "#2196F3";
 
-  // ── In-app property viewer ─────────────────────────────────────────────────
+  // ── In-app property launch screen ─────────────────────────────────────────
   if (viewingProp) {
     const ac = accent(viewingProp.color);
     return (
-      <div className="h-screen flex flex-col bg-black overflow-hidden">
-        {/* Viewer header */}
-        <div
-          className="flex items-center gap-3 px-4 py-3 flex-shrink-0"
-          style={{ backgroundColor: viewingProp.color, borderBottom: `1px solid ${ac}22` }}
-        >
+      <div className="min-h-screen flex flex-col" style={{ backgroundColor: viewingProp.color }}>
+        {/* Header */}
+        <div className="flex items-center gap-3 px-5 py-4">
           <Button
             size="icon"
             variant="ghost"
             onClick={() => setViewingProp(null)}
             data-testid="button-close-viewer"
-            className="flex-shrink-0"
           >
             <ArrowLeft className="w-5 h-5" style={{ color: ac }} />
           </Button>
+          <span className="text-sm font-medium" style={{ color: `${ac}99` }}>
+            Properties
+          </span>
+        </div>
 
-          <div className="flex-1 min-w-0">
-            <p className="text-[15px] font-semibold truncate" style={{ color: ac }}>
+        {/* Main card */}
+        <div className="flex-1 flex flex-col items-center justify-center px-8 gap-8">
+          {/* Property color dot */}
+          <div
+            className="w-24 h-24 rounded-3xl flex items-center justify-center shadow-lg"
+            style={{ backgroundColor: `${ac}22`, border: `2px solid ${ac}44` }}
+          >
+            <Star className="w-10 h-10" style={{ color: ac }} />
+          </div>
+
+          {/* Property info */}
+          <div className="text-center">
+            <h1 className="text-3xl font-bold mb-2" style={{ color: ac }}>
               {viewingProp.name}
-            </p>
+            </h1>
             {viewingProp.address && (
-              <p className="text-[11px] truncate" style={{ color: `${ac}99` }}>
+              <p className="text-base" style={{ color: `${ac}99` }}>
                 {viewingProp.address}
               </p>
             )}
           </div>
 
-          <div className="flex items-center gap-1 flex-shrink-0">
-            <Button
-              size="icon"
-              variant="ghost"
-              onClick={() => setIframeKey((k) => k + 1)}
-              data-testid="button-reload-viewer"
-              title="Reload"
-            >
-              <RefreshCw className="w-4 h-4" style={{ color: ac }} />
-            </Button>
-            <Button
-              size="icon"
-              variant="ghost"
-              onClick={() => window.open(viewingProp.airbnbUrl, "_blank", "noopener,noreferrer")}
-              data-testid="button-open-external"
-              title="Open in browser"
-            >
-              <ExternalLink className="w-4 h-4" style={{ color: ac }} />
-            </Button>
-          </div>
-        </div>
-
-        {/* Iframe — loaded through server proxy to strip X-Frame-Options */}
-        <iframe
-          key={iframeKey}
-          src={`/api/proxy?url=${encodeURIComponent(viewingProp.airbnbUrl)}`}
-          className="flex-1 w-full border-0"
-          title={viewingProp.name}
-          data-testid="iframe-property-viewer"
-          sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
-        />
-
-        {/* Bottom hint — visible if site blocks embedding */}
-        <div
-          className="flex-shrink-0 flex items-center justify-between px-4 py-2 gap-3"
-          style={{ backgroundColor: viewingProp.color, borderTop: `1px solid ${ac}22` }}
-        >
-          <p className="text-[11px]" style={{ color: `${ac}99` }}>
-            If the page appears blank, the site may block embedding.
-          </p>
+          {/* CTA */}
           <button
             onClick={() => window.open(viewingProp.airbnbUrl, "_blank", "noopener,noreferrer")}
-            className="text-[11px] font-semibold flex items-center gap-1 flex-shrink-0"
-            style={{ color: ac }}
-            data-testid="button-open-external-fallback"
+            data-testid="button-open-reviews"
+            className="flex items-center gap-3 px-8 py-4 rounded-2xl text-white font-semibold text-lg shadow-lg transition-transform active:scale-95"
+            style={{ backgroundColor: ac }}
           >
-            <ExternalLink className="w-3 h-3" />
-            Open in browser
+            <Star className="w-5 h-5" />
+            View Airbnb Reviews
+            <ExternalLink className="w-4 h-4 opacity-70" />
           </button>
+
+          <p className="text-sm text-center" style={{ color: `${ac}66` }}>
+            Opens Airbnb in your browser
+          </p>
         </div>
       </div>
     );
@@ -344,7 +320,6 @@ export default function Reviews() {
                     onClick={() => {
                       if (editMode) return;
                       setViewingProp(prop);
-                      setIframeKey((k) => k + 1);
                     }}
                     disabled={editMode}
                     data-testid={`button-open-property-${prop.id}`}
