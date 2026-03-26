@@ -148,41 +148,65 @@ function LowStockModule({ onNavigateKiosk }: { onNavigateKiosk: () => void }) {
           ) : (
             <div className="p-3 space-y-2">
               {lowItems.map((item) => {
-                const level = stockLevel(item);
-                const isCrit = level === "critical";
-                const needed = item.maxStock - item.stock;
-                const textAccent = isCrit ? "#DC2626" : "#EA580C";
-                const badgeBg    = isCrit ? "rgba(239,68,68,0.10)" : "rgba(249,115,22,0.10)";
-                const badgeBorder= isCrit ? "rgba(239,68,68,0.25)" : "rgba(249,115,22,0.25)";
+                const isOut    = item.stock === 0;
+                const needed   = item.maxStock - item.stock;
+
+                // Colors
+                const imgBg        = isOut ? "#FEE2E2" : "#FFF7ED";
+                const rowBorder    = isOut ? "rgba(239,68,68,0.22)" : "rgba(249,115,22,0.18)";
+                const statusBg     = isOut ? "rgba(239,68,68,0.12)" : "rgba(249,115,22,0.10)";
+                const statusBorder = isOut ? "rgba(239,68,68,0.35)" : "rgba(249,115,22,0.30)";
+                const statusColor  = isOut ? "#DC2626" : "#EA580C";
+                const qtyBg        = isOut ? "rgba(239,68,68,0.08)" : "rgba(249,115,22,0.08)";
+                const qtyBorder    = isOut ? "rgba(239,68,68,0.20)" : "rgba(249,115,22,0.20)";
+                const qtyColor     = isOut ? "#B91C1C" : "#C2410C";
 
                 return (
                   <div
                     key={item.id}
-                    className="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-100"
+                    className="flex items-center gap-3 p-3 bg-white rounded-xl"
+                    style={{ border: `1px solid ${rowBorder}` }}
                     data-testid={`low-stock-item-${item.id}`}
                   >
-                    {/* Item image — same size/style as kiosk cart */}
+                    {/* Image — tinted to reflect urgency */}
                     <img
                       src={itemImages[item.id]}
                       alt={item.name}
                       className="w-14 h-14 object-contain rounded-lg flex-shrink-0"
-                      style={{ backgroundColor: "#E8F4FD" }}
+                      style={{ backgroundColor: imgBg }}
                     />
 
-                    {/* Name + stock status */}
+                    {/* Name + status pill + action */}
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-slate-800 truncate">{item.name}</p>
-                      <p className="text-xs text-slate-400 mt-0.5">
-                        En stock: {item.stock}/{item.maxStock}
+                      <p className="text-sm font-semibold text-slate-800 truncate leading-snug">
+                        {item.name}
                       </p>
+                      <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                        {/* Status pill */}
+                        <span
+                          className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide"
+                          style={{ background: statusBg, border: `1px solid ${statusBorder}`, color: statusColor }}
+                        >
+                          {isOut ? "Sin Stock" : "Stock Bajo"}
+                        </span>
+                        {/* Action label */}
+                        <span className="text-[10px] text-slate-400 font-medium">
+                          {isOut ? "Necesita ordenarse" : `${item.stock}/${item.maxStock} disponible`}
+                        </span>
+                      </div>
                     </div>
 
-                    {/* "Needs N" badge */}
-                    <div
-                      className="flex-shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-bold tabular-nums"
-                      style={{ background: badgeBg, border: `1px solid ${badgeBorder}`, color: textAccent }}
-                    >
-                      +{needed}
+                    {/* Quantity needed */}
+                    <div className="flex-shrink-0 text-right">
+                      <div
+                        className="px-2.5 py-1 rounded-lg text-[12px] font-bold tabular-nums"
+                        style={{ background: qtyBg, border: `1px solid ${qtyBorder}`, color: qtyColor }}
+                      >
+                        +{needed}
+                      </div>
+                      <p className="text-[9px] text-slate-400 mt-0.5 text-center">
+                        {isOut ? "ordenar" : "reponer"}
+                      </p>
                     </div>
                   </div>
                 );
