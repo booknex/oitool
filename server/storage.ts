@@ -2,7 +2,17 @@ import { eq, sql, and, gte } from "drizzle-orm";
 import { db } from "./db";
 import { pool } from "./db";
 import { drizzle } from "drizzle-orm/node-postgres";
-import { inventoryItems, type InventoryItem, type CartItem, type CreateItemPayload, type UpdateItemPayload } from "@shared/schema";
+import {
+  inventoryItems,
+  dashboardApps,
+  type InventoryItem,
+  type CartItem,
+  type CreateItemPayload,
+  type UpdateItemPayload,
+  type DashboardApp,
+  type CreateDashboardAppPayload,
+  type UpdateDashboardAppPayload,
+} from "@shared/schema";
 
 export interface IStorage {
   getItems(): Promise<InventoryItem[]>;
@@ -13,7 +23,60 @@ export interface IStorage {
   createItem(data: CreateItemPayload): Promise<InventoryItem>;
   updateItem(data: UpdateItemPayload): Promise<InventoryItem>;
   deleteItem(id: number): Promise<void>;
+  // Dashboard apps
+  getDashboardApps(): Promise<DashboardApp[]>;
+  createDashboardApp(data: CreateDashboardAppPayload): Promise<DashboardApp>;
+  updateDashboardApp(data: UpdateDashboardAppPayload): Promise<DashboardApp>;
+  deleteDashboardApp(id: number): Promise<void>;
 }
+
+const DEFAULT_DASHBOARD_APPS: Omit<CreateDashboardAppPayload, "sortOrder">[] = [
+  {
+    name: "Supply Kiosk",
+    description: "Manage inventory & cleaning supplies",
+    icon: "Package",
+    color: "#E8F4FD",
+    iconColor: "#2196F3",
+    route: "/kiosk",
+    available: true,
+  },
+  {
+    name: "Reviews",
+    description: "View Airbnb guest feedback",
+    icon: "Star",
+    color: "#FFF8E1",
+    iconColor: "#F59E0B",
+    route: "/reviews",
+    available: false,
+  },
+  {
+    name: "Task Board",
+    description: "Cleaning checklists & assignments",
+    icon: "ClipboardList",
+    color: "#F3E5F5",
+    iconColor: "#9C27B0",
+    route: "/tasks",
+    available: false,
+  },
+  {
+    name: "Reports",
+    description: "Performance stats & analytics",
+    icon: "BarChart3",
+    color: "#E8F5E9",
+    iconColor: "#4CAF50",
+    route: "/reports",
+    available: false,
+  },
+  {
+    name: "Team",
+    description: "Staff management & schedules",
+    icon: "Users",
+    color: "#FBE9E7",
+    iconColor: "#FF5722",
+    route: "/team",
+    available: false,
+  },
+];
 
 export class DatabaseStorage implements IStorage {
   async getItems(): Promise<InventoryItem[]> {
@@ -139,6 +202,73 @@ export class DatabaseStorage implements IStorage {
       throw new Error(`Item with id ${id} not found`);
     }
     await db.delete(inventoryItems).where(eq(inventoryItems.id, id));
+  }
+
+  // ─── Dashboard Apps ────────────────────────────────────────────────────────
+
+  async getDashboardApps(): Promise<DashboardApp[]> {
+    let apps = await db
+      .select()
+      .from(dashboardApps)
+      .orderBy(dashboardApps.sortOrder);
+
+    if (apps.length === 0) {
+      const inserted = await db
+        .insert(dashboardApps)
+        .values(
+          DEFAULT_DASHBOARD_APPS.map((app, i) => ({ ...app, sortOrder: i }))
+        )
+        .returning();
+      apps = inserted.sort((a, b) => a.sortOrder - b.sortOrder);
+    }
+
+    return apps;
+  }
+
+  async createDashboardApp(data: CreateDashboardAppPayload): Promise<DashboardApp> {
+    const [app] = await db
+      .insert(dashboardApps)
+      .values(data)
+      .returning();
+    return app;
+  }
+
+  async updateDashboardApp(data: UpdateDashboardAppPayload): Promise<DashboardApp> {
+    const [existing] = await db
+      .select()
+      .from(dashboardApps)
+      .where(eq(dashboardApps.id, data.id));
+    if (!existing) {
+      throw new Error(`Dashboard app with id ${data.id} not found`);
+    }
+
+    const updates: Partial<typeof dashboardApps.$inferInsert> = {};
+    if (data.name !== undefined) updates.name = data.name;
+    if (data.description !== undefined) updates.description = data.description;
+    if (data.icon !== undefined) updates.icon = data.icon;
+    if (data.color !== undefined) updates.color = data.color;
+    if (data.iconColor !== undefined) updates.iconColor = data.iconColor;
+    if (data.route !== undefined) updates.route = data.route;
+    if (data.available !== undefined) updates.available = data.available;
+    if (data.sortOrder !== undefined) updates.sortOrder = data.sortOrder;
+
+    const [updated] = await db
+      .update(dashboardApps)
+      .set(updates)
+      .where(eq(dashboardApps.id, data.id))
+      .returning();
+    return updated;
+  }
+
+  async deleteDashboardApp(id: number): Promise<void> {
+    const [existing] = await db
+      .select()
+      .from(dashboardApps)
+      .where(eq(dashboardApps.id, id));
+    if (!existing) {
+      throw new Error(`Dashboard app with id ${id} not found`);
+    }
+    await db.delete(dashboardApps).where(eq(dashboardApps.id, id));
   }
 }
 

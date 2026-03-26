@@ -62,3 +62,47 @@ export type CheckoutPayload = z.infer<typeof checkoutSchema>;
 export type RestockPayload = z.infer<typeof restockSchema>;
 export type CreateItemPayload = z.infer<typeof createItemSchema>;
 export type UpdateItemPayload = z.infer<typeof updateItemSchema>;
+
+// ─── Dashboard Apps ───────────────────────────────────────────────────────────
+
+export const dashboardApps = pgTable("dashboard_apps", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description").notNull().default(""),
+  icon: text("icon").notNull().default("Package"),
+  color: text("color").notNull().default("#E8F4FD"),
+  iconColor: text("icon_color").notNull().default("#2196F3"),
+  route: text("route").notNull(),
+  available: boolean("available").notNull().default(false),
+  sortOrder: integer("sort_order").notNull().default(0),
+});
+
+export const insertDashboardAppSchema = createInsertSchema(dashboardApps).omit({ id: true });
+export type InsertDashboardApp = z.infer<typeof insertDashboardAppSchema>;
+export type DashboardApp = typeof dashboardApps.$inferSelect;
+
+export const createDashboardAppSchema = z.object({
+  name: z.string().min(1),
+  description: z.string().default(""),
+  icon: z.string().default("Package"),
+  color: z.string().default("#E8F4FD"),
+  iconColor: z.string().default("#2196F3"),
+  route: z.string().min(1),
+  available: z.boolean().default(false),
+  sortOrder: z.number().default(0),
+});
+
+export const updateDashboardAppSchema = z.object({
+  id: z.number(),
+  name: z.string().min(1).optional(),
+  description: z.string().optional(),
+  icon: z.string().optional(),
+  color: z.string().optional(),
+  iconColor: z.string().optional(),
+  route: z.string().min(1).optional(),
+  available: z.boolean().optional(),
+  sortOrder: z.number().optional(),
+});
+
+export type CreateDashboardAppPayload = z.infer<typeof createDashboardAppSchema>;
+export type UpdateDashboardAppPayload = z.infer<typeof updateDashboardAppSchema>;

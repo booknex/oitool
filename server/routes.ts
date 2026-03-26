@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { checkoutSchema, restockSchema, createItemSchema, updateItemSchema } from "@shared/schema";
+import { checkoutSchema, restockSchema, createItemSchema, updateItemSchema, createDashboardAppSchema, updateDashboardAppSchema } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/items", async (_req, res) => {
@@ -102,6 +102,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Item not found" });
       }
       res.status(500).json({ error: "Failed to delete item" });
+    }
+  });
+
+  // ─── Dashboard Apps ───────────────────────────────────────────────────────
+
+  app.get("/api/dashboard-apps", async (_req, res) => {
+    try {
+      const apps = await storage.getDashboardApps();
+      res.json(apps);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch dashboard apps" });
+    }
+  });
+
+  app.post("/api/dashboard-apps", async (req, res) => {
+    try {
+      const result = createDashboardAppSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid app data", details: result.error.issues });
+      }
+      const app = await storage.createDashboardApp(result.data);
+      res.json(app);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create dashboard app" });
+    }
+  });
+
+  app.patch("/api/dashboard-apps/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid app id" });
+      }
+      const result = updateDashboardAppSchema.safeParse({ ...req.body, id });
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid update data", details: result.error.issues });
+      }
+      const updated = await storage.updateDashboardApp(result.data);
+      res.json(updated);
+    } catch (error) {
+      if (error instanceof Error && error.message.includes("not found")) {
+        return res.status(404).json({ error: "App not found" });
+      }
+      res.status(500).json({ error: "Failed to update dashboard app" });
+    }
+  });
+
+  app.delete("/api/dashboard-apps/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid app id" });
+      }
+      await storage.deleteDashboardApp(id);
+      res.json({ success: true });
+    } catch (error) {
+      if (error instanceof Error && error.message.includes("not found")) {
+        return res.status(404).json({ error: "App not found" });
+      }
+      res.status(500).json({ error: "Failed to delete dashboard app" });
     }
   });
 

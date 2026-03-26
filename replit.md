@@ -6,6 +6,19 @@ A self-service inventory kiosk application for cleaning service operations. Maid
 
 ## Features
 
+### Dashboard Home Screen
+- **Two-panel layout** — Dark teal hero panel on the left (branding/tagline) + clean white app list on the right
+- **App tiles** — Stored in `dashboard_apps` DB table; fetched from `GET /api/dashboard-apps`
+- **Edit mode** — Tap the gear icon (top-right) to enter edit mode:
+  - **Edit** each app tile (name, description, icon, background color, icon color, route, available toggle)
+  - **Delete** a tile (two-tap confirmation)
+  - **Add** a new app tile
+- **Icon picker** — Curated set of Lucide icons selectable via a grid
+- **Color swatches** — Preset background and icon colors to choose from
+- **Live clock** — Shown in the right panel header
+- **Mobile fallback** — Compact teal brand bar shown on small screens when the left panel is hidden
+- Auto-seeds the default 5 apps on first load if the table is empty
+
 ### Inventory Kiosk
 - **Item Grid** - 12 cleaning supply items displayed as cards with custom-generated images
 - **Stock Display** - Each item shows current stock vs max stock (e.g., 3/10) with color-coded indicators:
@@ -83,6 +96,10 @@ Preferred communication style: Simple, everyday language.
   - `POST /api/items` - Create a new item
   - `PATCH /api/items/:id` - Update an existing item
   - `DELETE /api/items/:id` - Delete an item
+  - `GET /api/dashboard-apps` - Fetch all dashboard app tiles (auto-seeds defaults if empty)
+  - `POST /api/dashboard-apps` - Create a new dashboard app tile
+  - `PATCH /api/dashboard-apps/:id` - Update a dashboard app tile
+  - `DELETE /api/dashboard-apps/:id` - Delete a dashboard app tile
 
 **Validation**
 - Zod schemas for runtime type validation
