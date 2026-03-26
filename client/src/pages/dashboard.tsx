@@ -17,6 +17,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import type { DashboardApp, InventoryItem } from "@shared/schema";
+import { itemImages } from "@/lib/itemData";
 
 // ─── Icon registry ────────────────────────────────────────────────────────────
 
@@ -150,44 +151,38 @@ function LowStockModule({ onNavigateKiosk }: { onNavigateKiosk: () => void }) {
                 const level = stockLevel(item);
                 const isCrit = level === "critical";
                 const needed = item.maxStock - item.stock;
-                const pct = Math.round((item.stock / item.maxStock) * 100);
-
-                const dotColor   = isCrit ? "#EF4444" : "#F97316";
-                const rowBg      = isCrit ? "rgba(239,68,68,0.06)"  : "rgba(249,115,22,0.06)";
-                const rowBorder  = isCrit ? "rgba(239,68,68,0.18)"  : "rgba(249,115,22,0.18)";
-                const barColor   = isCrit ? "#EF4444" : "#F97316";
                 const textAccent = isCrit ? "#DC2626" : "#EA580C";
+                const badgeBg    = isCrit ? "rgba(239,68,68,0.10)" : "rgba(249,115,22,0.10)";
+                const badgeBorder= isCrit ? "rgba(239,68,68,0.25)" : "rgba(249,115,22,0.25)";
 
                 return (
                   <div
                     key={item.id}
-                    className="flex items-center gap-3 px-3 py-3 rounded-2xl"
-                    style={{ background: rowBg, border: `1px solid ${rowBorder}` }}
+                    className="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-100"
                     data-testid={`low-stock-item-${item.id}`}
                   >
-                    {/* Glowing dot */}
-                    <div
-                      className="w-2 h-2 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: dotColor, boxShadow: `0 0 6px ${dotColor}70` }}
+                    {/* Item image — same size/style as kiosk cart */}
+                    <img
+                      src={itemImages[item.id]}
+                      alt={item.name}
+                      className="w-14 h-14 object-contain rounded-lg flex-shrink-0"
+                      style={{ backgroundColor: "#E8F4FD" }}
                     />
 
-                    {/* Name + bar */}
+                    {/* Name + stock status */}
                     <div className="flex-1 min-w-0">
-                      <p className="text-slate-800 text-[12px] font-semibold truncate leading-tight">{item.name}</p>
-                      <div className="mt-1.5 h-1 rounded-full overflow-hidden bg-slate-200">
-                        <div
-                          className="h-full rounded-full transition-all"
-                          style={{ width: `${pct}%`, background: barColor }}
-                        />
-                      </div>
+                      <p className="text-sm font-semibold text-slate-800 truncate">{item.name}</p>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        En stock: {item.stock}/{item.maxStock}
+                      </p>
                     </div>
 
-                    {/* Stock nums */}
-                    <div className="text-right flex-shrink-0 ml-1">
-                      <p className="text-[12px] font-bold tabular-nums leading-tight" style={{ color: textAccent }}>
-                        {item.stock}<span className="text-slate-300 font-normal">/{item.maxStock}</span>
-                      </p>
-                      <p className="text-slate-400 text-[10px] tabular-nums">+{needed} needed</p>
+                    {/* "Needs N" badge */}
+                    <div
+                      className="flex-shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-bold tabular-nums"
+                      style={{ background: badgeBg, border: `1px solid ${badgeBorder}`, color: textAccent }}
+                    >
+                      +{needed}
                     </div>
                   </div>
                 );
