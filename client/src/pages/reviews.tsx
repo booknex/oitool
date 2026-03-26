@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { ArrowLeft, Plus, ExternalLink, Star, Pencil, Trash2, Check, X } from "lucide-react";
+import { ArrowLeft, Plus, Star, Pencil, Trash2, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -134,7 +134,6 @@ export default function Reviews() {
   const [editTarget, setEditTarget] = useState<Property | null>(null);
   const [deleteId, setDeleteId]     = useState<number | null>(null);
   const [editMode, setEditMode]     = useState(false);
-  const [viewingProp, setViewingProp] = useState<Property | null>(null);
 
   const { data: props = [], isLoading } = useQuery<Property[]>({
     queryKey: ["/api/properties"],
@@ -179,68 +178,6 @@ export default function Reviews() {
   };
 
   const accent = (color: string) => ACCENT_MAP[color] ?? "#2196F3";
-
-  // ── In-app property launch screen ─────────────────────────────────────────
-  if (viewingProp) {
-    const ac = accent(viewingProp.color);
-    return (
-      <div className="min-h-screen flex flex-col" style={{ backgroundColor: viewingProp.color }}>
-        {/* Header */}
-        <div className="flex items-center gap-3 px-5 py-4">
-          <Button
-            size="icon"
-            variant="ghost"
-            onClick={() => setViewingProp(null)}
-            data-testid="button-close-viewer"
-          >
-            <ArrowLeft className="w-5 h-5" style={{ color: ac }} />
-          </Button>
-          <span className="text-sm font-medium" style={{ color: `${ac}99` }}>
-            Properties
-          </span>
-        </div>
-
-        {/* Main card */}
-        <div className="flex-1 flex flex-col items-center justify-center px-8 gap-8">
-          {/* Property color dot */}
-          <div
-            className="w-24 h-24 rounded-3xl flex items-center justify-center shadow-lg"
-            style={{ backgroundColor: `${ac}22`, border: `2px solid ${ac}44` }}
-          >
-            <Star className="w-10 h-10" style={{ color: ac }} />
-          </div>
-
-          {/* Property info */}
-          <div className="text-center">
-            <h1 className="text-3xl font-bold mb-2" style={{ color: ac }}>
-              {viewingProp.name}
-            </h1>
-            {viewingProp.address && (
-              <p className="text-base" style={{ color: `${ac}99` }}>
-                {viewingProp.address}
-              </p>
-            )}
-          </div>
-
-          {/* CTA */}
-          <button
-            onClick={() => window.open(viewingProp.airbnbUrl, "_blank", "noopener,noreferrer")}
-            data-testid="button-open-reviews"
-            className="flex items-center gap-3 px-8 py-4 rounded-2xl text-white font-semibold text-lg shadow-lg transition-transform active:scale-95"
-            style={{ backgroundColor: ac }}
-          >
-            <Star className="w-5 h-5" />
-            View Airbnb Reviews
-            <ExternalLink className="w-4 h-4 opacity-70" />
-          </button>
-
-          <p className="text-sm text-center" style={{ color: `${ac}66` }}>
-            Opens Airbnb in your browser
-          </p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-[#F7F7F8]">
@@ -319,7 +256,7 @@ export default function Reviews() {
                     }}
                     onClick={() => {
                       if (editMode) return;
-                      setViewingProp(prop);
+                      window.open(prop.airbnbUrl, "_blank", "noopener,noreferrer");
                     }}
                     disabled={editMode}
                     data-testid={`button-open-property-${prop.id}`}
