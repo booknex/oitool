@@ -219,11 +219,11 @@ export default function Reviews() {
       </div>
 
       {/* ── Grid ── */}
-      <div className="p-5">
+      <div className="p-4">
         {isLoading ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
             {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="aspect-square rounded-2xl animate-pulse bg-slate-200" />
+              <div key={i} className="aspect-square rounded-xl animate-pulse bg-slate-200" />
             ))}
           </div>
         ) : props.length === 0 ? (
@@ -239,7 +239,7 @@ export default function Reviews() {
             </Button>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
             {props.map((prop) => {
               const ac = accent(prop.color);
               const isConfirmingDelete = deleteId === prop.id;
@@ -248,7 +248,7 @@ export default function Reviews() {
                 <div key={prop.id} className="relative" data-testid={`property-card-${prop.id}`}>
                   {/* Main square card */}
                   <button
-                    className="w-full aspect-square rounded-2xl flex flex-col items-start justify-end p-4 text-left transition-transform active:scale-[0.97] relative overflow-hidden group"
+                    className="w-full aspect-square rounded-xl flex flex-col items-start justify-end p-3 text-left transition-transform active:scale-[0.97] relative overflow-hidden group"
                     style={{
                       backgroundColor: prop.color,
                       border: `1px solid ${ac}22`,
@@ -263,32 +263,32 @@ export default function Reviews() {
                   >
                     {/* Star icon top-left */}
                     <div
-                      className="absolute top-3 left-3 w-9 h-9 rounded-xl flex items-center justify-center"
+                      className="absolute top-2 left-2 w-7 h-7 rounded-lg flex items-center justify-center"
                       style={{ backgroundColor: `${ac}18` }}
                     >
-                      <Star className="w-5 h-5" style={{ color: ac }} />
+                      <Star className="w-3.5 h-3.5" style={{ color: ac }} />
                     </div>
 
                     {/* External link icon top-right (visible on hover when not in edit mode) */}
                     {!editMode && (
                       <div
-                        className="absolute top-3 right-3 w-7 h-7 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="absolute top-2 right-2 w-6 h-6 rounded-md flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                         style={{ backgroundColor: `${ac}20` }}
                       >
-                        <ExternalLink className="w-3.5 h-3.5" style={{ color: ac }} />
+                        <ExternalLink className="w-3 h-3" style={{ color: ac }} />
                       </div>
                     )}
 
                     {/* Property name + address */}
                     <div className="w-full">
                       <p
-                        className="text-[15px] font-bold leading-snug line-clamp-2"
+                        className="text-[12px] font-bold leading-snug line-clamp-2"
                         style={{ color: ac }}
                       >
                         {prop.name}
                       </p>
                       {prop.address && (
-                        <p className="text-[11px] mt-0.5 truncate" style={{ color: `${ac}99` }}>
+                        <p className="text-[10px] mt-0.5 truncate" style={{ color: `${ac}99` }}>
                           {prop.address}
                         </p>
                       )}
