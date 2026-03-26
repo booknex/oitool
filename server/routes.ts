@@ -165,6 +165,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ─── URL Proxy (strips X-Frame-Options so pages embed in the app) ───────────
+
+  app.get("/api/proxy", async (req, res) => {
+    const targetUrl = req.query.url as string;
+    if (!targetUrl) return res.status(400).send("URL required");
+
+    try {
+      const response = await fetch(targetUrl, {
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
+          Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+          "Accept-Language": "en-US,en;q=0.9",
+        },
+        redirect: "follow",
+      });
+
+      const contentType = response.headers.get("content-type") ?? "text/html";
+      res.set("Content-Type", contentType);
+
+      // Strip all frame-blocking headers — do NOT forward them
+      // (X-Frame-Options, Content-Security-Policy omitted intentionally)
+
+      if (contentType.includes("text/html")) {
+        let html = await response.text();
+        // Inject <base> so relative URLs resolve against the original origin
+        const origin = new URL(targetUrl).origin;
+        html = html.replace(/(<head[^>]*>)/i, `$1<base href="${origin}/">`);
+        res.send(html);
+      } else {
+        const buf = await response.arrayBuffer();
+        res.send(Buffer.from(buf));
+      }
+    } catch {
+      res.status(502).send("Failed to fetch the requested URL.");
+    }
+  });
+
   // ─── Properties ──────────────────────────────────────────────────────────────
 
   app.get("/api/properties", async (_req, res) => {

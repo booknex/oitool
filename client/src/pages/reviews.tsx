@@ -234,10 +234,10 @@ export default function Reviews() {
           </div>
         </div>
 
-        {/* Iframe */}
+        {/* Iframe — loaded through server proxy to strip X-Frame-Options */}
         <iframe
           key={iframeKey}
-          src={viewingProp.airbnbUrl}
+          src={`/api/proxy?url=${encodeURIComponent(viewingProp.airbnbUrl)}`}
           className="flex-1 w-full border-0"
           title={viewingProp.name}
           data-testid="iframe-property-viewer"
