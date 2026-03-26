@@ -4,10 +4,11 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import {
   Package, ClipboardList, Star, BarChart3, Users, ChevronRight,
-  Sparkles, Settings2, Pencil, Trash2, Plus, X, Check,
+  Sparkles, Settings2, Pencil, Trash2, Plus, Check,
   Home, Calendar, Truck, ShoppingCart, Bell, FileText,
   Phone, Zap, DollarSign, Globe, Wrench, Droplet, Archive,
-  Lock, Coffee, AlertCircle, BookOpen, Camera,
+  Lock, Coffee, AlertCircle, BookOpen, Camera, ShoppingBag,
+  ArrowRight,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -15,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import type { DashboardApp } from "@shared/schema";
+import type { DashboardApp, InventoryItem } from "@shared/schema";
 
 // ─── Icon registry ────────────────────────────────────────────────────────────
 
@@ -41,6 +42,137 @@ const ICON_COLORS = [
   "#E91E63", "#00BCD4", "#FF9800", "#3F51B5", "#009688",
   "#795548", "#607D8B", "#F44336", "#8BC34A", "#673AB7",
 ];
+
+// ─── Stock helpers ────────────────────────────────────────────────────────────
+
+function isLowStock(item: InventoryItem): boolean {
+  if (item.stock === 0) return true;
+  if (item.lowStockThreshold !== null && item.lowStockThreshold !== undefined) {
+    return item.stock <= item.lowStockThreshold;
+  }
+  return item.stock / item.maxStock <= 0.25;
+}
+
+function stockLevel(item: InventoryItem): "critical" | "low" | "ok" {
+  if (item.stock === 0) return "critical";
+  const pct = item.stock / item.maxStock;
+  if (pct <= 0.10) return "critical";
+  return "low";
+}
+
+// ─── Low Stock Module ─────────────────────────────────────────────────────────
+
+function LowStockModule({ onNavigateKiosk }: { onNavigateKiosk: () => void }) {
+  const { data: items = [], isLoading } = useQuery<InventoryItem[]>({
+    queryKey: ["/api/items"],
+    refetchInterval: 30_000,
+  });
+
+  const lowItems = items
+    .filter((item) => item.visible && isLowStock(item))
+    .sort((a, b) => (a.stock / a.maxStock) - (b.stock / b.maxStock));
+
+  return (
+    <div className="relative z-10 flex flex-col flex-1 min-h-0 mt-4">
+      {/* Card */}
+      <div className="flex flex-col flex-1 min-h-0 rounded-2xl overflow-hidden"
+           style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.10)" }}>
+
+        {/* Card header */}
+        <div className="flex items-center justify-between px-4 pt-4 pb-3 flex-shrink-0"
+             style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+          <div>
+            <p className="text-white/50 text-[10px] uppercase tracking-widest font-medium mb-0.5">
+              Order Summary
+            </p>
+            <h3 className="text-white text-sm font-semibold">Items to Restock</h3>
+          </div>
+          <div
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold"
+            style={{ background: isLoading ? "rgba(255,255,255,0.08)" : lowItems.length > 0 ? "rgba(239,68,68,0.25)" : "rgba(77,217,192,0.20)" }}
+            data-testid="low-stock-count"
+          >
+            <span className={isLoading ? "text-white/40" : lowItems.length > 0 ? "text-red-300" : "text-[#4DD9C0]"}>
+              {isLoading ? "—" : `${lowItems.length} item${lowItems.length !== 1 ? "s" : ""}`}
+            </span>
+          </div>
+        </div>
+
+        {/* List */}
+        <div className="flex-1 overflow-y-auto">
+          {isLoading ? (
+            <div className="p-4 space-y-3">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="h-10 rounded-lg animate-pulse" style={{ background: "rgba(255,255,255,0.06)" }} />
+              ))}
+            </div>
+          ) : lowItems.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full py-8 text-center px-4">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3"
+                   style={{ background: "rgba(77,217,192,0.15)" }}>
+                <Check className="w-5 h-5 text-[#4DD9C0]" />
+              </div>
+              <p className="text-white/70 text-sm font-medium">All stocked up!</p>
+              <p className="text-white/35 text-xs mt-1">No items need restocking right now.</p>
+            </div>
+          ) : (
+            <div className="p-3 space-y-1.5">
+              {lowItems.map((item) => {
+                const level = stockLevel(item);
+                const dotColor = level === "critical" ? "#ef4444" : "#f59e0b";
+                const bgColor = level === "critical" ? "rgba(239,68,68,0.08)" : "rgba(245,158,11,0.08)";
+                const needed = item.maxStock - item.stock;
+
+                return (
+                  <div
+                    key={item.id}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl"
+                    style={{ background: bgColor }}
+                    data-testid={`low-stock-item-${item.id}`}
+                  >
+                    {/* Indicator dot */}
+                    <div
+                      className="w-2 h-2 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: dotColor, boxShadow: `0 0 6px ${dotColor}80` }}
+                    />
+
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white text-xs font-medium truncate">{item.name}</p>
+                      <p className="text-white/45 text-[10px] truncate">{item.category}</p>
+                    </div>
+
+                    <div className="text-right flex-shrink-0">
+                      <p className="text-white/90 text-xs font-semibold tabular-nums">
+                        {item.stock}/{item.maxStock}
+                      </p>
+                      <p className="text-white/40 text-[10px] tabular-nums">
+                        need {needed}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Footer button */}
+        <div className="p-3 flex-shrink-0" style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+          <button
+            onClick={onNavigateKiosk}
+            data-testid="button-go-to-kiosk"
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all"
+            style={{ background: "rgba(77,217,192,0.18)", color: "#4DD9C0", border: "1px solid rgba(77,217,192,0.25)" }}
+          >
+            <ShoppingBag className="w-4 h-4" />
+            Open Supply Kiosk
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ─── Clock ─────────────────────────────────────────────────────────────────────
 
@@ -123,16 +255,14 @@ function AppFormModal({
             >
               <PreviewIcon className="w-7 h-7" style={{ color: form.iconColor }} />
             </div>
-            <div className="flex-1 space-y-2">
-              <div>
-                <Label className="text-xs text-muted-foreground mb-1 block">Name</Label>
-                <Input
-                  value={form.name}
-                  onChange={(e) => set("name", e.target.value)}
-                  placeholder="App name"
-                  data-testid="input-app-name"
-                />
-              </div>
+            <div className="flex-1">
+              <Label className="text-xs text-muted-foreground mb-1 block">Name</Label>
+              <Input
+                value={form.name}
+                onChange={(e) => set("name", e.target.value)}
+                placeholder="App name"
+                data-testid="input-app-name"
+              />
             </div>
           </div>
 
@@ -347,24 +477,25 @@ export default function Dashboard() {
 
   return (
     <div className="h-screen flex overflow-hidden select-none bg-[#F7F7F8]">
-      {/* ── Left hero panel ─────────────────────────────────────────────── */}
+      {/* ── Left panel ──────────────────────────────────────────────────── */}
       <div
-        className="hidden md:flex w-[38%] flex-shrink-0 flex-col justify-between p-8 relative overflow-hidden"
+        className="hidden md:flex w-[38%] flex-shrink-0 flex-col p-6 relative overflow-hidden"
         style={{
           background: "linear-gradient(160deg, #0F4C5C 0%, #0A3240 50%, #061E29 100%)",
         }}
       >
+        {/* Background glow */}
         <div
           className="absolute inset-0 opacity-10"
           style={{
-            backgroundImage: `radial-gradient(circle at 20% 50%, #4DD9C0 0%, transparent 60%),
-                              radial-gradient(circle at 80% 20%, #38BDF8 0%, transparent 50%),
-                              radial-gradient(circle at 60% 80%, #0EA5E9 0%, transparent 40%)`,
+            backgroundImage: `radial-gradient(circle at 20% 30%, #4DD9C0 0%, transparent 60%),
+                              radial-gradient(circle at 80% 70%, #38BDF8 0%, transparent 50%)`,
           }}
         />
 
-        <div className="relative z-10">
-          <div className="flex items-center gap-2 mb-1">
+        {/* Brand */}
+        <div className="relative z-10 flex-shrink-0">
+          <div className="flex items-center gap-2 mb-0.5">
             <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
               <Sparkles className="w-4 h-4 text-white" />
             </div>
@@ -373,21 +504,8 @@ export default function Dashboard() {
           <p className="text-white/40 text-xs ml-10">Operations Platform</p>
         </div>
 
-        <div className="relative z-10">
-          <p className="text-white/40 text-xs uppercase tracking-widest mb-3 font-medium">
-            Empowering your team
-          </p>
-          <h2 className="text-white text-4xl font-bold leading-tight">
-            Cleaning
-            <br />
-            Operations
-            <br />
-            <span className="text-[#4DD9C0]">Made Simple</span>
-          </h2>
-          <p className="text-white/50 text-sm mt-4 leading-relaxed max-w-xs">
-            Everything your cleaning team needs, in one place.
-          </p>
-        </div>
+        {/* Low-stock module */}
+        <LowStockModule onNavigateKiosk={() => navigate("/kiosk")} />
       </div>
 
       {/* ── Right panel ──────────────────────────────────────────────────── */}
@@ -502,7 +620,6 @@ export default function Dashboard() {
               })
             )}
 
-            {/* Add App button — only in edit mode */}
             {editMode && (
               <button
                 onClick={openAdd}
@@ -516,18 +633,12 @@ export default function Dashboard() {
               </button>
             )}
 
-            {/* Dismiss confirm-delete hint */}
             {editMode && deletingId !== null && (
               <div className="flex items-center gap-2 px-1">
                 <AlertCircle className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
                 <p className="text-xs text-muted-foreground">
                   Tap the red trash icon again to confirm deletion.{" "}
-                  <button
-                    className="underline"
-                    onClick={() => setDeletingId(null)}
-                  >
-                    Cancel
-                  </button>
+                  <button className="underline" onClick={() => setDeletingId(null)}>Cancel</button>
                 </p>
               </div>
             )}
