@@ -60,7 +60,7 @@ function stockLevel(item: InventoryItem): "critical" | "low" | "ok" {
   return "low";
 }
 
-// ─── Low Stock Module ─────────────────────────────────────────────────────────
+// ─── Low Stock Module (Liquid Glass) ──────────────────────────────────────────
 
 function LowStockModule({ onNavigateKiosk }: { onNavigateKiosk: () => void }) {
   const { data: items = [], isLoading } = useQuery<InventoryItem[]>({
@@ -72,81 +72,159 @@ function LowStockModule({ onNavigateKiosk }: { onNavigateKiosk: () => void }) {
     .filter((item) => item.visible && isLowStock(item))
     .sort((a, b) => (a.stock / a.maxStock) - (b.stock / b.maxStock));
 
+  const hasCritical = lowItems.some((i) => stockLevel(i) === "critical");
+
   return (
-    <div className="relative z-10 flex flex-col flex-1 min-h-0 mt-4">
-      {/* Card */}
-      <div className="flex flex-col flex-1 min-h-0 rounded-2xl overflow-hidden"
-           style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.10)" }}>
+    <div className="relative z-10 flex flex-col flex-1 min-h-0 mt-5">
+      {/* Outer glass card */}
+      <div
+        className="flex flex-col flex-1 min-h-0 rounded-3xl overflow-hidden relative"
+        style={{
+          background: "linear-gradient(145deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.07) 50%, rgba(255,255,255,0.12) 100%)",
+          border: "1px solid rgba(255,255,255,0.22)",
+          boxShadow: "0 8px 32px rgba(0,0,0,0.35), 0 2px 8px rgba(0,0,0,0.20), inset 0 1px 0 rgba(255,255,255,0.25)",
+          backdropFilter: "blur(24px)",
+        }}
+      >
+        {/* Specular highlight stripe at top */}
+        <div
+          className="absolute top-0 left-6 right-6 h-px rounded-full pointer-events-none"
+          style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.55), transparent)" }}
+        />
 
         {/* Card header */}
-        <div className="flex items-center justify-between px-4 pt-4 pb-3 flex-shrink-0"
-             style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+        <div
+          className="flex items-center justify-between px-4 pt-4 pb-3 flex-shrink-0"
+          style={{ borderBottom: "1px solid rgba(255,255,255,0.10)" }}
+        >
           <div>
-            <p className="text-white/50 text-[10px] uppercase tracking-widest font-medium mb-0.5">
+            <p className="text-white/45 text-[9px] uppercase tracking-[0.12em] font-semibold mb-0.5">
               Order Summary
             </p>
-            <h3 className="text-white text-sm font-semibold">Items to Restock</h3>
+            <h3 className="text-white text-[15px] font-semibold tracking-tight">Items to Restock</h3>
           </div>
+
+          {/* Count pill */}
           <div
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold"
-            style={{ background: isLoading ? "rgba(255,255,255,0.08)" : lowItems.length > 0 ? "rgba(239,68,68,0.25)" : "rgba(77,217,192,0.20)" }}
+            className="px-3 py-1 rounded-full text-[11px] font-bold tabular-nums"
+            style={{
+              background: isLoading
+                ? "rgba(255,255,255,0.08)"
+                : lowItems.length > 0
+                  ? hasCritical
+                    ? "linear-gradient(135deg, rgba(255,59,48,0.45), rgba(255,59,48,0.25))"
+                    : "linear-gradient(135deg, rgba(255,149,0,0.45), rgba(255,149,0,0.25))"
+                  : "linear-gradient(135deg, rgba(52,199,89,0.40), rgba(52,199,89,0.20))",
+              border: isLoading
+                ? "1px solid rgba(255,255,255,0.10)"
+                : lowItems.length > 0
+                  ? hasCritical ? "1px solid rgba(255,59,48,0.50)" : "1px solid rgba(255,149,0,0.45)"
+                  : "1px solid rgba(52,199,89,0.45)",
+              color: isLoading ? "rgba(255,255,255,0.35)"
+                : lowItems.length > 0
+                  ? hasCritical ? "#FF6B6B" : "#FFB84D"
+                  : "#6EE7A0",
+              boxShadow: lowItems.length > 0 && !isLoading
+                ? hasCritical
+                  ? "0 0 12px rgba(255,59,48,0.25)"
+                  : "0 0 12px rgba(255,149,0,0.25)"
+                : "none",
+            }}
             data-testid="low-stock-count"
           >
-            <span className={isLoading ? "text-white/40" : lowItems.length > 0 ? "text-red-300" : "text-[#4DD9C0]"}>
-              {isLoading ? "—" : `${lowItems.length} item${lowItems.length !== 1 ? "s" : ""}`}
-            </span>
+            {isLoading ? "—" : `${lowItems.length} item${lowItems.length !== 1 ? "s" : ""}`}
           </div>
         </div>
 
-        {/* List */}
+        {/* Scrollable list */}
         <div className="flex-1 overflow-y-auto">
           {isLoading ? (
-            <div className="p-4 space-y-3">
+            <div className="p-3 space-y-2">
               {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="h-10 rounded-lg animate-pulse" style={{ background: "rgba(255,255,255,0.06)" }} />
+                <div
+                  key={i}
+                  className="h-[52px] rounded-2xl animate-pulse"
+                  style={{ background: "rgba(255,255,255,0.06)" }}
+                />
               ))}
             </div>
           ) : lowItems.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full py-8 text-center px-4">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3"
-                   style={{ background: "rgba(77,217,192,0.15)" }}>
-                <Check className="w-5 h-5 text-[#4DD9C0]" />
+              <div
+                className="w-12 h-12 rounded-2xl flex items-center justify-center mb-3 relative"
+                style={{
+                  background: "linear-gradient(135deg, rgba(52,199,89,0.25), rgba(52,199,89,0.10))",
+                  border: "1px solid rgba(52,199,89,0.30)",
+                  boxShadow: "0 0 20px rgba(52,199,89,0.15)",
+                }}
+              >
+                <Check className="w-5 h-5 text-[#34C759]" />
               </div>
-              <p className="text-white/70 text-sm font-medium">All stocked up!</p>
-              <p className="text-white/35 text-xs mt-1">No items need restocking right now.</p>
+              <p className="text-white/80 text-sm font-semibold">All stocked up!</p>
+              <p className="text-white/35 text-xs mt-1 leading-relaxed">No items need restocking.</p>
             </div>
           ) : (
-            <div className="p-3 space-y-1.5">
+            <div className="p-3 space-y-2">
               {lowItems.map((item) => {
                 const level = stockLevel(item);
-                const dotColor = level === "critical" ? "#ef4444" : "#f59e0b";
-                const bgColor = level === "critical" ? "rgba(239,68,68,0.08)" : "rgba(245,158,11,0.08)";
+                const isCrit = level === "critical";
                 const needed = item.maxStock - item.stock;
+                const pct = Math.round((item.stock / item.maxStock) * 100);
+
+                // iOS system colors
+                const dotColor   = isCrit ? "#FF3B30" : "#FF9500";
+                const rowBg      = isCrit ? "rgba(255,59,48,0.14)"  : "rgba(255,149,0,0.12)";
+                const rowBorder  = isCrit ? "rgba(255,59,48,0.30)"  : "rgba(255,149,0,0.28)";
+                const dotGlow    = isCrit ? "0 0 8px rgba(255,59,48,0.9), 0 0 20px rgba(255,59,48,0.45)" : "0 0 8px rgba(255,149,0,0.9), 0 0 20px rgba(255,149,0,0.45)";
+                const barColor   = isCrit ? "#FF3B30" : "#FF9500";
+                const textAccent = isCrit ? "#FF6B6B" : "#FFB84D";
 
                 return (
                   <div
                     key={item.id}
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl"
-                    style={{ background: bgColor }}
+                    className="flex items-center gap-3 px-3 py-3 rounded-2xl relative overflow-hidden"
+                    style={{
+                      background: rowBg,
+                      border: `1px solid ${rowBorder}`,
+                      boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08)",
+                    }}
                     data-testid={`low-stock-item-${item.id}`}
                   >
-                    {/* Indicator dot */}
+                    {/* Specular top on row */}
                     <div
-                      className="w-2 h-2 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: dotColor, boxShadow: `0 0 6px ${dotColor}80` }}
+                      className="absolute top-0 left-4 right-4 h-px pointer-events-none"
+                      style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.20), transparent)" }}
                     />
 
+                    {/* Glowing dot */}
+                    <div
+                      className="w-2 h-2 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: dotColor, boxShadow: dotGlow }}
+                    />
+
+                    {/* Name + bar */}
                     <div className="flex-1 min-w-0">
-                      <p className="text-white text-xs font-medium truncate">{item.name}</p>
-                      <p className="text-white/45 text-[10px] truncate">{item.category}</p>
+                      <p className="text-white text-[12px] font-semibold truncate leading-tight">{item.name}</p>
+                      {/* Mini progress bar */}
+                      <div className="mt-1.5 h-1 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.10)" }}>
+                        <div
+                          className="h-full rounded-full transition-all"
+                          style={{
+                            width: `${pct}%`,
+                            background: `linear-gradient(90deg, ${barColor}, ${barColor}CC)`,
+                            boxShadow: `0 0 6px ${barColor}80`,
+                          }}
+                        />
+                      </div>
                     </div>
 
-                    <div className="text-right flex-shrink-0">
-                      <p className="text-white/90 text-xs font-semibold tabular-nums">
-                        {item.stock}/{item.maxStock}
+                    {/* Stock nums */}
+                    <div className="text-right flex-shrink-0 ml-1">
+                      <p className="text-[12px] font-bold tabular-nums leading-tight" style={{ color: textAccent }}>
+                        {item.stock}<span className="text-white/35 font-normal">/{item.maxStock}</span>
                       </p>
-                      <p className="text-white/40 text-[10px] tabular-nums">
-                        need {needed}
+                      <p className="text-white/35 text-[10px] tabular-nums">
+                        +{needed} needed
                       </p>
                     </div>
                   </div>
@@ -156,17 +234,29 @@ function LowStockModule({ onNavigateKiosk }: { onNavigateKiosk: () => void }) {
           )}
         </div>
 
-        {/* Footer button */}
-        <div className="p-3 flex-shrink-0" style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+        {/* Footer — glass pill button */}
+        <div
+          className="p-3 flex-shrink-0"
+          style={{ borderTop: "1px solid rgba(255,255,255,0.10)" }}
+        >
           <button
             onClick={onNavigateKiosk}
             data-testid="button-go-to-kiosk"
-            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all"
-            style={{ background: "rgba(77,217,192,0.18)", color: "#4DD9C0", border: "1px solid rgba(77,217,192,0.25)" }}
+            className="w-full relative flex items-center justify-center gap-2 py-3 rounded-2xl text-[13px] font-semibold text-white transition-all overflow-hidden"
+            style={{
+              background: "linear-gradient(145deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.10) 100%)",
+              border: "1px solid rgba(255,255,255,0.25)",
+              boxShadow: "0 4px 16px rgba(0,0,0,0.20), inset 0 1px 0 rgba(255,255,255,0.30)",
+            }}
           >
-            <ShoppingBag className="w-4 h-4" />
+            {/* Button specular */}
+            <div
+              className="absolute top-0 left-8 right-8 h-px pointer-events-none"
+              style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.60), transparent)" }}
+            />
+            <ShoppingBag className="w-4 h-4 opacity-90" />
             Open Supply Kiosk
-            <ArrowRight className="w-3.5 h-3.5" />
+            <ArrowRight className="w-3.5 h-3.5 opacity-75" />
           </button>
         </div>
       </div>
@@ -477,31 +567,73 @@ export default function Dashboard() {
 
   return (
     <div className="h-screen flex overflow-hidden select-none bg-[#F7F7F8]">
-      {/* ── Left panel ──────────────────────────────────────────────────── */}
+      {/* ── Left panel — iOS Liquid Glass ────────────────────────────────── */}
       <div
         className="hidden md:flex w-[38%] flex-shrink-0 flex-col p-6 relative overflow-hidden"
-        style={{
-          background: "linear-gradient(160deg, #0F4C5C 0%, #0A3240 50%, #061E29 100%)",
-        }}
+        style={{ background: "linear-gradient(155deg, #0D0B1E 0%, #0A1628 35%, #081C2E 65%, #060E18 100%)" }}
       >
-        {/* Background glow */}
-        <div
-          className="absolute inset-0 opacity-10"
-          style={{
-            backgroundImage: `radial-gradient(circle at 20% 30%, #4DD9C0 0%, transparent 60%),
-                              radial-gradient(circle at 80% 70%, #38BDF8 0%, transparent 50%)`,
-          }}
+        {/* ── Vivid color blobs (iOS Aurora wallpaper feel) ── */}
+        {/* Purple blob — top-left */}
+        <div className="absolute pointer-events-none" style={{
+          top: "-15%", left: "-10%", width: "70%", height: "70%",
+          background: "radial-gradient(circle, rgba(139,92,246,0.55) 0%, rgba(109,40,217,0.25) 40%, transparent 70%)",
+          filter: "blur(32px)",
+        }} />
+        {/* Cyan/teal blob — center-right */}
+        <div className="absolute pointer-events-none" style={{
+          top: "20%", right: "-15%", width: "65%", height: "55%",
+          background: "radial-gradient(circle, rgba(6,182,212,0.45) 0%, rgba(14,116,144,0.20) 45%, transparent 70%)",
+          filter: "blur(28px)",
+        }} />
+        {/* Blue blob — center */}
+        <div className="absolute pointer-events-none" style={{
+          top: "35%", left: "15%", width: "60%", height: "50%",
+          background: "radial-gradient(circle, rgba(59,130,246,0.35) 0%, transparent 65%)",
+          filter: "blur(36px)",
+        }} />
+        {/* Pink/rose blob — bottom */}
+        <div className="absolute pointer-events-none" style={{
+          bottom: "-10%", left: "25%", width: "55%", height: "45%",
+          background: "radial-gradient(circle, rgba(236,72,153,0.28) 0%, transparent 65%)",
+          filter: "blur(30px)",
+        }} />
+        {/* Very subtle overall overlay to deepen */}
+        <div className="absolute inset-0 pointer-events-none"
+             style={{ background: "rgba(0,0,0,0.25)" }} />
+
+        {/* Grain texture overlay for depth */}
+        <div className="absolute inset-0 pointer-events-none opacity-[0.04]"
+             style={{
+               backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E\")",
+               backgroundSize: "128px 128px",
+             }}
         />
 
-        {/* Brand */}
+        {/* Brand — glass pill */}
         <div className="relative z-10 flex-shrink-0">
-          <div className="flex items-center gap-2 mb-0.5">
-            <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
-              <Sparkles className="w-4 h-4 text-white" />
+          <div
+            className="inline-flex items-center gap-2.5 px-3 py-2 rounded-2xl"
+            style={{
+              background: "linear-gradient(135deg, rgba(255,255,255,0.15), rgba(255,255,255,0.07))",
+              border: "1px solid rgba(255,255,255,0.20)",
+              boxShadow: "0 4px 16px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.25)",
+              backdropFilter: "blur(12px)",
+            }}
+          >
+            <div
+              className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0"
+              style={{
+                background: "linear-gradient(135deg, rgba(139,92,246,0.60), rgba(59,130,246,0.50))",
+                boxShadow: "0 0 12px rgba(139,92,246,0.50)",
+              }}
+            >
+              <Sparkles className="w-3.5 h-3.5 text-white" />
             </div>
-            <span className="text-white font-semibold text-lg tracking-tight">Cleanex</span>
+            <div>
+              <span className="text-white text-sm font-semibold tracking-tight">Cleanex</span>
+              <span className="text-white/40 text-[11px] ml-1.5">Operations</span>
+            </div>
           </div>
-          <p className="text-white/40 text-xs ml-10">Operations Platform</p>
         </div>
 
         {/* Low-stock module */}
@@ -513,9 +645,12 @@ export default function Dashboard() {
         {/* Mobile brand bar */}
         <div
           className="md:hidden flex items-center gap-2 px-5 py-3 flex-shrink-0"
-          style={{ background: "linear-gradient(135deg, #0F4C5C 0%, #0A3240 100%)" }}
+          style={{ background: "linear-gradient(135deg, #0D0B1E 0%, #0A1628 100%)" }}
         >
-          <div className="w-6 h-6 rounded-md bg-white/10 flex items-center justify-center">
+          <div
+            className="w-6 h-6 rounded-lg flex items-center justify-center"
+            style={{ background: "linear-gradient(135deg, rgba(139,92,246,0.70), rgba(59,130,246,0.60))" }}
+          >
             <Sparkles className="w-3 h-3 text-white" />
           </div>
           <span className="text-white font-semibold text-sm tracking-tight">Cleanex</span>
