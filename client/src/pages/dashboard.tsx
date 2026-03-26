@@ -169,9 +169,9 @@ export default function Dashboard() {
                         Coming Soon
                       </span>
                     )}
-                    {app.available && (
-                      <ChevronRight className="w-4 h-4 text-muted-foreground/40" />
-                    )}
+                    <ChevronRight
+                      className={`w-4 h-4 ${app.available ? "text-muted-foreground/40" : "text-muted-foreground/20"}`}
+                    />
                   </div>
                 </button>
               );
