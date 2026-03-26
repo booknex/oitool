@@ -63,6 +63,41 @@ export type RestockPayload = z.infer<typeof restockSchema>;
 export type CreateItemPayload = z.infer<typeof createItemSchema>;
 export type UpdateItemPayload = z.infer<typeof updateItemSchema>;
 
+// ─── Properties ───────────────────────────────────────────────────────────────
+
+export const properties = pgTable("properties", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  address: text("address").notNull().default(""),
+  airbnbUrl: text("airbnb_url").notNull(),
+  color: text("color").notNull().default("#E8F4FD"),
+  sortOrder: integer("sort_order").notNull().default(0),
+});
+
+export const insertPropertySchema = createInsertSchema(properties).omit({ id: true });
+export type InsertProperty = z.infer<typeof insertPropertySchema>;
+export type Property = typeof properties.$inferSelect;
+
+export const createPropertySchema = z.object({
+  name: z.string().min(1),
+  address: z.string().default(""),
+  airbnbUrl: z.string().url("Must be a valid URL"),
+  color: z.string().default("#E8F4FD"),
+  sortOrder: z.number().default(0),
+});
+
+export const updatePropertySchema = z.object({
+  id: z.number(),
+  name: z.string().min(1).optional(),
+  address: z.string().optional(),
+  airbnbUrl: z.string().url().optional(),
+  color: z.string().optional(),
+  sortOrder: z.number().optional(),
+});
+
+export type CreatePropertyPayload = z.infer<typeof createPropertySchema>;
+export type UpdatePropertyPayload = z.infer<typeof updatePropertySchema>;
+
 // ─── Dashboard Apps ───────────────────────────────────────────────────────────
 
 export const dashboardApps = pgTable("dashboard_apps", {

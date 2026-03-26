@@ -5,6 +5,7 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import {
   inventoryItems,
   dashboardApps,
+  properties,
   type InventoryItem,
   type CartItem,
   type CreateItemPayload,
@@ -12,6 +13,9 @@ import {
   type DashboardApp,
   type CreateDashboardAppPayload,
   type UpdateDashboardAppPayload,
+  type Property,
+  type CreatePropertyPayload,
+  type UpdatePropertyPayload,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -28,6 +32,11 @@ export interface IStorage {
   createDashboardApp(data: CreateDashboardAppPayload): Promise<DashboardApp>;
   updateDashboardApp(data: UpdateDashboardAppPayload): Promise<DashboardApp>;
   deleteDashboardApp(id: number): Promise<void>;
+  // Properties
+  getProperties(): Promise<Property[]>;
+  createProperty(data: CreatePropertyPayload): Promise<Property>;
+  updateProperty(data: UpdatePropertyPayload): Promise<Property>;
+  deleteProperty(id: number): Promise<void>;
 }
 
 const DEFAULT_DASHBOARD_APPS: Omit<CreateDashboardAppPayload, "sortOrder">[] = [
@@ -47,7 +56,7 @@ const DEFAULT_DASHBOARD_APPS: Omit<CreateDashboardAppPayload, "sortOrder">[] = [
     color: "#FFF8E1",
     iconColor: "#F59E0B",
     route: "/reviews",
-    available: false,
+    available: true,
   },
   {
     name: "Task Board",
@@ -269,6 +278,42 @@ export class DatabaseStorage implements IStorage {
       throw new Error(`Dashboard app with id ${id} not found`);
     }
     await db.delete(dashboardApps).where(eq(dashboardApps.id, id));
+  }
+
+  // ─── Properties ────────────────────────────────────────────────────────────
+
+  async getProperties(): Promise<Property[]> {
+    return await db.select().from(properties).orderBy(properties.sortOrder);
+  }
+
+  async createProperty(data: CreatePropertyPayload): Promise<Property> {
+    const [prop] = await db.insert(properties).values(data).returning();
+    return prop;
+  }
+
+  async updateProperty(data: UpdatePropertyPayload): Promise<Property> {
+    const [existing] = await db.select().from(properties).where(eq(properties.id, data.id));
+    if (!existing) throw new Error(`Property with id ${data.id} not found`);
+
+    const updates: Partial<typeof properties.$inferInsert> = {};
+    if (data.name !== undefined) updates.name = data.name;
+    if (data.address !== undefined) updates.address = data.address;
+    if (data.airbnbUrl !== undefined) updates.airbnbUrl = data.airbnbUrl;
+    if (data.color !== undefined) updates.color = data.color;
+    if (data.sortOrder !== undefined) updates.sortOrder = data.sortOrder;
+
+    const [updated] = await db
+      .update(properties)
+      .set(updates)
+      .where(eq(properties.id, data.id))
+      .returning();
+    return updated;
+  }
+
+  async deleteProperty(id: number): Promise<void> {
+    const [existing] = await db.select().from(properties).where(eq(properties.id, id));
+    if (!existing) throw new Error(`Property with id ${id} not found`);
+    await db.delete(properties).where(eq(properties.id, id));
   }
 }
 

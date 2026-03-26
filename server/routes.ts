@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { checkoutSchema, restockSchema, createItemSchema, updateItemSchema, createDashboardAppSchema, updateDashboardAppSchema } from "@shared/schema";
+import { checkoutSchema, restockSchema, createItemSchema, updateItemSchema, createDashboardAppSchema, updateDashboardAppSchema, createPropertySchema, updatePropertySchema } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/items", async (_req, res) => {
@@ -162,6 +162,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "App not found" });
       }
       res.status(500).json({ error: "Failed to delete dashboard app" });
+    }
+  });
+
+  // ─── Properties ──────────────────────────────────────────────────────────────
+
+  app.get("/api/properties", async (_req, res) => {
+    try {
+      const props = await storage.getProperties();
+      res.json(props);
+    } catch {
+      res.status(500).json({ error: "Failed to fetch properties" });
+    }
+  });
+
+  app.post("/api/properties", async (req, res) => {
+    try {
+      const result = createPropertySchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid property data", details: result.error.issues });
+      }
+      const prop = await storage.createProperty(result.data);
+      res.status(201).json(prop);
+    } catch {
+      res.status(500).json({ error: "Failed to create property" });
+    }
+  });
+
+  app.patch("/api/properties/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid property id" });
+      const result = updatePropertySchema.safeParse({ ...req.body, id });
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid update data", details: result.error.issues });
+      }
+      const updated = await storage.updateProperty(result.data);
+      res.json(updated);
+    } catch (error) {
+      if (error instanceof Error && error.message.includes("not found")) {
+        return res.status(404).json({ error: "Property not found" });
+      }
+      res.status(500).json({ error: "Failed to update property" });
+    }
+  });
+
+  app.delete("/api/properties/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid property id" });
+      await storage.deleteProperty(id);
+      res.json({ success: true });
+    } catch (error) {
+      if (error instanceof Error && error.message.includes("not found")) {
+        return res.status(404).json({ error: "Property not found" });
+      }
+      res.status(500).json({ error: "Failed to delete property" });
     }
   });
 

@@ -19,6 +19,15 @@ A self-service inventory kiosk application for cleaning service operations. Maid
 - **Mobile fallback** — Compact teal brand bar shown on small screens when the left panel is hidden
 - Auto-seeds the default 5 apps on first load if the table is empty
 
+### Property Reviews Gallery
+- **Route** `/reviews` — accessible from the "Reviews" tile on the dashboard
+- **Property squares** — grid of clickable colored cards (2–3 per row); each opens its Airbnb reviews URL in a new tab
+- **Properties stored in DB** — `properties` table: id, name, address, airbnb_url, color, sort_order
+- **Edit mode** — pencil toggle reveals per-card edit/delete controls with two-tap delete confirmation
+- **Add property modal** — name, address, Airbnb URL, color swatch picker
+- **Status display** — "Out of Stock / Low Stock" bilingual badges with English pill + Spanish action label
+- **API** — `GET/POST /api/properties`, `PATCH/DELETE /api/properties/:id`
+
 ### Inventory Kiosk
 - **Item Grid** - 12 cleaning supply items displayed as cards with custom-generated images
 - **Stock Display** - Each item shows current stock vs max stock (e.g., 3/10) with color-coded indicators:
