@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { Package, ClipboardList, Star, BarChart3, Users, Settings, ChevronRight } from "lucide-react";
+import { Package, ClipboardList, Star, BarChart3, Users, ChevronRight, Sparkles } from "lucide-react";
 
 const APPS = [
   {
     id: "supply-kiosk",
     name: "Supply Kiosk",
-    description: "Inventory & supplies",
+    description: "Manage inventory & cleaning supplies",
     icon: Package,
     color: "#E8F4FD",
     iconColor: "#2196F3",
@@ -16,17 +16,17 @@ const APPS = [
   {
     id: "reviews",
     name: "Reviews",
-    description: "Airbnb guest feedback",
+    description: "View Airbnb guest feedback",
     icon: Star,
     color: "#FFF8E1",
-    iconColor: "#FFC107",
+    iconColor: "#F59E0B",
     route: "/reviews",
     available: false,
   },
   {
     id: "tasks",
     name: "Task Board",
-    description: "Cleaning checklists",
+    description: "Cleaning checklists & assignments",
     icon: ClipboardList,
     color: "#F3E5F5",
     iconColor: "#9C27B0",
@@ -36,7 +36,7 @@ const APPS = [
   {
     id: "reports",
     name: "Reports",
-    description: "Performance & stats",
+    description: "Performance stats & analytics",
     icon: BarChart3,
     color: "#E8F5E9",
     iconColor: "#4CAF50",
@@ -46,7 +46,7 @@ const APPS = [
   {
     id: "team",
     name: "Team",
-    description: "Staff & schedules",
+    description: "Staff management & schedules",
     icon: Users,
     color: "#FBE9E7",
     iconColor: "#FF5722",
@@ -54,8 +54,6 @@ const APPS = [
     available: false,
   },
 ];
-
-const TABS = ["Apps", "Tools", "Settings"];
 
 function Clock() {
   const [time, setTime] = useState(new Date());
@@ -67,7 +65,7 @@ function Clock() {
 
   return (
     <div className="text-right">
-      <div className="text-2xl font-semibold text-foreground tabular-nums">
+      <div className="text-lg font-semibold tabular-nums text-foreground">
         {time.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}
       </div>
       <div className="text-xs text-muted-foreground">
@@ -78,101 +76,114 @@ function Clock() {
 }
 
 export default function Dashboard() {
-  const [activeTab, setActiveTab] = useState("Apps");
   const [, navigate] = useLocation();
 
-  function handleAppClick(app: typeof APPS[0]) {
-    if (app.available) {
-      navigate(app.route);
-    }
-  }
-
   return (
-    <div className="h-screen bg-[#F5F5F7] flex flex-col overflow-hidden select-none">
-      <header className="px-6 pt-4 pb-2 flex items-center justify-between flex-shrink-0">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Cleanex</h1>
-          <p className="text-xs text-muted-foreground">Cleaning Operations</p>
-        </div>
-        <Clock />
-      </header>
+    <div className="h-screen flex overflow-hidden select-none bg-[#F7F7F8]">
+      <div
+        className="hidden md:flex w-[38%] flex-shrink-0 flex-col justify-between p-8 relative overflow-hidden"
+        style={{
+          background: "linear-gradient(160deg, #0F4C5C 0%, #0A3240 50%, #061E29 100%)",
+        }}
+      >
+        <div
+          className="absolute inset-0 opacity-10"
+          style={{
+            backgroundImage: `radial-gradient(circle at 20% 50%, #4DD9C0 0%, transparent 60%),
+                              radial-gradient(circle at 80% 20%, #38BDF8 0%, transparent 50%),
+                              radial-gradient(circle at 60% 80%, #0EA5E9 0%, transparent 40%)`,
+          }}
+        />
 
-      <div className="px-6 pt-1 pb-3 flex-shrink-0">
-        <div className="flex gap-1 bg-white/60 backdrop-blur rounded-xl p-1 w-fit border border-black/5">
-          {TABS.map(tab => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              data-testid={`tab-${tab.toLowerCase()}`}
-              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                activeTab === tab
-                  ? "bg-white text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {tab}
-            </button>
-          ))}
+        <div className="relative z-10">
+          <div className="flex items-center gap-2 mb-1">
+            <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
+              <Sparkles className="w-4 h-4 text-white" />
+            </div>
+            <span className="text-white font-semibold text-lg tracking-tight">Cleanex</span>
+          </div>
+          <p className="text-white/40 text-xs ml-10">Operations Platform</p>
+        </div>
+
+        <div className="relative z-10">
+          <div
+            className="absolute -top-24 -left-8 w-64 h-64 rounded-full opacity-5"
+            style={{ background: "radial-gradient(circle, #4DD9C0, transparent)" }}
+          />
+          <p className="text-white/40 text-xs uppercase tracking-widest mb-3 font-medium">
+            Empowering your team
+          </p>
+          <h2 className="text-white text-4xl font-bold leading-tight">
+            Cleaning
+            <br />
+            Operations
+            <br />
+            <span className="text-[#4DD9C0]">Made Simple</span>
+          </h2>
+          <p className="text-white/50 text-sm mt-4 leading-relaxed max-w-xs">
+            Everything your cleaning team needs, in one place.
+          </p>
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-6 pb-6">
-        {activeTab === "Apps" && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-            {APPS.map(app => {
+      <div className="flex-1 flex flex-col bg-white overflow-hidden">
+        <div className="flex items-center justify-between px-6 pt-5 pb-4 flex-shrink-0 border-b border-black/5">
+          <div>
+            <h1 className="text-xl font-semibold text-foreground">Select App</h1>
+            <p className="text-xs text-muted-foreground mt-0.5">Choose a tool to get started</p>
+          </div>
+          <Clock />
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-6 py-4">
+          <div className="flex flex-col gap-2 max-w-2xl">
+            {APPS.map((app) => {
               const Icon = app.icon;
               return (
                 <button
                   key={app.id}
-                  onClick={() => handleAppClick(app)}
-                  data-testid={`app-tile-${app.id}`}
+                  onClick={() => app.available && navigate(app.route)}
                   disabled={!app.available}
-                  className={`relative flex flex-col items-start p-4 rounded-2xl bg-white border border-black/5 text-left transition-all ${
+                  data-testid={`app-tile-${app.id}`}
+                  className={`flex items-center gap-4 p-4 rounded-xl border border-black/5 bg-[#FAFAFA] text-left transition-all w-full ${
                     app.available
-                      ? "hover-elevate cursor-pointer active:scale-95"
+                      ? "hover-elevate cursor-pointer"
                       : "opacity-50 cursor-not-allowed"
                   }`}
-                  style={{ minHeight: "120px" }}
                 >
                   <div
-                    className="w-12 h-12 rounded-xl flex items-center justify-center mb-3 flex-shrink-0"
+                    className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
                     style={{ backgroundColor: app.color }}
                   >
                     <Icon className="w-6 h-6" style={{ color: app.iconColor }} />
                   </div>
+
                   <div className="flex-1 min-w-0">
-                    <div className="font-semibold text-sm text-foreground truncate">{app.name}</div>
-                    <div className="text-xs text-muted-foreground mt-0.5 truncate">{app.description}</div>
+                    <div className="font-semibold text-sm text-foreground">{app.name}</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">{app.description}</div>
                   </div>
-                  {!app.available && (
-                    <div className="absolute top-2 right-2 text-[9px] font-semibold text-muted-foreground bg-black/5 px-1.5 py-0.5 rounded-full">
-                      Soon
-                    </div>
-                  )}
-                  {app.available && (
-                    <ChevronRight className="absolute top-3 right-3 w-3 h-3 text-muted-foreground/50" />
-                  )}
+
+                  <div className="flex-shrink-0 flex items-center gap-2">
+                    {!app.available && (
+                      <span className="text-[10px] font-semibold text-muted-foreground bg-black/5 px-2 py-0.5 rounded-full">
+                        Coming Soon
+                      </span>
+                    )}
+                    {app.available && (
+                      <ChevronRight className="w-4 h-4 text-muted-foreground/40" />
+                    )}
+                  </div>
                 </button>
               );
             })}
           </div>
-        )}
+        </div>
 
-        {activeTab === "Tools" && (
-          <div className="flex flex-col items-center justify-center h-48 text-center">
-            <Settings className="w-10 h-10 text-muted-foreground/30 mb-3" />
-            <p className="text-sm font-medium text-muted-foreground">Tools coming soon</p>
-            <p className="text-xs text-muted-foreground/60 mt-1">Additional tools will appear here</p>
-          </div>
-        )}
-
-        {activeTab === "Settings" && (
-          <div className="flex flex-col items-center justify-center h-48 text-center">
-            <Settings className="w-10 h-10 text-muted-foreground/30 mb-3" />
-            <p className="text-sm font-medium text-muted-foreground">Settings coming soon</p>
-            <p className="text-xs text-muted-foreground/60 mt-1">App settings will appear here</p>
-          </div>
-        )}
+        <div className="px-6 py-3 border-t border-black/5 flex-shrink-0">
+          <p className="text-[11px] text-muted-foreground/50 text-center">
+            Cleanex &bull; Cleaning Operations Platform
+          </p>
+        </div>
       </div>
     </div>
   );
