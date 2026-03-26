@@ -196,13 +196,13 @@ function LowStockModule({ onNavigateKiosk }: { onNavigateKiosk: () => void }) {
                       </div>
                     </div>
 
-                    {/* Quantity needed */}
+                    {/* Stock count */}
                     <div className="flex-shrink-0 text-right">
                       <div
                         className="px-3 py-1.5 rounded-lg text-[13px] font-bold tabular-nums"
                         style={{ background: qtyBg, border: `1px solid ${qtyBorder}`, color: qtyColor }}
                       >
-                        +{needed}
+                        {item.stock}/{item.maxStock}
                       </div>
                       <p className="text-[11px] text-slate-400 mt-1 text-center">
                         {isOut ? "order · ordenar" : "restock · reponer"}
