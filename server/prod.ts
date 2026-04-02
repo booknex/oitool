@@ -4,8 +4,14 @@ import path from "path";
 import { registerRoutes } from "./routes";
 
 const app = express();
+app.set("etag", false);
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+
+app.use("/api", (_req, res, next) => {
+  res.setHeader("Cache-Control", "no-store");
+  next();
+});
 
 function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {

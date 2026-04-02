@@ -154,7 +154,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const apps = await storage.getDashboardApps();
       res.json(apps);
     } catch (error) {
-      res.status(500).json({ error: "Failed to fetch dashboard apps" });
+      console.error("[dashboard-apps] ERROR:", error);
+      res.status(500).json({ error: "Failed to fetch dashboard apps", detail: error instanceof Error ? error.message : String(error) });
     }
   });
 
