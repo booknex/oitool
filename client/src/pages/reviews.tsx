@@ -340,7 +340,7 @@ export default function Reviews() {
                       <img
                         src={prop.imageUrl}
                         alt={prop.name}
-                        className="absolute inset-0 w-full h-full object-cover"
+                        className="absolute inset-0 w-full h-full object-contain"
                       />
                     )}
 
