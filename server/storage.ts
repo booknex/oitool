@@ -229,6 +229,21 @@ export class DatabaseStorage implements IStorage {
         )
         .returning();
       apps = inserted.sort((a, b) => a.sortOrder - b.sortOrder);
+    } else {
+      const REQUIRED_APPS = [
+        { route: "/kiosk", name: "Supply Kiosk", description: "Manage inventory & cleaning supplies", icon: "Package", color: "#E8F4FD", iconColor: "#2196F3", available: true },
+        { route: "/reviews", name: "Reviews", description: "View Airbnb guest feedback", icon: "Star", color: "#FFF8E1", iconColor: "#F59E0B", available: true },
+      ];
+      const existingRoutes = new Set(apps.map(a => a.route));
+      const missing = REQUIRED_APPS.filter(a => !existingRoutes.has(a.route));
+      if (missing.length > 0) {
+        const maxSort = apps.reduce((m, a) => Math.max(m, a.sortOrder), -1);
+        const inserted = await db
+          .insert(dashboardApps)
+          .values(missing.map((app, i) => ({ ...app, sortOrder: maxSort + 1 + i })))
+          .returning();
+        apps = [...apps, ...inserted].sort((a, b) => a.sortOrder - b.sortOrder);
+      }
     }
 
     return apps;
