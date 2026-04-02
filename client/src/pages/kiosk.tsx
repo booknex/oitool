@@ -142,10 +142,14 @@ export default function Kiosk() {
 
   const updateItemMutation = useMutation({
     mutationFn: async (data: { id: number; name?: string; description?: string; category?: string; maxStock?: number; stock?: number; cost?: string; visible?: boolean; itemType?: string; lowStockThreshold?: number | null }) => {
-      return apiRequest("PATCH", `/api/items/${data.id}`, data);
+      const res = await apiRequest("PATCH", `/api/items/${data.id}`, data);
+      return res.json() as Promise<InventoryItem>;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/items"] });
+    onSuccess: (updatedItem) => {
+      queryClient.setQueryData(["/api/items"], (old: InventoryItem[] | undefined) => {
+        if (!old) return old;
+        return old.map(item => item.id === updatedItem.id ? updatedItem : item);
+      });
       setEditingItem(null);
       toast({ title: "Item Updated", description: "Item has been updated successfully." });
     },
