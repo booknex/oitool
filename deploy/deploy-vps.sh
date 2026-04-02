@@ -43,15 +43,32 @@ cp -r "$REPO_DIR/dist/public" "$APP_DIR/dist/public"
 
 echo ""
 echo "[5/5] Running database migrations..."
-PGPASSWORD="${DATABASE_URL##*:}" 2>/dev/null || true
 psql "$DATABASE_URL" -c "
 DO \$\$
 BEGIN
+    -- Add low_stock_threshold to inventory_items if missing
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.columns
         WHERE table_name = 'inventory_items' AND column_name = 'low_stock_threshold'
     ) THEN
         ALTER TABLE inventory_items ADD COLUMN low_stock_threshold integer;
+    END IF;
+
+    -- Create checkout_logs table if it doesn't exist
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_name = 'checkout_logs'
+    ) THEN
+        CREATE TABLE checkout_logs (
+            id          SERIAL PRIMARY KEY,
+            item_id     INTEGER NOT NULL,
+            item_name   TEXT NOT NULL,
+            category    TEXT NOT NULL DEFAULT '',
+            quantity    INTEGER NOT NULL,
+            unit_cost   NUMERIC(10,2) NOT NULL DEFAULT 0,
+            total_cost  NUMERIC(10,2) NOT NULL DEFAULT 0,
+            checked_out_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );
     END IF;
 END \$\$;
 " 2>&1 | tail -3
