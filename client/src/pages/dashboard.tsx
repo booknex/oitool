@@ -4,7 +4,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import {
   Package, ClipboardList, Star, BarChart3, Users, ChevronRight,
-  Sparkles, Settings2, Pencil, Trash2, Plus, Check,
+  Sparkles, Settings2, Pencil, Trash2, Plus, Check, Save, X,
   Home, Calendar, Truck, ShoppingCart, Bell, FileText,
   Phone, Zap, DollarSign, Globe, Wrench, Droplet, Archive,
   Lock, Coffee, AlertCircle, BookOpen, Camera, ShoppingBag,
@@ -67,6 +67,28 @@ function LowStockModule({ onNavigateKiosk }: { onNavigateKiosk: () => void }) {
   const { data: items = [], isLoading } = useQuery<InventoryItem[]>({
     queryKey: ["/api/items"],
     refetchInterval: 30_000,
+  });
+
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editStock, setEditStock] = useState<string>("");
+  const { toast } = useToast();
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, stock }: { id: number; stock: number }) => {
+      const res = await apiRequest("PATCH", `/api/items/${id}`, { id, stock });
+      return res.json() as Promise<InventoryItem>;
+    },
+    onSuccess: (updated) => {
+      queryClient.setQueryData(["/api/items"], (old: InventoryItem[] | undefined) =>
+        old ? old.map(i => i.id === updated.id ? updated : i) : old
+      );
+      queryClient.invalidateQueries({ queryKey: ["/api/items"] });
+      setEditingId(null);
+      toast({ title: "Stock Updated", description: `${updated.name} set to ${updated.stock}/${updated.maxStock}.` });
+    },
+    onError: () => {
+      toast({ title: "Update Failed", description: "Could not update stock.", variant: "destructive" });
+    },
   });
 
   const lowItems = items
@@ -161,53 +183,125 @@ function LowStockModule({ onNavigateKiosk }: { onNavigateKiosk: () => void }) {
                 const qtyBorder    = isOut ? "rgba(239,68,68,0.20)" : "rgba(249,115,22,0.20)";
                 const qtyColor     = isOut ? "#B91C1C" : "#C2410C";
 
+                const isEditing = editingId === item.id;
+
                 return (
                   <div
                     key={item.id}
-                    className="flex items-center gap-3 p-3 bg-white rounded-xl"
+                    className="bg-white rounded-xl group"
                     style={{ border: `1px solid ${rowBorder}` }}
                     data-testid={`low-stock-item-${item.id}`}
                   >
-                    {/* Image — tinted to reflect urgency */}
-                    <img
-                      src={itemImages[item.id]}
-                      alt={item.name}
-                      className="w-14 h-14 object-contain rounded-lg flex-shrink-0"
-                      style={{ backgroundColor: imgBg }}
-                    />
-
-                    {/* Name + status pill + action */}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[15px] font-semibold text-slate-800 truncate leading-snug">
-                        {item.name}
-                      </p>
-                      <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                        {/* Status pill — English */}
-                        <span
-                          className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wide"
-                          style={{ background: statusBg, border: `1px solid ${statusBorder}`, color: statusColor }}
-                        >
-                          {isOut ? "Out of Stock" : "Low Stock"}
-                        </span>
-                        {/* Action label — Spanish */}
-                        <span className="text-xs text-slate-400 font-medium">
-                          {isOut ? "Sin Stock · Ordenar" : `Stock Bajo · ${item.stock}/${item.maxStock}`}
-                        </span>
+                    {isEditing ? (
+                      /* ── Inline edit mode ── */
+                      <div className="flex items-center gap-3 p-3">
+                        <img
+                          src={itemImages[item.id]}
+                          alt={item.name}
+                          className="w-14 h-14 object-contain rounded-lg flex-shrink-0"
+                          style={{ backgroundColor: imgBg }}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[13px] font-semibold text-slate-800 truncate leading-snug mb-2">
+                            {item.name}
+                          </p>
+                          <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1.5 flex-1">
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                autoFocus
+                                className="w-16 px-2 py-1 rounded-lg text-sm font-bold text-center border focus:outline-none focus:ring-2 focus:ring-blue-300"
+                                style={{ background: qtyBg, border: `1px solid ${qtyBorder}`, color: qtyColor }}
+                                value={editStock}
+                                onChange={(e) => setEditStock(e.target.value.replace(/[^0-9]/g, ""))}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") {
+                                    const v = Math.min(parseInt(editStock) || 0, item.maxStock);
+                                    updateMutation.mutate({ id: item.id, stock: v });
+                                  } else if (e.key === "Escape") {
+                                    setEditingId(null);
+                                  }
+                                }}
+                                data-testid={`input-dashboard-edit-stock-${item.id}`}
+                              />
+                              <span className="text-[13px] text-slate-400 font-medium">/ {item.maxStock}</span>
+                            </div>
+                            <div className="flex items-center gap-1 flex-shrink-0">
+                              <button
+                                onClick={() => setEditingId(null)}
+                                className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                                data-testid={`button-dashboard-edit-cancel-${item.id}`}
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => {
+                                  const v = Math.min(parseInt(editStock) || 0, item.maxStock);
+                                  updateMutation.mutate({ id: item.id, stock: v });
+                                }}
+                                disabled={updateMutation.isPending}
+                                className="w-7 h-7 rounded-lg flex items-center justify-center text-white transition-colors"
+                                style={{ background: "linear-gradient(135deg, #3B82F6, #2563EB)" }}
+                                data-testid={`button-dashboard-edit-save-${item.id}`}
+                              >
+                                <Save className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
                       </div>
-                    </div>
+                    ) : (
+                      /* ── Normal view mode ── */
+                      <div className="flex items-center gap-3 p-3">
+                        {/* Image */}
+                        <img
+                          src={itemImages[item.id]}
+                          alt={item.name}
+                          className="w-14 h-14 object-contain rounded-lg flex-shrink-0"
+                          style={{ backgroundColor: imgBg }}
+                        />
 
-                    {/* Stock count */}
-                    <div className="flex-shrink-0 text-right">
-                      <div
-                        className="px-3 py-1.5 rounded-lg text-[13px] font-bold tabular-nums"
-                        style={{ background: qtyBg, border: `1px solid ${qtyBorder}`, color: qtyColor }}
-                      >
-                        {item.stock}/{item.maxStock}
+                        {/* Name + status pill */}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[15px] font-semibold text-slate-800 truncate leading-snug">
+                            {item.name}
+                          </p>
+                          <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                            <span
+                              className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wide"
+                              style={{ background: statusBg, border: `1px solid ${statusBorder}`, color: statusColor }}
+                            >
+                              {isOut ? "Out of Stock" : "Low Stock"}
+                            </span>
+                            <span className="text-xs text-slate-400 font-medium">
+                              {isOut ? "Sin Stock · Ordenar" : `Stock Bajo · ${item.stock}/${item.maxStock}`}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Stock count + edit button */}
+                        <div className="flex-shrink-0 flex flex-col items-center gap-1">
+                          <div
+                            className="px-3 py-1.5 rounded-lg text-[13px] font-bold tabular-nums"
+                            style={{ background: qtyBg, border: `1px solid ${qtyBorder}`, color: qtyColor }}
+                          >
+                            {item.stock}/{item.maxStock}
+                          </div>
+                          <button
+                            onClick={() => {
+                              setEditingId(item.id);
+                              setEditStock(String(item.stock));
+                            }}
+                            className="w-full flex items-center justify-center gap-1 text-[11px] text-slate-400 hover:text-blue-500 transition-colors"
+                            data-testid={`button-dashboard-edit-open-${item.id}`}
+                          >
+                            <Pencil className="w-2.5 h-2.5" />
+                            edit
+                          </button>
+                        </div>
                       </div>
-                      <p className="text-[11px] text-slate-400 mt-1 text-center">
-                        {isOut ? "order · ordenar" : "restock · reponer"}
-                      </p>
-                    </div>
+                    )}
                   </div>
                 );
               })}
