@@ -707,8 +707,8 @@ export default function Kiosk() {
                     <div>
                       <label className="text-xs text-muted-foreground">Max Stock</label>
                       <input
-                        type="number"
-                        min={1}
+                        type="text"
+                        inputMode="numeric"
                         className="w-full mt-1 px-3 py-2 bg-card border border-border rounded-md text-sm text-foreground"
                         value={isNaN(newItem.maxStock) ? "" : newItem.maxStock}
                         onChange={(e) => setNewItem(prev => ({ ...prev, maxStock: parseInt(e.target.value) }))}
@@ -829,8 +829,8 @@ export default function Kiosk() {
                         <div>
                           <label className="text-xs text-muted-foreground">Max Stock</label>
                           <input
-                            type="number"
-                            min={1}
+                            type="text"
+                            inputMode="numeric"
                             className="w-full mt-1 px-2 py-1 bg-card border border-border rounded-md text-sm text-foreground"
                             value={isNaN(editingItem.maxStock) ? "" : editingItem.maxStock}
                             onChange={(e) => setEditingItem(prev => prev ? { ...prev, maxStock: parseInt(e.target.value) } : null)}
@@ -840,8 +840,8 @@ export default function Kiosk() {
                         <div>
                           <label className="text-xs text-muted-foreground">Current Stock</label>
                           <input
-                            type="number"
-                            min={0}
+                            type="text"
+                            inputMode="numeric"
                             className="w-full mt-1 px-2 py-1 bg-card border border-border rounded-md text-sm text-foreground"
                             value={isNaN(editingItem.stock) ? "" : editingItem.stock}
                             onChange={(e) => setEditingItem(prev => prev ? { ...prev, stock: parseInt(e.target.value) } : null)}
