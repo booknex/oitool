@@ -1,0 +1,122 @@
+
+Expanded Security Maintenance for Applications is not enabled.
+
+95 updates can be applied immediately.
+73 of these updates are standard security updates.
+To see these additional updates run: apt list --upgradable
+
+Enable ESM Apps to receive additional future security updates.
+See https://ubuntu.com/esm or run: sudo pro status
+
+
+*** System restart required ***
+********************************************************************************
+
+Welcome to One-Click OpenLiteSpeed Node.js Server.
+To keep this Droplet secure, the firewalld is enabled.
+All ports are BLOCKED except 22 (SSH), 80 (HTTP) and 443 (HTTPS).
+
+The Node.js OLS One-Click Quickstart guide:
+* https://docs.litespeedtech.com/cloud/images/nodejs/
+
+In a web browser, you can view:
+* The sample node site: http://187.77.21.175/
+
+On the server:
+* You can get the Web Admin admin password with the following command:
+   sudo cat /home/ubuntu/.litespeed_password
+
+System Status:
+  Load : 0.00, 0.00, 0.00
+  CPU  : 1.20389%
+  RAM  : 1008/3915MB (25.75%)
+  Disk : 9/48GB (21%)
+
+********************************************************************************
+Last login: Thu Apr  2 21:30:08 2026 from 169.254.0.1
+root@srv1365851:~# psql "$DATABASE_URL" -c "
+CREATE TABLE IF NOT EXISTS checkout_logs (
+    id SERIAL PRIMARY KEY,
+    item_id INTEGER NOT NULL,
+    item_name TEXT NOT NULL,
+    category TEXT NOT NULL DEFAULT '',
+    quantity INTEGER NOT NULL,
+    unit_cost NUMERIC(10,2) NOT NULL DEFAULT 0,
+    total_cost NUMERIC(10,2) NOT NULL DEFAULT 0,
+    checked_out_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);"
+Password for user root: 
+psql: error: connection to server on socket "/var/run/postgresql/.s.PGSQL.5432" failed: FATAL:  password authentication failed for user "root"
+root@srv1365851:~# cd /var/www/office-inventory/repo && git pull && bash deploy/deploy-vps.sh
+remote: Enumerating objects: 41, done.
+remote: Counting objects: 100% (41/41), done.
+remote: Compressing objects: 100% (8/8), done.
+remote: Total 31 (delta 22), reused 31 (delta 22), pack-reused 0 (from 0)
+Unpacking objects: 100% (31/31), 11.70 KiB | 203.00 KiB/s, done.
+From https://github.com/booknex/oitool
+   b64e202..17da419  main       -> origin/main
+Updating b64e202..17da419
+Fast-forward
+ client/src/App.tsx             |   2 +
+ client/src/pages/analytics.tsx | 443 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ server/routes.ts               |  17 ++++++-
+ server/storage.ts              | 171 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----
+ shared/schema.ts               |  51 +++++++++++++++++++-
+ 5 files changed, 673 insertions(+), 11 deletions(-)
+ create mode 100644 client/src/pages/analytics.tsx
+========================================
+  Office Inventory - VPS Deploy Script
+========================================
+
+[1/5] Installing dependencies...
+  npm audit fix --force
+
+Run `npm audit` for details.
+
+[2/5] Building frontend (Vite)...
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 11.79s
+
+[3/5] Building server bundle (esbuild)...
+  ../dist/index.cjs  1.6mb ⚠️
+
+⚡ Done in 214ms
+
+[4/5] Copying frontend to dist/public...
+
+[5/5] Running database migrations...
+DO
+
+Restarting PM2...
+[PM2] Applying action deleteProcessId on app [office-inventory](ids: [ 45 ])
+[PM2] [office-inventory](45) ✓
+┌────┬─────────────────────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
+│ id │ name                    │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
+├────┼─────────────────────────┼─────────────┼─────────┼─────────┼──────────┼────────┼──────┼───────────┼──────────┼──────────┼──────────┼──────────┤
+│ 30 │ christmas-bonus         │ default     │ 1.0.0   │ fork    │ 946618   │ 17h    │ 9    │ online    │ 0%       │ 98.0mb   │ root     │ disabled │
+│ 36 │ client-queue-manager    │ default     │ 1.0.0   │ fork    │ 946641   │ 17h    │ 53   │ online    │ 0%       │ 148.1mb  │ root     │ disabled │
+│ 44 │ kaliphone               │ default     │ 0.0.0   │ fork    │ 946642   │ 17h    │ 3    │ online    │ 0%       │ 126.8mb  │ root     │ disabled │
+│ 28 │ meetingroadmap          │ default     │ 1.0.0   │ fork    │ 946602   │ 17h    │ 47   │ online    │ 0%       │ 109.7mb  │ root     │ disabled │
+│ 7  │ taxportal               │ default     │ 1.0.0   │ fork    │ 949538   │ 16h    │ 97   │ online    │ 0%       │ 114.0mb  │ root     │ disabled │
+└────┴─────────────────────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
+[PM2][WARN] Applications office-inventory not running, starting...
+[PM2] App [office-inventory] launched (1 instances)
+┌────┬─────────────────────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
+│ id │ name                    │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
+├────┼─────────────────────────┼─────────────┼─────────┼─────────┼──────────┼────────┼──────┼───────────┼──────────┼──────────┼──────────┼──────────┤
+│ 30 │ christmas-bonus         │ default     │ 1.0.0   │ fork    │ 946618   │ 17h    │ 9    │ online    │ 0%       │ 98.0mb   │ root     │ disabled │
+│ 36 │ client-queue-manager    │ default     │ 1.0.0   │ fork    │ 946641   │ 17h    │ 53   │ online    │ 0%       │ 148.1mb  │ root     │ disabled │
+│ 44 │ kaliphone               │ default     │ 0.0.0   │ fork    │ 946642   │ 17h    │ 3    │ online    │ 0%       │ 126.8mb  │ root     │ disabled │
+│ 28 │ meetingroadmap          │ default     │ 1.0.0   │ fork    │ 946602   │ 17h    │ 47   │ online    │ 0%       │ 109.7mb  │ root     │ disabled │
+│ 46 │ office-inventory        │ default     │ 1.0.0   │ cluster │ 962871   │ 0s     │ 0    │ online    │ 0%       │ 46.3mb   │ root     │ disabled │
+│ 7  │ taxportal               │ default     │ 1.0.0   │ fork    │ 949538   │ 16h    │ 97   │ online    │ 0%       │ 114.0mb  │ root     │ disabled │
+└────┴─────────────────────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
+
+========================================
+  Deploy complete!
+  Check: pm2 logs office-inventory --lines 10
+  Visit: https://app.cleanexinc.com
+========================================
+root@srv1365851:/var/www/office-inventory/repo# source /var/www/office-inventory/.env
+root@srv1365851:/var/www/office-inventory/repo# 
