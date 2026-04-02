@@ -3,8 +3,13 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
+app.set("etag", false);
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+app.use("/api", (_req, res, next) => {
+  res.setHeader("Cache-Control", "no-store");
+  next();
+});
 
 app.use((req, res, next) => {
   const start = Date.now();

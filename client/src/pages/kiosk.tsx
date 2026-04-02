@@ -150,8 +150,12 @@ export default function Kiosk() {
         if (!old) return old;
         return old.map(item => item.id === updatedItem.id ? updatedItem : item);
       });
+      queryClient.invalidateQueries({ queryKey: ["/api/items"] });
       setEditingItem(null);
       toast({ title: "Item Updated", description: "Item has been updated successfully." });
+    },
+    onError: (err) => {
+      toast({ title: "Update Failed", description: err.message, variant: "destructive" });
     },
   });
 
