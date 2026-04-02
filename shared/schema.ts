@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, boolean, numeric } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, boolean, numeric, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -62,6 +62,23 @@ export type CheckoutPayload = z.infer<typeof checkoutSchema>;
 export type RestockPayload = z.infer<typeof restockSchema>;
 export type CreateItemPayload = z.infer<typeof createItemSchema>;
 export type UpdateItemPayload = z.infer<typeof updateItemSchema>;
+
+// ─── Checkout Logs ─────────────────────────────────────────────────────────────
+
+export const checkoutLogs = pgTable("checkout_logs", {
+  id: serial("id").primaryKey(),
+  itemId: integer("item_id").notNull(),
+  itemName: text("item_name").notNull(),
+  category: text("category").notNull().default(""),
+  quantity: integer("quantity").notNull(),
+  unitCost: numeric("unit_cost", { precision: 10, scale: 2 }).notNull().default("0"),
+  totalCost: numeric("total_cost", { precision: 10, scale: 2 }).notNull().default("0"),
+  checkedOutAt: timestamp("checked_out_at").notNull().defaultNow(),
+});
+
+export const insertCheckoutLogSchema = createInsertSchema(checkoutLogs).omit({ id: true, checkedOutAt: true });
+export type InsertCheckoutLog = z.infer<typeof insertCheckoutLogSchema>;
+export type CheckoutLog = typeof checkoutLogs.$inferSelect;
 
 // ─── Properties ───────────────────────────────────────────────────────────────
 
@@ -144,3 +161,35 @@ export const updateDashboardAppSchema = z.object({
 
 export type CreateDashboardAppPayload = z.infer<typeof createDashboardAppSchema>;
 export type UpdateDashboardAppPayload = z.infer<typeof updateDashboardAppSchema>;
+
+// ─── Analytics ────────────────────────────────────────────────────────────────
+
+export type AnalyticsRange = "week" | "month" | "alltime";
+
+export type AnalyticsItemRow = {
+  itemName: string;
+  category: string;
+  unitsSold: number;
+  unitCost: string;
+  totalCost: number;
+};
+
+export type AnalyticsCategoryRow = {
+  category: string;
+  unitsSold: number;
+  totalCost: number;
+};
+
+export type AnalyticsMonthRow = {
+  month: string;
+  spend: number;
+};
+
+export type AnalyticsResponse = {
+  range: AnalyticsRange;
+  totalSpend: number;
+  totalUnits: number;
+  itemBreakdown: AnalyticsItemRow[];
+  categoryTotals: AnalyticsCategoryRow[];
+  monthlyTrend?: AnalyticsMonthRow[];
+};

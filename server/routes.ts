@@ -2,7 +2,7 @@ import type { Express } from "express";
 import express from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { checkoutSchema, restockSchema, createItemSchema, updateItemSchema, createDashboardAppSchema, updateDashboardAppSchema, createPropertySchema, updatePropertySchema } from "@shared/schema";
+import { checkoutSchema, restockSchema, createItemSchema, updateItemSchema, createDashboardAppSchema, updateDashboardAppSchema, createPropertySchema, updatePropertySchema, type AnalyticsRange } from "@shared/schema";
 import fs from "fs";
 import path from "path";
 
@@ -129,6 +129,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Item not found" });
       }
       res.status(500).json({ error: "Failed to delete item" });
+    }
+  });
+
+  // ─── Analytics ───────────────────────────────────────────────────────────
+
+  app.get("/api/analytics", async (req, res) => {
+    try {
+      const rawRange = req.query.range as string | undefined;
+      const range: AnalyticsRange =
+        rawRange === "month" || rawRange === "alltime" ? rawRange : "week";
+      const data = await storage.getAnalytics(range);
+      res.json(data);
+    } catch (error) {
+      console.error("Analytics error:", error);
+      res.status(500).json({ error: "Failed to fetch analytics" });
     }
   });
 

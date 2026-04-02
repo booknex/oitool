@@ -4,6 +4,7 @@ import { pool } from "./db";
 import { drizzle } from "drizzle-orm/node-postgres";
 import {
   inventoryItems,
+  checkoutLogs,
   dashboardApps,
   properties,
   type InventoryItem,
@@ -16,6 +17,8 @@ import {
   type Property,
   type CreatePropertyPayload,
   type UpdatePropertyPayload,
+  type AnalyticsRange,
+  type AnalyticsResponse,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -27,6 +30,8 @@ export interface IStorage {
   createItem(data: CreateItemPayload): Promise<InventoryItem>;
   updateItem(data: UpdateItemPayload): Promise<InventoryItem>;
   deleteItem(id: number): Promise<void>;
+  // Analytics
+  getAnalytics(range: AnalyticsRange): Promise<AnalyticsResponse>;
   // Dashboard apps
   getDashboardApps(): Promise<DashboardApp[]>;
   createDashboardApp(data: CreateDashboardAppPayload): Promise<DashboardApp>;
@@ -59,21 +64,21 @@ const DEFAULT_DASHBOARD_APPS: Omit<CreateDashboardAppPayload, "sortOrder">[] = [
     available: true,
   },
   {
+    name: "Analytics",
+    description: "Usage trends & cost tracking",
+    icon: "BarChart3",
+    color: "#F3E5F5",
+    iconColor: "#9C27B0",
+    route: "/analytics",
+    available: true,
+  },
+  {
     name: "Task Board",
     description: "Cleaning checklists & assignments",
     icon: "ClipboardList",
-    color: "#F3E5F5",
-    iconColor: "#9C27B0",
-    route: "/tasks",
-    available: false,
-  },
-  {
-    name: "Reports",
-    description: "Performance stats & analytics",
-    icon: "BarChart3",
     color: "#E8F5E9",
     iconColor: "#4CAF50",
-    route: "/reports",
+    route: "/tasks",
     available: false,
   },
   {
@@ -85,6 +90,13 @@ const DEFAULT_DASHBOARD_APPS: Omit<CreateDashboardAppPayload, "sortOrder">[] = [
     route: "/team",
     available: false,
   },
+];
+
+// Required apps that must always exist regardless of DB state
+const REQUIRED_APPS = [
+  { route: "/kiosk",     name: "Supply Kiosk", description: "Manage inventory & cleaning supplies", icon: "Package",    color: "#E8F4FD", iconColor: "#2196F3", available: true },
+  { route: "/reviews",   name: "Reviews",      description: "View Airbnb guest feedback",           icon: "Star",       color: "#FFF8E1", iconColor: "#F59E0B", available: true },
+  { route: "/analytics", name: "Analytics",    description: "Usage trends & cost tracking",         icon: "BarChart3",  color: "#F3E5F5", iconColor: "#9C27B0", available: true },
 ];
 
 export class DatabaseStorage implements IStorage {
@@ -103,6 +115,15 @@ export class DatabaseStorage implements IStorage {
       await client.query("BEGIN");
       const txDb = drizzle(client);
 
+      const logEntries: {
+        itemId: number;
+        itemName: string;
+        category: string;
+        quantity: number;
+        unitCost: string;
+        totalCost: string;
+      }[] = [];
+
       for (const cartItem of cartItems) {
         const [item] = await txDb.select().from(inventoryItems).where(eq(inventoryItems.id, cartItem.itemId));
         if (!item) {
@@ -116,6 +137,22 @@ export class DatabaseStorage implements IStorage {
           .update(inventoryItems)
           .set({ stock: sql`${inventoryItems.stock} - ${cartItem.quantity}` })
           .where(and(eq(inventoryItems.id, cartItem.itemId), gte(inventoryItems.stock, cartItem.quantity)));
+
+        const unitCostNum = parseFloat(item.cost ?? "0");
+        const totalCostNum = unitCostNum * cartItem.quantity;
+        logEntries.push({
+          itemId: item.id,
+          itemName: item.name,
+          category: item.category,
+          quantity: cartItem.quantity,
+          unitCost: unitCostNum.toFixed(2),
+          totalCost: totalCostNum.toFixed(2),
+        });
+      }
+
+      // Insert checkout log entries within same transaction
+      if (logEntries.length > 0) {
+        await txDb.insert(checkoutLogs).values(logEntries);
       }
 
       await client.query("COMMIT");
@@ -213,6 +250,91 @@ export class DatabaseStorage implements IStorage {
     await db.delete(inventoryItems).where(eq(inventoryItems.id, id));
   }
 
+  // ─── Analytics ──────────────────────────────────────────────────────────────
+
+  async getAnalytics(range: AnalyticsRange): Promise<AnalyticsResponse> {
+    let dateFilter = "";
+    if (range === "week") {
+      dateFilter = "WHERE checked_out_at >= NOW() - INTERVAL '7 days'";
+    } else if (range === "month") {
+      dateFilter = "WHERE checked_out_at >= NOW() - INTERVAL '30 days'";
+    }
+
+    // Item breakdown
+    const itemRows = await db.execute(sql.raw(`
+      SELECT
+        item_name   AS "itemName",
+        category,
+        SUM(quantity)::int           AS "unitsSold",
+        MAX(unit_cost)::text         AS "unitCost",
+        SUM(total_cost)::float       AS "totalCost"
+      FROM checkout_logs
+      ${dateFilter}
+      GROUP BY item_name, category
+      ORDER BY "unitsSold" DESC
+    `));
+
+    // Category totals
+    const catRows = await db.execute(sql.raw(`
+      SELECT
+        category,
+        SUM(quantity)::int     AS "unitsSold",
+        SUM(total_cost)::float AS "totalCost"
+      FROM checkout_logs
+      ${dateFilter}
+      GROUP BY category
+      ORDER BY "totalCost" DESC
+    `));
+
+    // Grand total
+    const totalRow = await db.execute(sql.raw(`
+      SELECT
+        COALESCE(SUM(total_cost), 0)::float AS "totalSpend",
+        COALESCE(SUM(quantity), 0)::int     AS "totalUnits"
+      FROM checkout_logs
+      ${dateFilter}
+    `));
+
+    const totals = (totalRow.rows[0] as { totalSpend: number; totalUnits: number }) ?? { totalSpend: 0, totalUnits: 0 };
+
+    const result: AnalyticsResponse = {
+      range,
+      totalSpend: Number(totals.totalSpend ?? 0),
+      totalUnits: Number(totals.totalUnits ?? 0),
+      itemBreakdown: (itemRows.rows as any[]).map((r) => ({
+        itemName: r.itemName,
+        category: r.category,
+        unitsSold: Number(r.unitsSold),
+        unitCost: String(r.unitCost ?? "0"),
+        totalCost: Number(r.totalCost ?? 0),
+      })),
+      categoryTotals: (catRows.rows as any[]).map((r) => ({
+        category: r.category,
+        unitsSold: Number(r.unitsSold),
+        totalCost: Number(r.totalCost ?? 0),
+      })),
+    };
+
+    // Monthly trend — only for alltime
+    if (range === "alltime") {
+      const monthRows = await db.execute(sql.raw(`
+        SELECT
+          TO_CHAR(DATE_TRUNC('month', checked_out_at), 'YYYY-MM') AS month,
+          SUM(total_cost)::float AS spend
+        FROM checkout_logs
+        WHERE checked_out_at >= NOW() - INTERVAL '12 months'
+        GROUP BY DATE_TRUNC('month', checked_out_at)
+        ORDER BY DATE_TRUNC('month', checked_out_at) ASC
+      `));
+      result.monthlyTrend = (monthRows.rows as any[]).map((r) => ({
+        month: r.month,
+        spend: Number(r.spend ?? 0),
+      }));
+    }
+
+    return result;
+  }
+
   // ─── Dashboard Apps ────────────────────────────────────────────────────────
 
   async getDashboardApps(): Promise<DashboardApp[]> {
@@ -230,10 +352,6 @@ export class DatabaseStorage implements IStorage {
         .returning();
       apps = inserted.sort((a, b) => a.sortOrder - b.sortOrder);
     } else {
-      const REQUIRED_APPS = [
-        { route: "/kiosk", name: "Supply Kiosk", description: "Manage inventory & cleaning supplies", icon: "Package", color: "#E8F4FD", iconColor: "#2196F3", available: true },
-        { route: "/reviews", name: "Reviews", description: "View Airbnb guest feedback", icon: "Star", color: "#FFF8E1", iconColor: "#F59E0B", available: true },
-      ];
       const existingRoutes = new Set(apps.map(a => a.route));
       const missing = REQUIRED_APPS.filter(a => !existingRoutes.has(a.route));
       if (missing.length > 0) {
