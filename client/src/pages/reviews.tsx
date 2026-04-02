@@ -337,9 +337,10 @@ export default function Reviews() {
                   >
                     {/* Property photo */}
                     {prop.imageUrl && (
-                      <div
-                        className="absolute inset-0 bg-cover bg-center"
-                        style={{ backgroundImage: `url(${prop.imageUrl})` }}
+                      <img
+                        src={prop.imageUrl}
+                        alt={prop.name}
+                        className="absolute inset-0 w-full h-full object-cover"
                       />
                     )}
 
