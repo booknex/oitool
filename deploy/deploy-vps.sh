@@ -46,12 +46,70 @@ echo "[5/5] Running database migrations..."
 psql "$DATABASE_URL" -c "
 DO \$\$
 BEGIN
+    -- Create inventory_items table if it doesn't exist
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_name = 'inventory_items'
+    ) THEN
+        CREATE TABLE inventory_items (
+            id          SERIAL PRIMARY KEY,
+            name        TEXT NOT NULL,
+            description TEXT NOT NULL DEFAULT '',
+            category    TEXT NOT NULL DEFAULT '',
+            stock       INTEGER NOT NULL DEFAULT 0,
+            max_stock   INTEGER NOT NULL DEFAULT 0,
+            visible     BOOLEAN NOT NULL DEFAULT true,
+            cost        NUMERIC(10,2) NOT NULL DEFAULT 0
+        );
+    END IF;
+
     -- Add low_stock_threshold to inventory_items if missing
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.columns
         WHERE table_name = 'inventory_items' AND column_name = 'low_stock_threshold'
     ) THEN
         ALTER TABLE inventory_items ADD COLUMN low_stock_threshold integer;
+    END IF;
+
+    -- Add cost column to inventory_items if missing
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'inventory_items' AND column_name = 'cost'
+    ) THEN
+        ALTER TABLE inventory_items ADD COLUMN cost NUMERIC(10,2) NOT NULL DEFAULT 0;
+    END IF;
+
+    -- Create dashboard_apps table if it doesn't exist
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_name = 'dashboard_apps'
+    ) THEN
+        CREATE TABLE dashboard_apps (
+            id          SERIAL PRIMARY KEY,
+            name        TEXT NOT NULL,
+            description TEXT NOT NULL DEFAULT '',
+            icon        TEXT NOT NULL DEFAULT 'Package',
+            color       TEXT NOT NULL DEFAULT '#E8F4FD',
+            icon_color  TEXT NOT NULL DEFAULT '#2196F3',
+            route       TEXT NOT NULL,
+            available   BOOLEAN NOT NULL DEFAULT false,
+            sort_order  INTEGER NOT NULL DEFAULT 0
+        );
+    END IF;
+
+    -- Create properties table if it doesn't exist
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_name = 'properties'
+    ) THEN
+        CREATE TABLE properties (
+            id          SERIAL PRIMARY KEY,
+            name        TEXT NOT NULL,
+            address     TEXT NOT NULL DEFAULT '',
+            airbnb_url  TEXT NOT NULL DEFAULT '',
+            color       TEXT NOT NULL DEFAULT '#E8F4FD',
+            sort_order  INTEGER NOT NULL DEFAULT 0
+        );
     END IF;
 
     -- Create checkout_logs table if it doesn't exist
