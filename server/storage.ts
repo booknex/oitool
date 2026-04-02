@@ -301,6 +301,7 @@ export class DatabaseStorage implements IStorage {
     if (data.airbnbUrl !== undefined) updates.airbnbUrl = data.airbnbUrl;
     if (data.color !== undefined) updates.color = data.color;
     if (data.sortOrder !== undefined) updates.sortOrder = data.sortOrder;
+    if (data.imageUrl !== undefined) updates.imageUrl = data.imageUrl;
 
     const [updated] = await db
       .update(properties)

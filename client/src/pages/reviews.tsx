@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { ArrowLeft, Plus, Star, Pencil, Trash2, Check, X, ExternalLink } from "lucide-react";
+import { ArrowLeft, Plus, Star, Pencil, Trash2, Check, X, ExternalLink, ImagePlus, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,8 +28,8 @@ const ACCENT_MAP: Record<string, string> = {
 
 // ─── Add / Edit modal ─────────────────────────────────────────────────────────
 
-type FormState = { name: string; address: string; airbnbUrl: string; color: string };
-const BLANK: FormState = { name: "", address: "", airbnbUrl: "", color: SQUARE_COLORS[0] };
+type FormState = { name: string; address: string; airbnbUrl: string; color: string; imageUrl: string };
+const BLANK: FormState = { name: "", address: "", airbnbUrl: "", color: SQUARE_COLORS[0], imageUrl: "" };
 
 function PropertyModal({
   open,
@@ -45,17 +45,95 @@ function PropertyModal({
   saving: boolean;
 }) {
   const [form, setForm] = useState<FormState>(initial);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
+
   const set = (k: keyof FormState) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm((p) => ({ ...p, [k]: e.target.value }));
 
+  const handleImageFile = async (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "Please select an image file", variant: "destructive" });
+      return;
+    }
+    setUploading(true);
+    try {
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dataUrl }),
+      });
+      if (!res.ok) throw new Error("Upload failed");
+      const { url } = await res.json();
+      setForm((p) => ({ ...p, imageUrl: url }));
+    } catch {
+      toast({ title: "Image upload failed", variant: "destructive" });
+    } finally {
+      setUploading(false);
+    }
+  };
+
   return (
-    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+    <Dialog open={open} onOpenChange={(v) => { if (!v) { onClose(); setForm(initial); } }}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
           <DialogTitle>{initial.name ? "Edit Property" : "Add Property"}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 pt-2">
+          {/* Image upload */}
+          <div className="space-y-1.5">
+            <Label>Photo <span className="text-muted-foreground font-normal">(optional)</span></Label>
+            <div
+              className="relative w-full h-32 rounded-xl border-2 border-dashed border-slate-200 overflow-hidden cursor-pointer flex items-center justify-center bg-slate-50 hover:bg-slate-100 transition-colors"
+              onClick={() => fileInputRef.current?.click()}
+              data-testid="button-upload-image"
+            >
+              {form.imageUrl ? (
+                <>
+                  <img src={form.imageUrl} alt="Property" className="absolute inset-0 w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                    <span className="text-white text-sm font-medium">Change photo</span>
+                  </div>
+                </>
+              ) : uploading ? (
+                <div className="flex flex-col items-center gap-2 text-slate-400">
+                  <Loader2 className="w-6 h-6 animate-spin" />
+                  <span className="text-xs">Uploading…</span>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center gap-2 text-slate-400">
+                  <ImagePlus className="w-6 h-6" />
+                  <span className="text-xs">Tap to upload a photo</span>
+                </div>
+              )}
+            </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => e.target.files?.[0] && handleImageFile(e.target.files[0])}
+              data-testid="input-property-image"
+            />
+            {form.imageUrl && (
+              <button
+                className="text-xs text-red-500 hover:text-red-700"
+                onClick={() => setForm((p) => ({ ...p, imageUrl: "" }))}
+                data-testid="button-remove-image"
+              >
+                Remove photo
+              </button>
+            )}
+          </div>
+
           <div className="space-y-1.5">
             <Label>Property Name</Label>
             <Input
@@ -111,7 +189,7 @@ function PropertyModal({
             </Button>
             <Button
               onClick={() => onSave(form)}
-              disabled={saving || !form.name.trim() || !form.airbnbUrl.trim()}
+              disabled={saving || uploading || !form.name.trim() || !form.airbnbUrl.trim()}
               className="flex-1"
               data-testid="button-save-property"
             >
@@ -140,8 +218,7 @@ export default function Reviews() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: Omit<FormState, "id">) =>
-      apiRequest("POST", "/api/properties", data),
+    mutationFn: (data: FormState) => apiRequest("POST", "/api/properties", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/properties"] });
       setAddOpen(false);
@@ -193,28 +270,25 @@ export default function Reviews() {
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <div>
-            <h1 className="text-[18px] font-semibold text-slate-800 leading-tight">Property Reviews</h1>
-            <p className="text-xs text-slate-400 mt-0.5">Tap a property to open its Airbnb reviews</p>
+            <h1 className="text-lg font-bold text-slate-800 leading-none">Properties</h1>
+            <p className="text-xs text-slate-400 mt-0.5">Tap a property to view its reviews</p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
           <Button
             size="icon"
-            variant={editMode ? "default" : "ghost"}
+            variant={editMode ? "default" : "outline"}
             onClick={() => { setEditMode((v) => !v); setDeleteId(null); }}
             data-testid="button-toggle-edit"
           >
             {editMode ? <Check className="w-4 h-4" /> : <Pencil className="w-4 h-4" />}
           </Button>
-          <Button
-            size="icon"
-            variant="ghost"
-            onClick={() => setAddOpen(true)}
-            data-testid="button-add-property"
-          >
-            <Plus className="w-5 h-5" />
-          </Button>
+          {!editMode && (
+            <Button size="icon" onClick={() => setAddOpen(true)} data-testid="button-add-property">
+              <Plus className="w-4 h-4" />
+            </Button>
+          )}
         </div>
       </div>
 
@@ -261,34 +335,60 @@ export default function Reviews() {
                     disabled={editMode}
                     data-testid={`button-open-property-${prop.id}`}
                   >
-                    {/* Star icon top-left */}
-                    <div
-                      className="absolute top-2 left-2 w-7 h-7 rounded-lg flex items-center justify-center"
-                      style={{ backgroundColor: `${ac}18` }}
-                    >
-                      <Star className="w-3.5 h-3.5" style={{ color: ac }} />
-                    </div>
+                    {/* Property photo */}
+                    {prop.imageUrl && (
+                      <div
+                        className="absolute inset-0 bg-cover bg-center"
+                        style={{ backgroundImage: `url(${prop.imageUrl})` }}
+                      />
+                    )}
 
-                    {/* External link icon top-right (visible on hover when not in edit mode) */}
+                    {/* Gradient overlay for readability */}
+                    <div
+                      className="absolute inset-0"
+                      style={{
+                        background: prop.imageUrl
+                          ? "linear-gradient(to top, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.1) 50%, transparent 100%)"
+                          : undefined,
+                      }}
+                    />
+
+                    {/* Star icon top-left (only when no image) */}
+                    {!prop.imageUrl && (
+                      <div
+                        className="absolute top-2 left-2 w-7 h-7 rounded-lg flex items-center justify-center"
+                        style={{ backgroundColor: `${ac}18` }}
+                      >
+                        <Star className="w-3.5 h-3.5" style={{ color: ac }} />
+                      </div>
+                    )}
+
+                    {/* External link hint on hover */}
                     {!editMode && (
                       <div
                         className="absolute top-2 right-2 w-6 h-6 rounded-md flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                        style={{ backgroundColor: `${ac}20` }}
+                        style={{ backgroundColor: prop.imageUrl ? "rgba(0,0,0,0.4)" : `${ac}20` }}
                       >
-                        <ExternalLink className="w-3 h-3" style={{ color: ac }} />
+                        <ExternalLink
+                          className="w-3 h-3"
+                          style={{ color: prop.imageUrl ? "#fff" : ac }}
+                        />
                       </div>
                     )}
 
                     {/* Property name + address */}
-                    <div className="w-full">
+                    <div className="w-full relative">
                       <p
                         className="text-[12px] font-bold leading-snug line-clamp-2"
-                        style={{ color: ac }}
+                        style={{ color: prop.imageUrl ? "#fff" : ac }}
                       >
                         {prop.name}
                       </p>
                       {prop.address && (
-                        <p className="text-[10px] mt-0.5 truncate" style={{ color: `${ac}99` }}>
+                        <p
+                          className="text-[10px] mt-0.5 truncate"
+                          style={{ color: prop.imageUrl ? "rgba(255,255,255,0.75)" : `${ac}99` }}
+                        >
                           {prop.address}
                         </p>
                       )}
@@ -297,47 +397,38 @@ export default function Reviews() {
 
                   {/* Edit mode controls */}
                   {editMode && (
-                    <div className="absolute top-2 right-2 flex gap-1.5">
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="w-7 h-7 bg-white/80 backdrop-blur-sm rounded-lg shadow-sm"
-                        onClick={() => setEditTarget(prop)}
+                    <div className="absolute -top-2 -right-2 flex gap-1">
+                      {/* Edit button */}
+                      <button
+                        className="w-7 h-7 rounded-full bg-white shadow-md border border-slate-100 flex items-center justify-center"
+                        onClick={() =>
+                          setEditTarget({
+                            ...prop,
+                            imageUrl: prop.imageUrl ?? "",
+                          })
+                        }
                         data-testid={`button-edit-property-${prop.id}`}
                       >
-                        <Pencil className="w-3.5 h-3.5 text-slate-600" />
-                      </Button>
+                        <Pencil className="w-3 h-3 text-slate-600" />
+                      </button>
+
+                      {/* Delete button */}
                       {isConfirmingDelete ? (
-                        <div className="flex gap-1">
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="w-7 h-7 bg-red-500 rounded-lg shadow-sm"
-                            onClick={() => deleteMutation.mutate(prop.id)}
-                            data-testid={`button-confirm-delete-property-${prop.id}`}
-                          >
-                            <Check className="w-3.5 h-3.5 text-white" />
-                          </Button>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="w-7 h-7 bg-white/80 rounded-lg shadow-sm"
-                            onClick={() => setDeleteId(null)}
-                            data-testid={`button-cancel-delete-property-${prop.id}`}
-                          >
-                            <X className="w-3.5 h-3.5 text-slate-600" />
-                          </Button>
-                        </div>
+                        <button
+                          className="w-7 h-7 rounded-full bg-red-500 shadow-md flex items-center justify-center"
+                          onClick={() => deleteMutation.mutate(prop.id)}
+                          data-testid={`button-delete-confirm-${prop.id}`}
+                        >
+                          <Check className="w-3 h-3 text-white" />
+                        </button>
                       ) : (
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="w-7 h-7 bg-white/80 backdrop-blur-sm rounded-lg shadow-sm"
+                        <button
+                          className="w-7 h-7 rounded-full bg-white shadow-md border border-slate-100 flex items-center justify-center"
                           onClick={() => setDeleteId(prop.id)}
                           data-testid={`button-delete-property-${prop.id}`}
                         >
-                          <Trash2 className="w-3.5 h-3.5 text-red-500" />
-                        </Button>
+                          <Trash2 className="w-3 h-3 text-red-500" />
+                        </button>
                       )}
                     </div>
                   )}
@@ -348,7 +439,7 @@ export default function Reviews() {
         )}
       </div>
 
-      {/* Add modal */}
+      {/* ── Add modal ── */}
       <PropertyModal
         open={addOpen}
         onClose={() => setAddOpen(false)}
@@ -357,18 +448,22 @@ export default function Reviews() {
         saving={createMutation.isPending}
       />
 
-      {/* Edit modal */}
-      <PropertyModal
-        open={!!editTarget}
-        onClose={() => setEditTarget(null)}
-        initial={
-          editTarget
-            ? { name: editTarget.name, address: editTarget.address, airbnbUrl: editTarget.airbnbUrl, color: editTarget.color }
-            : BLANK
-        }
-        onSave={handleSaveEdit}
-        saving={updateMutation.isPending}
-      />
+      {/* ── Edit modal ── */}
+      {editTarget && (
+        <PropertyModal
+          open={!!editTarget}
+          onClose={() => setEditTarget(null)}
+          initial={{
+            name: editTarget.name,
+            address: editTarget.address,
+            airbnbUrl: editTarget.airbnbUrl,
+            color: editTarget.color,
+            imageUrl: editTarget.imageUrl ?? "",
+          }}
+          onSave={handleSaveEdit}
+          saving={updateMutation.isPending}
+        />
+      )}
     </div>
   );
 }

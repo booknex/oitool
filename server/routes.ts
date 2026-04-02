@@ -1,9 +1,36 @@
 import type { Express } from "express";
+import express from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { checkoutSchema, restockSchema, createItemSchema, updateItemSchema, createDashboardAppSchema, updateDashboardAppSchema, createPropertySchema, updatePropertySchema } from "@shared/schema";
+import fs from "fs";
+import path from "path";
+
+const UPLOADS_DIR = path.join(process.cwd(), "public", "uploads");
+fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Serve uploaded images as static files
+  app.use("/uploads", express.static(UPLOADS_DIR));
+
+  // Upload endpoint — accepts base64 data URL, writes file to disk
+  app.post("/api/upload", async (req, res) => {
+    try {
+      const { dataUrl } = req.body as { dataUrl: string };
+      if (!dataUrl) return res.status(400).json({ error: "dataUrl required" });
+
+      const match = dataUrl.match(/^data:image\/(\w+);base64,(.+)$/);
+      if (!match) return res.status(400).json({ error: "Invalid image data URL" });
+
+      const [, ext, b64] = match;
+      const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      fs.writeFileSync(path.join(UPLOADS_DIR, filename), Buffer.from(b64, "base64"));
+
+      res.json({ url: `/uploads/${filename}` });
+    } catch {
+      res.status(500).json({ error: "Upload failed" });
+    }
+  });
   app.get("/api/items", async (_req, res) => {
     try {
       const items = await storage.getItems();

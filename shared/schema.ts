@@ -72,6 +72,7 @@ export const properties = pgTable("properties", {
   airbnbUrl: text("airbnb_url").notNull(),
   color: text("color").notNull().default("#E8F4FD"),
   sortOrder: integer("sort_order").notNull().default(0),
+  imageUrl: text("image_url").default(""),
 });
 
 export const insertPropertySchema = createInsertSchema(properties).omit({ id: true });
@@ -84,6 +85,7 @@ export const createPropertySchema = z.object({
   airbnbUrl: z.string().url("Must be a valid URL"),
   color: z.string().default("#E8F4FD"),
   sortOrder: z.number().default(0),
+  imageUrl: z.string().default(""),
 });
 
 export const updatePropertySchema = z.object({
@@ -93,6 +95,7 @@ export const updatePropertySchema = z.object({
   airbnbUrl: z.string().url().optional(),
   color: z.string().optional(),
   sortOrder: z.number().optional(),
+  imageUrl: z.string().optional(),
 });
 
 export type CreatePropertyPayload = z.infer<typeof createPropertySchema>;
