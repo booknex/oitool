@@ -710,8 +710,8 @@ export default function Kiosk() {
                         type="number"
                         min={1}
                         className="w-full mt-1 px-3 py-2 bg-card border border-border rounded-md text-sm text-foreground"
-                        value={newItem.maxStock}
-                        onChange={(e) => setNewItem(prev => ({ ...prev, maxStock: parseInt(e.target.value) || 1 }))}
+                        value={isNaN(newItem.maxStock) ? "" : newItem.maxStock}
+                        onChange={(e) => setNewItem(prev => ({ ...prev, maxStock: parseInt(e.target.value) }))}
                         data-testid="input-new-maxstock"
                       />
                     </div>
@@ -775,7 +775,7 @@ export default function Kiosk() {
                           toast({ title: "Missing Fields", description: "Please fill in all fields.", variant: "destructive" });
                           return;
                         }
-                        createItemMutation.mutate(newItem);
+                        createItemMutation.mutate({ ...newItem, maxStock: isNaN(newItem.maxStock) ? 10 : newItem.maxStock });
                       }}
                       disabled={createItemMutation.isPending}
                       data-testid="button-save-new-item"
@@ -832,8 +832,8 @@ export default function Kiosk() {
                             type="number"
                             min={1}
                             className="w-full mt-1 px-2 py-1 bg-card border border-border rounded-md text-sm text-foreground"
-                            value={editingItem.maxStock}
-                            onChange={(e) => setEditingItem(prev => prev ? { ...prev, maxStock: parseInt(e.target.value) || 1 } : null)}
+                            value={isNaN(editingItem.maxStock) ? "" : editingItem.maxStock}
+                            onChange={(e) => setEditingItem(prev => prev ? { ...prev, maxStock: parseInt(e.target.value) } : null)}
                             data-testid={`input-edit-maxstock-${item.id}`}
                           />
                         </div>
@@ -843,8 +843,8 @@ export default function Kiosk() {
                             type="number"
                             min={0}
                             className="w-full mt-1 px-2 py-1 bg-card border border-border rounded-md text-sm text-foreground"
-                            value={editingItem.stock}
-                            onChange={(e) => setEditingItem(prev => prev ? { ...prev, stock: parseInt(e.target.value) || 0 } : null)}
+                            value={isNaN(editingItem.stock) ? "" : editingItem.stock}
+                            onChange={(e) => setEditingItem(prev => prev ? { ...prev, stock: parseInt(e.target.value) } : null)}
                             data-testid={`input-edit-stock-${item.id}`}
                           />
                         </div>
@@ -919,8 +919,8 @@ export default function Kiosk() {
                             name: editingItem.name,
                             description: editingItem.description,
                             category: editingItem.category,
-                            maxStock: editingItem.maxStock,
-                            stock: editingItem.stock,
+                            maxStock: isNaN(editingItem.maxStock) ? 1 : editingItem.maxStock,
+                            stock: isNaN(editingItem.stock) ? 0 : editingItem.stock,
                             cost: editingItem.cost,
                             itemType: editingItem.itemType,
                             lowStockThreshold: editingItem.lowStockThreshold,
