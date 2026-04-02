@@ -1,0 +1,139 @@
+Expanded Security Maintenance for Applications is not enabled.
+
+95 updates can be applied immediately.
+73 of these updates are standard security updates.
+To see these additional updates run: apt list --upgradable
+
+Enable ESM Apps to receive additional future security updates.
+See https://ubuntu.com/esm or run: sudo pro status
+
+
+*** System restart required ***
+********************************************************************************
+
+Welcome to One-Click OpenLiteSpeed Node.js Server.
+To keep this Droplet secure, the firewalld is enabled.
+All ports are BLOCKED except 22 (SSH), 80 (HTTP) and 443 (HTTPS).
+
+The Node.js OLS One-Click Quickstart guide:
+* https://docs.litespeedtech.com/cloud/images/nodejs/
+
+In a web browser, you can view:
+* The sample node site: http://187.77.21.175/
+
+On the server:
+* You can get the Web Admin admin password with the following command:
+   sudo cat /home/ubuntu/.litespeed_password
+
+System Status:
+  Load : 0.02, 0.05, 0.02
+  CPU  : 1.20428%
+  RAM  : 995/3915MB (25.42%)
+  Disk : 9/48GB (21%)
+
+********************************************************************************
+Last login: Thu Apr  2 21:36:29 2026 from 169.254.0.1
+root@srv1365851:~# pm2 logs office-inventory --lines 20 --nostream
+[TAILING] Tailing last 20 lines for [office-inventory] process (change the value with --lines option)
+/root/.pm2/logs/office-inventory-error-46.log last 20 lines:
+/root/.pm2/logs/office-inventory-out-46.log last 20 lines:
+46|office- | 9:37:21 PM [express] serving on port 5004
+46|office- | 9:37:24 PM [express] GET /api/dashboard-apps 500 in 40ms :: {"error":"Failed to fetch dashboard apps…
+46|office- | 9:37:24 PM [express] GET /api/items 304 in 40ms :: [{"id":4,"name":"Microfiber Cloths","description"…
+46|office- | 9:37:26 PM [express] GET /api/dashboard-apps 500 in 5ms :: {"error":"Failed to fetch dashboard apps"}
+46|office- | 9:37:26 PM [express] GET /api/items 304 in 20ms :: [{"id":4,"name":"Microfiber Cloths","description"…
+46|office- | 9:37:27 PM [express] GET /api/items 304 in 4ms :: [{"id":4,"name":"Microfiber Cloths","description":…
+46|office- | 9:37:27 PM [express] GET /api/dashboard-apps 500 in 16ms :: {"error":"Failed to fetch dashboard apps…
+46|office- | 9:37:32 PM [express] GET /api/dashboard-apps 500 in 5ms :: {"error":"Failed to fetch dashboard apps"}
+46|office- | 9:37:32 PM [express] GET /api/items 304 in 10ms :: [{"id":4,"name":"Microfiber Cloths","description"…
+46|office- | 9:38:03 PM [express] GET /api/items 304 in 17ms :: [{"id":4,"name":"Microfiber Cloths","description"…
+46|office- | 9:38:33 PM [express] GET /api/items 304 in 9ms :: [{"id":4,"name":"Microfiber Cloths","description":…
+46|office- | 9:38:40 PM [express] GET /api/dashboard-apps 500 in 3ms :: {"error":"Failed to fetch dashboard apps"}
+46|office- | 9:38:40 PM [express] GET /api/items 304 in 11ms :: [{"id":4,"name":"Microfiber Cloths","description"…
+46|office- | 9:38:43 PM [express] GET /api/dashboard-apps 500 in 3ms :: {"error":"Failed to fetch dashboard apps"}
+46|office- | 9:38:43 PM [express] GET /api/items 304 in 19ms :: [{"id":4,"name":"Microfiber Cloths","description"…
+46|office- | 9:39:03 PM [express] GET /api/dashboard-apps 500 in 15ms :: {"error":"Failed to fetch dashboard apps…
+46|office- | 9:39:03 PM [express] GET /api/items 304 in 15ms :: [{"id":4,"name":"Microfiber Cloths","description"…
+46|office- | 9:39:30 PM [express] GET /api/dashboard-apps 500 in 10ms :: {"error":"Failed to fetch dashboard apps…
+
+root@srv1365851:~# pm2 env office-inventory | grep DATABASE
+[PM2][ERROR] Modules with id office-inventory not found
+root@srv1365851:~# source /var/www/office-inventory/.env && psql "$DATABASE_URL" -c "\d dashboard_apps"
+Did not find any relation named "dashboard_apps".
+root@srv1365851:~# source /var/www/office-inventory/.env && psql "$DATABASE_URL" -c "SELECT id, name, route FROM dashboard_apps ORDER BY sort_order;"
+ERROR:  relation "dashboard_apps" does not exist
+LINE 1: SELECT id, name, route FROM dashboard_apps ORDER BY sort_ord...
+                                    ^
+root@srv1365851:~# cd /var/www/office-inventory/repo && git pull && bash deploy/deploy-vps.sh
+remote: Enumerating objects: 24, done.
+remote: Counting objects: 100% (24/24), done.
+remote: Compressing objects: 100% (8/8), done.
+remote: Total 17 (delta 12), reused 14 (delta 9), pack-reused 0 (from 0)
+Unpacking objects: 100% (17/17), 5.71 KiB | 233.00 KiB/s, done.
+From https://github.com/booknex/oitool
+   17da419..ed220ba  main       -> origin/main
+Updating 17da419..ed220ba
+Fast-forward
+ attached_assets/Pasted--Expanded-Security-Maintenance-for-Applications-is-not-_1775165869287.txt | 122 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ attached_assets/Pasted--Expanded-Security-Maintenance-for-Applications-is-not-_1775166045452.txt |  60 ++++++++++++++++++++++++++++++++++++++++++++++++++++
+ deploy/deploy-vps.sh                                                                             |  19 ++++++++++++++++-
+ server/prod.ts                                                                                   |   6 ++++++
+ server/routes.ts                                                                                 |   3 ++-
+ 5 files changed, 208 insertions(+), 2 deletions(-)
+ create mode 100644 attached_assets/Pasted--Expanded-Security-Maintenance-for-Applications-is-not-_1775165869287.txt
+ create mode 100644 attached_assets/Pasted--Expanded-Security-Maintenance-for-Applications-is-not-_1775166045452.txt
+========================================
+  Office Inventory - VPS Deploy Script
+========================================
+
+[1/5] Installing dependencies...
+  npm audit fix --force
+
+Run `npm audit` for details.
+
+[2/5] Building frontend (Vite)...
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 11.63s
+
+[3/5] Building server bundle (esbuild)...
+  ../dist/index.cjs  1.6mb ⚠️
+
+⚡ Done in 185ms
+
+[4/5] Copying frontend to dist/public...
+
+[5/5] Running database migrations...
+DO
+
+Restarting PM2...
+[PM2] Applying action deleteProcessId on app [office-inventory](ids: [ 46 ])
+[PM2] [office-inventory](46) ✓
+┌────┬─────────────────────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
+│ id │ name                    │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
+├────┼─────────────────────────┼─────────────┼─────────┼─────────┼──────────┼────────┼──────┼───────────┼──────────┼──────────┼──────────┼──────────┤
+│ 30 │ christmas-bonus         │ default     │ 1.0.0   │ fork    │ 946618   │ 17h    │ 9    │ online    │ 0%       │ 98.0mb   │ root     │ disabled │
+│ 36 │ client-queue-manager    │ default     │ 1.0.0   │ fork    │ 946641   │ 17h    │ 53   │ online    │ 7.7%     │ 148.7mb  │ root     │ disabled │
+│ 44 │ kaliphone               │ default     │ 0.0.0   │ fork    │ 946642   │ 17h    │ 3    │ online    │ 0%       │ 126.8mb  │ root     │ disabled │
+│ 28 │ meetingroadmap          │ default     │ 1.0.0   │ fork    │ 946602   │ 17h    │ 47   │ online    │ 0%       │ 109.7mb  │ root     │ disabled │
+│ 7  │ taxportal               │ default     │ 1.0.0   │ fork    │ 963497   │ 2m     │ 101  │ online    │ 0%       │ 100.0mb  │ root     │ disabled │
+└────┴─────────────────────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
+[PM2][WARN] Applications office-inventory not running, starting...
+[PM2] App [office-inventory] launched (1 instances)
+┌────┬─────────────────────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
+│ id │ name                    │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
+├────┼─────────────────────────┼─────────────┼─────────┼─────────┼──────────┼────────┼──────┼───────────┼──────────┼──────────┼──────────┼──────────┤
+│ 30 │ christmas-bonus         │ default     │ 1.0.0   │ fork    │ 946618   │ 17h    │ 9    │ online    │ 0%       │ 98.0mb   │ root     │ disabled │
+│ 36 │ client-queue-manager    │ default     │ 1.0.0   │ fork    │ 946641   │ 17h    │ 53   │ online    │ 0%       │ 148.7mb  │ root     │ disabled │
+│ 44 │ kaliphone               │ default     │ 0.0.0   │ fork    │ 946642   │ 17h    │ 3    │ online    │ 0%       │ 126.8mb  │ root     │ disabled │
+│ 28 │ meetingroadmap          │ default     │ 1.0.0   │ fork    │ 946602   │ 17h    │ 47   │ online    │ 0%       │ 109.7mb  │ root     │ disabled │
+│ 47 │ office-inventory        │ default     │ 1.0.0   │ cluster │ 963783   │ 0s     │ 0    │ online    │ 0%       │ 46.8mb   │ root     │ disabled │
+│ 7  │ taxportal               │ default     │ 1.0.0   │ fork    │ 963497   │ 2m     │ 101  │ online    │ 0%       │ 100.0mb  │ root     │ disabled │
+└────┴─────────────────────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
+
+========================================
+  Deploy complete!
+  Check: pm2 logs office-inventory --lines 10
+  Visit: https://app.cleanexinc.com
+========================================
+root@srv1365851:/var/www/office-inventory/repo# 
