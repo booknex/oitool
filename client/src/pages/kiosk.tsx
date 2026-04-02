@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { ShoppingCart, Plus, Minus, Trash2, Package, CheckCircle, RotateCcw, ChevronDown, Settings, X, Save, PlusCircle, Maximize, Minimize, ChevronLeft } from "lucide-react";
+import { ShoppingCart, Plus, Minus, Trash2, Package, CheckCircle, RotateCcw, ChevronDown, Settings, X, Save, PlusCircle, Maximize, Minimize, ChevronLeft, Pencil } from "lucide-react";
 import { type InventoryItem } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -61,6 +61,8 @@ export default function Kiosk() {
   const [cart, setCart] = useState<CartEntry[]>([]);
   const [showSuccess, setShowSuccess] = useState(false);
   const [restockDropdownOpen, setRestockDropdownOpen] = useState(false);
+  const [restockEditingId, setRestockEditingId] = useState<number | null>(null);
+  const [restockEditStock, setRestockEditStock] = useState<string>("");
   const [manageOpen, setManageOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
   const [addingItem, setAddingItem] = useState(false);
@@ -73,6 +75,7 @@ export default function Kiosk() {
     function handleClickOutside(e: MouseEvent) {
       if (restockDropdownRef.current && !restockDropdownRef.current.contains(e.target as Node)) {
         setRestockDropdownOpen(false);
+        setRestockEditingId(null);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -318,7 +321,7 @@ export default function Kiosk() {
               <ChevronDown className="w-3 h-3" />
             </Button>
             {restockDropdownOpen && (
-              <div className="absolute right-0 top-full mt-1 w-56 bg-card border border-border rounded-md shadow-lg z-50 max-h-72 overflow-y-auto" data-testid="restock-item-dropdown">
+              <div className="absolute right-0 top-full mt-1 w-64 bg-card border border-border rounded-md shadow-lg z-50 max-h-80 overflow-y-auto" data-testid="restock-item-dropdown">
                 {items.filter(i => i.stock < i.maxStock).length === 0 ? (
                   <div className="p-3 text-sm text-muted-foreground text-center">All items fully stocked</div>
                 ) : (
@@ -326,26 +329,99 @@ export default function Kiosk() {
                     {items.filter(i => i.stock < i.maxStock).map(item => {
                       const unitsNeeded = item.maxStock - item.stock;
                       const restockCost = unitsNeeded * (Number(item.cost) || 0);
+                      const isEditing = restockEditingId === item.id;
                       return (
-                        <button
-                          key={item.id}
-                          className="w-full text-left px-3 py-2 text-sm hover-elevate flex items-center justify-between gap-2"
-                          onClick={() => {
-                            restockItemMutation.mutate(item.id);
-                            setRestockDropdownOpen(false);
-                          }}
-                          data-testid={`button-restock-${item.id}`}
-                        >
-                          <span className="truncate text-foreground">{item.name}</span>
-                          <div className="flex items-center gap-2 flex-shrink-0">
-                            {restockCost > 0 && (
-                              <span className="text-[10px] text-muted-foreground">${restockCost.toFixed(2)}</span>
-                            )}
-                            <span className={`text-xs font-semibold ${getStockColor(item.stock, item.maxStock, item.lowStockThreshold)}`}>
-                              {item.stock}/{item.maxStock}
-                            </span>
-                          </div>
-                        </button>
+                        <div key={item.id} className="border-b border-border/50 last:border-0">
+                          {isEditing ? (
+                            <div className="px-3 py-2" data-testid={`restock-edit-row-${item.id}`}>
+                              <div className="text-xs font-medium text-foreground mb-2 truncate">{item.name}</div>
+                              <div className="flex items-center gap-2 mb-2">
+                                <div className="flex-1">
+                                  <label className="text-[10px] text-muted-foreground">Current Stock</label>
+                                  <input
+                                    type="text"
+                                    inputMode="numeric"
+                                    autoFocus
+                                    className="w-full mt-0.5 px-2 py-1 bg-background border border-border rounded text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                                    value={restockEditStock}
+                                    onChange={(e) => setRestockEditStock(e.target.value.replace(/[^0-9]/g, ""))}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") {
+                                        const newStock = Math.min(parseInt(restockEditStock) || 0, item.maxStock);
+                                        updateItemMutation.mutate({ id: item.id, stock: newStock }, {
+                                          onSuccess: () => setRestockEditingId(null),
+                                        });
+                                      } else if (e.key === "Escape") {
+                                        setRestockEditingId(null);
+                                      }
+                                    }}
+                                    data-testid={`input-restock-edit-stock-${item.id}`}
+                                  />
+                                </div>
+                                <div className="text-xs text-muted-foreground mt-4">/ {item.maxStock}</div>
+                              </div>
+                              <div className="flex items-center gap-1 justify-end">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 text-xs"
+                                  onClick={() => setRestockEditingId(null)}
+                                  data-testid={`button-restock-edit-cancel-${item.id}`}
+                                >
+                                  Cancel
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  className="h-7 text-xs gap-1"
+                                  disabled={updateItemMutation.isPending}
+                                  onClick={() => {
+                                    const newStock = Math.min(parseInt(restockEditStock) || 0, item.maxStock);
+                                    updateItemMutation.mutate({ id: item.id, stock: newStock }, {
+                                      onSuccess: () => setRestockEditingId(null),
+                                    });
+                                  }}
+                                  data-testid={`button-restock-edit-save-${item.id}`}
+                                >
+                                  <Save className="w-3 h-3" />
+                                  Save
+                                </Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex items-center group">
+                              <button
+                                className="flex-1 text-left px-3 py-2 text-sm hover-elevate flex items-center justify-between gap-2"
+                                onClick={() => {
+                                  restockItemMutation.mutate(item.id);
+                                  setRestockDropdownOpen(false);
+                                }}
+                                data-testid={`button-restock-${item.id}`}
+                              >
+                                <span className="truncate text-foreground">{item.name}</span>
+                                <div className="flex items-center gap-2 flex-shrink-0">
+                                  {restockCost > 0 && (
+                                    <span className="text-[10px] text-muted-foreground">${restockCost.toFixed(2)}</span>
+                                  )}
+                                  <span className={`text-xs font-semibold ${getStockColor(item.stock, item.maxStock, item.lowStockThreshold)}`}>
+                                    {item.stock}/{item.maxStock}
+                                  </span>
+                                </div>
+                              </button>
+                              <button
+                                className="px-2 py-2 text-muted-foreground hover:text-foreground flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setRestockEditingId(item.id);
+                                  setRestockEditStock(String(item.stock));
+                                }}
+                                data-testid={`button-restock-edit-open-${item.id}`}
+                                title="Edit stock level"
+                              >
+                                <Pencil className="w-3 h-3" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       );
                     })}
                     {(() => {
