@@ -133,7 +133,11 @@ export default function Analytics() {
 
   const { data, isLoading } = useQuery<AnalyticsResponse>({
     queryKey: ["/api/analytics", range],
-    queryFn: () => fetch(`/api/analytics?range=${range}`).then((r) => r.json()),
+    queryFn: async () => {
+      const res = await fetch(`/api/analytics?range=${range}`);
+      if (!res.ok) throw new Error(`Analytics fetch failed: ${res.status}`);
+      return res.json() as Promise<AnalyticsResponse>;
+    },
     staleTime: 60_000,
   });
 
