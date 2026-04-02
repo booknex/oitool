@@ -3,8 +3,9 @@ import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  Cell,
+  Cell, type TooltipProps,
 } from "recharts";
+import { type ValueType, type NameType } from "recharts/types/component/DefaultTooltipContent";
 import { ArrowLeft, TrendingUp, Package, DollarSign, BarChart3, Layers } from "lucide-react";
 import type { AnalyticsResponse, AnalyticsRange } from "@shared/schema";
 
@@ -40,8 +41,10 @@ function categoryColor(cat: string): string {
 
 // ─── Custom tooltip ────────────────────────────────────────────────────────────
 
-function CustomBarTooltip({ active, payload, label }: any) {
+function CustomBarTooltip({ active, payload, label }: TooltipProps<ValueType, NameType>) {
   if (!active || !payload?.length) return null;
+  const entry = payload[0];
+  const value = typeof entry.value === "number" ? entry.value : Number(entry.value ?? 0);
   return (
     <div
       className="text-sm rounded-xl px-3 py-2"
@@ -53,7 +56,7 @@ function CustomBarTooltip({ active, payload, label }: any) {
     >
       <p className="font-semibold text-slate-800 mb-0.5">{label}</p>
       <p style={{ color: PURPLE }}>
-        {payload[0].name === "spend" ? `$${fmtShort(payload[0].value)}` : `${payload[0].value} units`}
+        {entry.name === "spend" ? `$${fmtShort(value)}` : `${value} units`}
       </p>
     </div>
   );

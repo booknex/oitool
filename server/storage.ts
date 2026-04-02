@@ -260,76 +260,96 @@ export class DatabaseStorage implements IStorage {
       dateFilter = "WHERE checked_out_at >= NOW() - INTERVAL '30 days'";
     }
 
+    // Typed row shapes for the raw SQL results
+    type ItemRow = { itemName: string; category: string; unitsSold: string; unitCost: string; totalCost: string };
+    type CatRow  = { category: string; unitsSold: string; totalCost: string };
+    type TotalRow = { totalSpend: string; totalUnits: string };
+    type MonthRow = { month: string; spend: string };
+
     // Item breakdown
-    const itemRows = await db.execute(sql.raw(`
+    const itemResult = await db.execute(sql.raw(`
       SELECT
         item_name   AS "itemName",
         category,
-        SUM(quantity)::int           AS "unitsSold",
-        MAX(unit_cost)::text         AS "unitCost",
-        SUM(total_cost)::float       AS "totalCost"
+        SUM(quantity)::text           AS "unitsSold",
+        MAX(unit_cost)::text          AS "unitCost",
+        SUM(total_cost)::text         AS "totalCost"
       FROM checkout_logs
       ${dateFilter}
       GROUP BY item_name, category
-      ORDER BY "unitsSold" DESC
+      ORDER BY SUM(quantity) DESC
     `));
 
     // Category totals
-    const catRows = await db.execute(sql.raw(`
+    const catResult = await db.execute(sql.raw(`
       SELECT
         category,
-        SUM(quantity)::int     AS "unitsSold",
-        SUM(total_cost)::float AS "totalCost"
+        SUM(quantity)::text     AS "unitsSold",
+        SUM(total_cost)::text   AS "totalCost"
       FROM checkout_logs
       ${dateFilter}
       GROUP BY category
-      ORDER BY "totalCost" DESC
+      ORDER BY SUM(total_cost) DESC
     `));
 
     // Grand total
-    const totalRow = await db.execute(sql.raw(`
+    const totalResult = await db.execute(sql.raw(`
       SELECT
-        COALESCE(SUM(total_cost), 0)::float AS "totalSpend",
-        COALESCE(SUM(quantity), 0)::int     AS "totalUnits"
+        COALESCE(SUM(total_cost), 0)::text AS "totalSpend",
+        COALESCE(SUM(quantity), 0)::text   AS "totalUnits"
       FROM checkout_logs
       ${dateFilter}
     `));
 
-    const totals = (totalRow.rows[0] as { totalSpend: number; totalUnits: number }) ?? { totalSpend: 0, totalUnits: 0 };
+    const rawTotals = totalResult.rows[0] as TotalRow | undefined;
+    const totals: TotalRow = rawTotals ?? { totalSpend: "0", totalUnits: "0" };
 
     const result: AnalyticsResponse = {
       range,
       totalSpend: Number(totals.totalSpend ?? 0),
       totalUnits: Number(totals.totalUnits ?? 0),
-      itemBreakdown: (itemRows.rows as any[]).map((r) => ({
+      itemBreakdown: (itemResult.rows as ItemRow[]).map((r) => ({
         itemName: r.itemName,
         category: r.category,
-        unitsSold: Number(r.unitsSold),
-        unitCost: String(r.unitCost ?? "0"),
+        unitsSold: Number(r.unitsSold ?? 0),
+        unitCost: r.unitCost ?? "0",
         totalCost: Number(r.totalCost ?? 0),
       })),
-      categoryTotals: (catRows.rows as any[]).map((r) => ({
+      categoryTotals: (catResult.rows as CatRow[]).map((r) => ({
         category: r.category,
-        unitsSold: Number(r.unitsSold),
+        unitsSold: Number(r.unitsSold ?? 0),
         totalCost: Number(r.totalCost ?? 0),
       })),
     };
 
-    // Monthly trend — only for alltime
+    // Monthly trend — only for alltime; always returns a full 12-month series
     if (range === "alltime") {
-      const monthRows = await db.execute(sql.raw(`
+      const monthResult = await db.execute(sql.raw(`
         SELECT
           TO_CHAR(DATE_TRUNC('month', checked_out_at), 'YYYY-MM') AS month,
-          SUM(total_cost)::float AS spend
+          SUM(total_cost)::text AS spend
         FROM checkout_logs
-        WHERE checked_out_at >= NOW() - INTERVAL '12 months'
+        WHERE checked_out_at >= DATE_TRUNC('month', NOW()) - INTERVAL '11 months'
         GROUP BY DATE_TRUNC('month', checked_out_at)
         ORDER BY DATE_TRUNC('month', checked_out_at) ASC
       `));
-      result.monthlyTrend = (monthRows.rows as any[]).map((r) => ({
-        month: r.month,
-        spend: Number(r.spend ?? 0),
-      }));
+
+      // Build a map of month -> spend from query results
+      const spendByMonth = new Map<string, number>();
+      for (const r of monthResult.rows as MonthRow[]) {
+        spendByMonth.set(r.month, Number(r.spend ?? 0));
+      }
+
+      // Generate complete 12-month series (current month + 11 previous)
+      const fullSeries: { month: string; spend: number }[] = [];
+      const now = new Date();
+      for (let i = 11; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+        fullSeries.push({ month: key, spend: spendByMonth.get(key) ?? 0 });
+      }
+
+      result.monthlyTrend = fullSeries;
     }
 
     return result;
