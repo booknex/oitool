@@ -1,0 +1,76 @@
+root@srv1365851:/var/www/taxportal# # Check if the data is still in the databasesource /var/www/office-inventory/.env && psql "$DATABASE_URL" -c "SELECT COUNT(*) FROM inventory_items; SELECT COUNT(*) FROM dashboard_apps;"
+
+# Check what database PM2 is actually connecting to
+pm2 env office-inventory | grep -E "DATABASE|NODE_ENV|PORT"
+
+# Check latest app logs
+pm2 logs office-inventory --lines 30 --nostream
+psql: error: connection to server at "localhost" (::1), port 5432 failed: FATAL:  password authentication failed for user "postgres"
+connection to server at "localhost" (::1), port 5432 failed: FATAL:  password authentication failed for user "postgres"
+[PM2][ERROR] Modules with id office-inventory not found
+[TAILING] Tailing last 30 lines for [office-inventory] process (change the value with --lines option)
+/root/.pm2/logs/office-inventory-error-48.log last 30 lines:
+48|office- |   dataType: undefined,
+48|office- |   constraint: undefined,
+48|office- |   file: 'auth.c',
+48|office- |   line: '331',
+48|office- |   routine: 'auth_failed'
+48|office- | }
+48|office- | [dashboard-apps] ERROR: error: password authentication failed for user "postgres"
+48|office- |     at /var/www/office-inventory/dist/index.cjs:27755:15
+48|office- |     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+48|office- |     at async /var/www/office-inventory/dist/index.cjs:34963:22
+48|office- |     at async DatabaseStorage.getDashboardApps (/var/www/office-inventory/dist/index.cjs:39823:16)
+48|office- |     at async /var/www/office-inventory/dist/index.cjs:40023:20 {
+48|office- |   length: 104,
+48|office- |   severity: 'FATAL',
+48|office- |   code: '28P01',
+48|office- |   detail: undefined,
+48|office- |   hint: undefined,
+48|office- |   position: undefined,
+48|office- |   internalPosition: undefined,
+48|office- |   internalQuery: undefined,
+48|office- |   where: undefined,
+48|office- |   schema: undefined,
+48|office- |   table: undefined,
+48|office- |   column: undefined,
+48|office- |   dataType: undefined,
+48|office- |   constraint: undefined,
+48|office- |   file: 'auth.c',
+48|office- |   line: '331',
+48|office- |   routine: 'auth_failed'
+48|office- | }
+
+/root/.pm2/logs/office-inventory-out-48.log last 30 lines:
+48|office- | 6:08:01 PM [express] GET /api/items 500 in 12ms :: {"error":"Failed to fetch items"}
+48|office- | 6:08:31 PM [express] GET /api/items 500 in 8ms :: {"error":"Failed to fetch items"}
+48|office- | 6:09:01 PM [express] GET /api/items 500 in 8ms :: {"error":"Failed to fetch items"}
+48|office- | 6:09:31 PM [express] GET /api/items 500 in 7ms :: {"error":"Failed to fetch items"}
+48|office- | 6:10:01 PM [express] GET /api/items 500 in 21ms :: {"error":"Failed to fetch items"}
+48|office- | 6:10:31 PM [express] GET /api/items 500 in 9ms :: {"error":"Failed to fetch items"}
+48|office- | 6:11:01 PM [express] GET /api/items 500 in 10ms :: {"error":"Failed to fetch items"}
+48|office- | 6:11:32 PM [express] GET /api/items 500 in 7ms :: {"error":"Failed to fetch items"}
+48|office- | 6:12:02 PM [express] GET /api/items 500 in 18ms :: {"error":"Failed to fetch items"}
+48|office- | 6:12:32 PM [express] GET /api/items 500 in 9ms :: {"error":"Failed to fetch items"}
+48|office- | 6:13:02 PM [express] GET /api/items 500 in 12ms :: {"error":"Failed to fetch items"}
+48|office- | 6:13:32 PM [express] GET /api/items 500 in 8ms :: {"error":"Failed to fetch items"}
+48|office- | 6:14:03 PM [express] GET /api/items 500 in 7ms :: {"error":"Failed to fetch items"}
+48|office- | 6:14:33 PM [express] GET /api/items 500 in 8ms :: {"error":"Failed to fetch items"}
+48|office- | 6:15:03 PM [express] GET /api/items 500 in 11ms :: {"error":"Failed to fetch items"}
+48|office- | 6:15:33 PM [express] GET /api/items 500 in 8ms :: {"error":"Failed to fetch items"}
+48|office- | 6:16:03 PM [express] GET /api/items 500 in 18ms :: {"error":"Failed to fetch items"}
+48|office- | 6:16:33 PM [express] GET /api/items 500 in 8ms :: {"error":"Failed to fetch items"}
+48|office- | 6:17:03 PM [express] GET /api/items 500 in 10ms :: {"error":"Failed to fetch items"}
+48|office- | 6:17:34 PM [express] GET /api/items 500 in 12ms :: {"error":"Failed to fetch items"}
+48|office- | 6:18:04 PM [express] GET /api/items 500 in 14ms :: {"error":"Failed to fetch items"}
+48|office- | 6:18:34 PM [express] GET /api/items 500 in 11ms :: {"error":"Failed to fetch items"}
+48|office- | 6:19:04 PM [express] GET /api/items 500 in 14ms :: {"error":"Failed to fetch items"}
+48|office- | 6:19:34 PM [express] GET /api/items 500 in 6ms :: {"error":"Failed to fetch items"}
+48|office- | 6:20:04 PM [express] GET /api/items 500 in 11ms :: {"error":"Failed to fetch items"}
+48|office- | 8:44:32 PM [express] GET /api/items 500 in 90ms :: {"error":"Failed to fetch items"}
+48|office- | 8:44:50 PM [express] GET /api/items 500 in 9ms :: {"error":"Failed to fetch items"}
+48|office- | 9:01:47 PM [express] GET /api/items 500 in 15ms :: {"error":"Failed to fetch items"}
+48|office- | 9:01:47 PM [express] GET /api/dashboard-apps 500 in 29ms :: {"error":"Failed to fetch dashboard apps…
+48|office- | 9:01:50 PM [express] GET /api/items 500 in 12ms :: {"error":"Failed to fetch items"}
+
+root@srv1365851:/var/www/taxportal# 
