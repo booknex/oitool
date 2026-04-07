@@ -135,6 +135,7 @@ echo ""
 echo "Restarting PM2..."
 pm2 delete office-inventory 2>/dev/null || true
 cd "$APP_DIR" && pm2 start ecosystem.config.cjs
+pm2 save --force
 
 echo ""
 echo "========================================"
