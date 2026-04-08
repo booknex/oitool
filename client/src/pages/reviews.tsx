@@ -189,7 +189,7 @@ function PropertyModal({
             </Button>
             <Button
               onClick={() => onSave(form)}
-              disabled={saving || uploading || !form.name.trim() || !form.airbnbUrl.trim()}
+              disabled={saving || uploading || !form.name.trim()}
               className="flex-1"
               data-testid="button-save-property"
             >

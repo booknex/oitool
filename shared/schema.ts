@@ -99,7 +99,7 @@ export type Property = typeof properties.$inferSelect;
 export const createPropertySchema = z.object({
   name: z.string().min(1),
   address: z.string().default(""),
-  airbnbUrl: z.string().url("Must be a valid URL"),
+  airbnbUrl: z.string().default(""),
   color: z.string().default("#E8F4FD"),
   sortOrder: z.number().default(0),
   imageUrl: z.string().default(""),
@@ -109,7 +109,7 @@ export const updatePropertySchema = z.object({
   id: z.number(),
   name: z.string().min(1).optional(),
   address: z.string().optional(),
-  airbnbUrl: z.string().url().optional(),
+  airbnbUrl: z.string().optional(),
   color: z.string().optional(),
   sortOrder: z.number().optional(),
   imageUrl: z.string().optional(),
