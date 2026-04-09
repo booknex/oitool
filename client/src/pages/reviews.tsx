@@ -396,25 +396,25 @@ export default function Reviews() {
                     </div>
                   </button>
 
-                  {/* Edit mode controls */}
-                  {editMode && (
-                    <div className="absolute -top-2 -right-2 flex gap-1">
-                      {/* Edit button */}
-                      <button
-                        className="w-7 h-7 rounded-full bg-white shadow-md border border-slate-100 flex items-center justify-center"
-                        onClick={() =>
-                          setEditTarget({
-                            ...prop,
-                            imageUrl: prop.imageUrl ?? "",
-                          })
-                        }
-                        data-testid={`button-edit-property-${prop.id}`}
-                      >
-                        <Pencil className="w-3 h-3 text-slate-600" />
-                      </button>
+                  {/* Always-visible pencil + delete in edit mode */}
+                  <div className="absolute -top-2 -right-2 flex gap-1">
+                    {/* Edit button — always shown */}
+                    <button
+                      className="w-7 h-7 rounded-full bg-white shadow-md border border-slate-100 flex items-center justify-center"
+                      onClick={() =>
+                        setEditTarget({
+                          ...prop,
+                          imageUrl: prop.imageUrl ?? "",
+                        })
+                      }
+                      data-testid={`button-edit-property-${prop.id}`}
+                    >
+                      <Pencil className="w-3 h-3 text-slate-600" />
+                    </button>
 
-                      {/* Delete button */}
-                      {isConfirmingDelete ? (
+                    {/* Delete button — only in edit mode */}
+                    {editMode && (
+                      isConfirmingDelete ? (
                         <button
                           className="w-7 h-7 rounded-full bg-red-500 shadow-md flex items-center justify-center"
                           onClick={() => deleteMutation.mutate(prop.id)}
@@ -430,9 +430,9 @@ export default function Reviews() {
                         >
                           <Trash2 className="w-3 h-3 text-red-500" />
                         </button>
-                      )}
-                    </div>
-                  )}
+                      )
+                    )}
+                  </div>
                 </div>
               );
             })}
