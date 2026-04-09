@@ -112,6 +112,14 @@ BEGIN
         );
     END IF;
 
+    -- Add image_url to properties if missing
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'properties' AND column_name = 'image_url'
+    ) THEN
+        ALTER TABLE properties ADD COLUMN image_url TEXT NOT NULL DEFAULT '';
+    END IF;
+
     -- Create checkout_logs table if it doesn't exist
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.tables
