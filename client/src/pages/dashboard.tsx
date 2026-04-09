@@ -8,7 +8,7 @@ import {
   Home, Calendar, CalendarDays, Receipt, Truck, ShoppingCart, Bell, FileText,
   Phone, Zap, DollarSign, Globe, Wrench, Droplet, Archive,
   Lock, Coffee, AlertCircle, BookOpen, Camera, ShoppingBag,
-  ArrowRight,
+  ArrowRight, Eye, EyeOff,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -592,6 +592,13 @@ export default function Dashboard() {
     onError: () => toast({ title: "Failed to remove app", variant: "destructive" }),
   });
 
+  const toggleMutation = useMutation({
+    mutationFn: ({ id, available }: { id: number; available: boolean }) =>
+      apiRequest("PATCH", `/api/dashboard-apps/${id}`, { available }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/dashboard-apps"] }),
+    onError: () => toast({ title: "Failed to update visibility", variant: "destructive" }),
+  });
+
   function openAdd() {
     setEditingApp(null);
     setModalOpen(true);
@@ -768,6 +775,19 @@ export default function Dashboard() {
                     {editMode ? (
                       <div className="flex items-center gap-1.5 flex-shrink-0">
                         <button
+                          onClick={(e) => { e.stopPropagation(); toggleMutation.mutate({ id: app.id, available: !app.available }); }}
+                          data-testid={`button-toggle-app-${app.id}`}
+                          className={`w-8 h-8 rounded-lg flex items-center justify-center border transition-all ${
+                            app.available
+                              ? "border-black/10 text-muted-foreground hover:border-black/20 hover:bg-black/5"
+                              : "border-amber-200 bg-amber-50 text-amber-500 hover:bg-amber-100"
+                          }`}
+                          title={app.available ? "Hide app" : "Show app"}
+                          disabled={toggleMutation.isPending}
+                        >
+                          {app.available ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+                        </button>
+                        <button
                           onClick={(e) => openEdit(app, e)}
                           data-testid={`button-edit-app-${app.id}`}
                           className="w-8 h-8 rounded-lg flex items-center justify-center border border-black/10 text-muted-foreground hover:border-black/20 hover:bg-black/5 transition-all"
@@ -793,7 +813,7 @@ export default function Dashboard() {
                       <div className="flex-shrink-0 flex items-center gap-2">
                         {!app.available && (
                           <span className="text-[10px] font-semibold text-muted-foreground bg-black/5 px-2 py-0.5 rounded-full">
-                            Coming Soon
+                            Hidden
                           </span>
                         )}
                         <ChevronRight
