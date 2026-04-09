@@ -400,7 +400,7 @@ export default function Reviews() {
                   <div className="absolute -top-2 -right-2 flex gap-1">
                     {/* Edit button — always shown */}
                     <button
-                      className="w-7 h-7 rounded-full bg-white shadow-md border border-slate-100 flex items-center justify-center"
+                      className="h-8 px-3 rounded-full bg-white shadow-md border border-slate-200 flex items-center gap-1.5 text-xs font-semibold text-slate-700"
                       onClick={() =>
                         setEditTarget({
                           ...prop,
@@ -409,7 +409,8 @@ export default function Reviews() {
                       }
                       data-testid={`button-edit-property-${prop.id}`}
                     >
-                      <Pencil className="w-3 h-3 text-slate-600" />
+                      <Pencil className="w-3 h-3" />
+                      Edit
                     </button>
 
                     {/* Delete button — only in edit mode */}
