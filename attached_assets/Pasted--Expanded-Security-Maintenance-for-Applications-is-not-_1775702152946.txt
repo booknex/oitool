@@ -1,0 +1,168 @@
+
+Expanded Security Maintenance for Applications is not enabled.
+
+105 updates can be applied immediately.
+80 of these updates are standard security updates.
+To see these additional updates run: apt list --upgradable
+
+Enable ESM Apps to receive additional future security updates.
+See https://ubuntu.com/esm or run: sudo pro status
+
+
+*** System restart required ***
+********************************************************************************
+
+Welcome to One-Click OpenLiteSpeed Node.js Server.
+To keep this Droplet secure, the firewalld is enabled.
+All ports are BLOCKED except 22 (SSH), 80 (HTTP) and 443 (HTTPS).
+
+The Node.js OLS One-Click Quickstart guide:
+* https://docs.litespeedtech.com/cloud/images/nodejs/
+
+In a web browser, you can view:
+* The sample node site: http://187.77.21.175/
+
+On the server:
+* You can get the Web Admin admin password with the following command:
+   sudo cat /home/ubuntu/.litespeed_password
+
+System Status:
+  Load : 0.05, 0.01, 0.00
+  CPU  : 1.28416%
+  RAM  : 972/3915MB (24.83%)
+  Disk : 9/48GB (21%)
+
+********************************************************************************
+Last login: Thu Apr  9 01:58:06 2026 from 169.254.0.1
+root@srv1365851:~# cd /var/www/office-inventory/repo && git pull && bash deploy/deploy-vps.sh
+
+Already up to date.
+========================================
+  Office Inventory - VPS Deploy Script
+========================================
+
+[1/5] Installing dependencies...
+  npm audit fix --force
+
+Run `npm audit` for details.
+
+[2/5] Building frontend (Vite)...
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 9.36s
+
+[3/5] Building server bundle (esbuild)...
+  ../dist/index.cjs  1.6mb ⚠️
+
+⚡ Done in 203ms
+
+[4/5] Copying frontend to dist/public...
+
+[5/5] Running database migrations...
+DO
+
+Restarting PM2...
+[PM2] Applying action deleteProcessId on app [office-inventory](ids: [ 65 ])
+[PM2] [office-inventory](65) ✓
+┌────┬─────────────────────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
+│ id │ name                    │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
+├────┼─────────────────────────┼─────────────┼─────────┼─────────┼──────────┼────────┼──────┼───────────┼──────────┼──────────┼──────────┼──────────┤
+│ 30 │ christmas-bonus         │ default     │ 1.0.0   │ fork    │ 1124277  │ 31h    │ 11   │ online    │ 0%       │ 89.2mb   │ root     │ disabled │
+│ 36 │ client-queue-manager    │ default     │ 1.0.0   │ fork    │ 1124220  │ 31h    │ 54   │ online    │ 0%       │ 157.4mb  │ root     │ disabled │
+│ 44 │ kaliphone               │ default     │ 0.0.0   │ fork    │ 1124222  │ 31h    │ 4    │ online    │ 0%       │ 128.5mb  │ root     │ disabled │
+│ 28 │ meetingroadmap          │ default     │ 1.0.0   │ fork    │ 1124212  │ 31h    │ 48   │ online    │ 0%       │ 113.8mb  │ root     │ disabled │
+│ 63 │ taxportal               │ default     │ 1.0.0   │ fork    │ 1145471  │ 5h     │ 1    │ online    │ 0%       │ 124.5mb  │ root     │ disabled │
+└────┴─────────────────────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
+[PM2][WARN] Applications office-inventory not running, starting...
+[PM2] App [office-inventory] launched (1 instances)
+┌────┬─────────────────────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
+│ id │ name                    │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
+├────┼─────────────────────────┼─────────────┼─────────┼─────────┼──────────┼────────┼──────┼───────────┼──────────┼──────────┼──────────┼──────────┤
+│ 30 │ christmas-bonus         │ default     │ 1.0.0   │ fork    │ 1124277  │ 31h    │ 11   │ online    │ 0%       │ 89.2mb   │ root     │ disabled │
+│ 36 │ client-queue-manager    │ default     │ 1.0.0   │ fork    │ 1124220  │ 31h    │ 54   │ online    │ 0%       │ 157.4mb  │ root     │ disabled │
+│ 44 │ kaliphone               │ default     │ 0.0.0   │ fork    │ 1124222  │ 31h    │ 4    │ online    │ 0%       │ 128.5mb  │ root     │ disabled │
+│ 28 │ meetingroadmap          │ default     │ 1.0.0   │ fork    │ 1124212  │ 31h    │ 48   │ online    │ 0%       │ 113.8mb  │ root     │ disabled │
+│ 66 │ office-inventory        │ default     │ 1.0.0   │ cluster │ 1151194  │ 0s     │ 0    │ online    │ 0%       │ 46.8mb   │ root     │ disabled │
+│ 63 │ taxportal               │ default     │ 1.0.0   │ fork    │ 1145471  │ 5h     │ 1    │ online    │ 0%       │ 124.5mb  │ root     │ disabled │
+└────┴─────────────────────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
+[PM2] Saving current process list...
+[PM2] Successfully saved in /root/.pm2/dump.pm2
+
+========================================
+  Deploy complete!
+  Check: pm2 logs office-inventory --lines 10
+  Visit: https://app.cleanexinc.com
+========================================
+root@srv1365851:/var/www/office-inventory/repo# pm2 logs office-inventory --lines 20 --nostream
+[TAILING] Tailing last 20 lines for [office-inventory] process (change the value with --lines option)
+/root/.pm2/logs/office-inventory-error-66.log last 20 lines:
+/root/.pm2/logs/office-inventory-out-66.log last 20 lines:
+66|office- | 2:26:00 AM [express] serving on port 5004
+66|office- | 2:29:55 AM [express] POST /api/properties 500 in 28ms :: {"error":"Failed to create property"}
+66|office- | 2:29:59 AM [express] GET /api/properties 500 in 13ms :: {"error":"Failed to fetch properties"}
+66|office- | 2:30:12 AM [express] POST /api/properties 500 in 13ms :: {"error":"Failed to create property"}
+
+root@srv1365851:/var/www/office-inventory/repo# cat /var/www/office-inventory/.env
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/office_inventory
+NODE_ENV=production
+PORT=5004
+SESSION_SECRET=calc
+root@srv1365851:/var/www/office-inventory/repo# cd /var/www/office-inventory/repo && git pull && bash deploy/deploy-vps.sh
+Already up to date.
+========================================
+  Office Inventory - VPS Deploy Script
+========================================
+
+[1/5] Installing dependencies...
+  npm audit fix --force
+
+Run `npm audit` for details.
+
+[2/5] Building frontend (Vite)...
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 9.44s
+
+[3/5] Building server bundle (esbuild)...
+  ../dist/index.cjs  1.6mb ⚠️
+
+⚡ Done in 182ms
+
+[4/5] Copying frontend to dist/public...
+
+[5/5] Running database migrations...
+DO
+
+Restarting PM2...
+[PM2] Applying action deleteProcessId on app [office-inventory](ids: [ 66 ])
+[PM2] [office-inventory](66) ✓
+┌────┬─────────────────────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
+│ id │ name                    │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
+├────┼─────────────────────────┼─────────────┼─────────┼─────────┼──────────┼────────┼──────┼───────────┼──────────┼──────────┼──────────┼──────────┤
+│ 30 │ christmas-bonus         │ default     │ 1.0.0   │ fork    │ 1124277  │ 31h    │ 11   │ online    │ 0%       │ 89.2mb   │ root     │ disabled │
+│ 36 │ client-queue-manager    │ default     │ 1.0.0   │ fork    │ 1124220  │ 31h    │ 54   │ online    │ 0%       │ 157.4mb  │ root     │ disabled │
+│ 44 │ kaliphone               │ default     │ 0.0.0   │ fork    │ 1124222  │ 31h    │ 4    │ online    │ 8.3%     │ 128.5mb  │ root     │ disabled │
+│ 28 │ meetingroadmap          │ default     │ 1.0.0   │ fork    │ 1124212  │ 31h    │ 48   │ online    │ 0%       │ 113.8mb  │ root     │ disabled │
+│ 63 │ taxportal               │ default     │ 1.0.0   │ fork    │ 1145471  │ 5h     │ 1    │ online    │ 0%       │ 124.5mb  │ root     │ disabled │
+└────┴─────────────────────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
+[PM2][WARN] Applications office-inventory not running, starting...
+[PM2] App [office-inventory] launched (1 instances)
+┌────┬─────────────────────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
+│ id │ name                    │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
+├────┼─────────────────────────┼─────────────┼─────────┼─────────┼──────────┼────────┼──────┼───────────┼──────────┼──────────┼──────────┼──────────┤
+│ 30 │ christmas-bonus         │ default     │ 1.0.0   │ fork    │ 1124277  │ 31h    │ 11   │ online    │ 0%       │ 89.2mb   │ root     │ disabled │
+│ 36 │ client-queue-manager    │ default     │ 1.0.0   │ fork    │ 1124220  │ 31h    │ 54   │ online    │ 0%       │ 157.4mb  │ root     │ disabled │
+│ 44 │ kaliphone               │ default     │ 0.0.0   │ fork    │ 1124222  │ 31h    │ 4    │ online    │ 0%       │ 128.5mb  │ root     │ disabled │
+│ 28 │ meetingroadmap          │ default     │ 1.0.0   │ fork    │ 1124212  │ 31h    │ 48   │ online    │ 0%       │ 113.8mb  │ root     │ disabled │
+│ 67 │ office-inventory        │ default     │ 1.0.0   │ cluster │ 1151400  │ 0s     │ 0    │ online    │ 0%       │ 46.6mb   │ root     │ disabled │
+│ 63 │ taxportal               │ default     │ 1.0.0   │ fork    │ 1145471  │ 5h     │ 1    │ online    │ 0%       │ 124.5mb  │ root     │ disabled │
+└────┴─────────────────────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
+[PM2] Saving current process list...
+[PM2] Successfully saved in /root/.pm2/dump.pm2
+
+========================================
+  Deploy complete!
+  Check: pm2 logs office-inventory --lines 10
+  Visit: https://app.cleanexinc.com
+========================================
+root@srv1365851:/var/www/office-inventory/repo# 
