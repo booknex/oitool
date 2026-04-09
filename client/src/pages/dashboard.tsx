@@ -5,7 +5,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import {
   Package, ClipboardList, Star, BarChart3, Users, ChevronRight,
   Sparkles, Settings2, Pencil, Trash2, Plus, Check, Save, X,
-  Home, Calendar, Truck, ShoppingCart, Bell, FileText,
+  Home, Calendar, CalendarDays, Truck, ShoppingCart, Bell, FileText,
   Phone, Zap, DollarSign, Globe, Wrench, Droplet, Archive,
   Lock, Coffee, AlertCircle, BookOpen, Camera, ShoppingBag,
   ArrowRight,
@@ -22,7 +22,7 @@ import { itemImages } from "@/lib/itemData";
 // ─── Icon registry ────────────────────────────────────────────────────────────
 
 const ICON_MAP: Record<string, React.ElementType> = {
-  Package, ClipboardList, Star, BarChart3, Users, Home, Calendar,
+  Package, ClipboardList, Star, BarChart3, Users, Home, Calendar, CalendarDays,
   Truck, ShoppingCart, Bell, FileText, Phone, Zap, DollarSign, Globe,
   Wrench, Droplet, Archive, Lock, Coffee, AlertCircle, BookOpen, Camera,
   Settings2, Sparkles,
