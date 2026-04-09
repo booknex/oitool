@@ -2,7 +2,7 @@ import type { Express } from "express";
 import express from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { checkoutSchema, restockSchema, createItemSchema, updateItemSchema, createDashboardAppSchema, updateDashboardAppSchema, createPropertySchema, updatePropertySchema, type AnalyticsRange } from "@shared/schema";
+import { checkoutSchema, restockSchema, createItemSchema, updateItemSchema, createDashboardAppSchema, updateDashboardAppSchema, createPropertySchema, updatePropertySchema, createClientSchema, updateClientSchema, createInvoiceSchema, updateInvoiceSchema, type AnalyticsRange } from "@shared/schema";
 import fs from "fs";
 import path from "path";
 
@@ -299,6 +299,107 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(data);
     } catch {
       res.status(500).json({ error: "Failed to fetch bookings" });
+    }
+  });
+
+  // ─── Clients ───────────────────────────────────────────────────────────────
+
+  app.get("/api/clients", async (_req, res) => {
+    try {
+      res.json(await storage.getClients());
+    } catch {
+      res.status(500).json({ error: "Failed to fetch clients" });
+    }
+  });
+
+  app.post("/api/clients", async (req, res) => {
+    try {
+      const parsed = createClientSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: parsed.error.errors });
+      res.status(201).json(await storage.createClient(parsed.data));
+    } catch {
+      res.status(500).json({ error: "Failed to create client" });
+    }
+  });
+
+  app.patch("/api/clients/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid id" });
+      const parsed = updateClientSchema.safeParse({ id, ...req.body });
+      if (!parsed.success) return res.status(400).json({ error: parsed.error.errors });
+      res.json(await storage.updateClient(parsed.data));
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Failed to update client";
+      res.status(msg.includes("not found") ? 404 : 500).json({ error: msg });
+    }
+  });
+
+  app.delete("/api/clients/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid id" });
+      await storage.deleteClient(id);
+      res.json({ success: true });
+    } catch {
+      res.status(500).json({ error: "Failed to delete client" });
+    }
+  });
+
+  // ─── Invoices ──────────────────────────────────────────────────────────────
+
+  app.get("/api/invoices", async (_req, res) => {
+    try {
+      res.json(await storage.getInvoices());
+    } catch {
+      res.status(500).json({ error: "Failed to fetch invoices" });
+    }
+  });
+
+  app.get("/api/invoices/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid id" });
+      const inv = await storage.getInvoice(id);
+      if (!inv) return res.status(404).json({ error: "Invoice not found" });
+      res.json(inv);
+    } catch {
+      res.status(500).json({ error: "Failed to fetch invoice" });
+    }
+  });
+
+  app.post("/api/invoices", async (req, res) => {
+    try {
+      const parsed = createInvoiceSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: parsed.error.errors });
+      res.status(201).json(await storage.createInvoice(parsed.data));
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Failed to create invoice";
+      res.status(500).json({ error: msg });
+    }
+  });
+
+  app.patch("/api/invoices/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid id" });
+      const parsed = updateInvoiceSchema.safeParse({ id, ...req.body });
+      if (!parsed.success) return res.status(400).json({ error: parsed.error.errors });
+      res.json(await storage.updateInvoice(parsed.data));
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Failed to update invoice";
+      res.status(msg.includes("not found") ? 404 : 500).json({ error: msg });
+    }
+  });
+
+  app.delete("/api/invoices/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid id" });
+      await storage.deleteInvoice(id);
+      res.json({ success: true });
+    } catch {
+      res.status(500).json({ error: "Failed to delete invoice" });
     }
   });
 

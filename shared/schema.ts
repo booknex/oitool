@@ -146,6 +146,104 @@ export type BookingInfo = {
 
 export type UpcomingBookings = Record<number, BookingInfo[]>;
 
+// ─── Clients ──────────────────────────────────────────────────────────────────
+
+export const clients = pgTable("clients", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  email: text("email").notNull().default(""),
+  phone: text("phone").notNull().default(""),
+  address: text("address").notNull().default(""),
+  notes: text("notes").notNull().default(""),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertClientSchema = createInsertSchema(clients).omit({ id: true, createdAt: true });
+export type InsertClient = z.infer<typeof insertClientSchema>;
+export type Client = typeof clients.$inferSelect;
+
+export const createClientSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  email: z.string().default(""),
+  phone: z.string().default(""),
+  address: z.string().default(""),
+  notes: z.string().default(""),
+});
+
+export const updateClientSchema = z.object({
+  id: z.number(),
+  name: z.string().min(1).optional(),
+  email: z.string().optional(),
+  phone: z.string().optional(),
+  address: z.string().optional(),
+  notes: z.string().optional(),
+});
+
+export type CreateClientPayload = z.infer<typeof createClientSchema>;
+export type UpdateClientPayload = z.infer<typeof updateClientSchema>;
+
+// ─── Invoices ─────────────────────────────────────────────────────────────────
+
+export const invoices = pgTable("invoices", {
+  id: serial("id").primaryKey(),
+  clientId: integer("client_id").notNull().references(() => clients.id),
+  invoiceNumber: text("invoice_number").notNull().unique(),
+  status: text("status").notNull().default("draft"),
+  issueDate: timestamp("issue_date").notNull().defaultNow(),
+  dueDate: timestamp("due_date"),
+  notes: text("notes").notNull().default(""),
+  stripePaymentIntentId: text("stripe_payment_intent_id"),
+  paidAt: timestamp("paid_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertInvoiceSchema = createInsertSchema(invoices).omit({ id: true, createdAt: true });
+export type InsertInvoice = z.infer<typeof insertInvoiceSchema>;
+export type Invoice = typeof invoices.$inferSelect;
+
+export const invoiceItems = pgTable("invoice_items", {
+  id: serial("id").primaryKey(),
+  invoiceId: integer("invoice_id").notNull().references(() => invoices.id, { onDelete: "cascade" }),
+  description: text("description").notNull(),
+  quantity: numeric("quantity", { precision: 10, scale: 2 }).notNull().default("1"),
+  unitPrice: numeric("unit_price", { precision: 10, scale: 2 }).notNull().default("0"),
+});
+
+export type InvoiceItem = typeof invoiceItems.$inferSelect;
+
+export type InvoiceWithDetails = Invoice & {
+  client: Client;
+  items: InvoiceItem[];
+  total: number;
+};
+
+export const createInvoiceSchema = z.object({
+  clientId: z.number(),
+  dueDate: z.string().optional(),
+  notes: z.string().default(""),
+  items: z.array(z.object({
+    description: z.string().min(1),
+    quantity: z.number().min(0.01),
+    unitPrice: z.number().min(0),
+  })).min(1, "At least one line item required"),
+});
+
+export const updateInvoiceSchema = z.object({
+  id: z.number(),
+  clientId: z.number().optional(),
+  dueDate: z.string().nullable().optional(),
+  notes: z.string().optional(),
+  status: z.enum(["draft", "sent", "paid", "overdue"]).optional(),
+  items: z.array(z.object({
+    description: z.string().min(1),
+    quantity: z.number().min(0.01),
+    unitPrice: z.number().min(0),
+  })).optional(),
+});
+
+export type CreateInvoicePayload = z.infer<typeof createInvoiceSchema>;
+export type UpdateInvoicePayload = z.infer<typeof updateInvoiceSchema>;
+
 // ─── Dashboard Apps ───────────────────────────────────────────────────────────
 
 export const dashboardApps = pgTable("dashboard_apps", {

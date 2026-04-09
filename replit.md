@@ -19,6 +19,24 @@ A self-service inventory kiosk application for cleaning service operations. Maid
 - **Mobile fallback** — Compact teal brand bar shown on small screens when the left panel is hidden
 - Auto-seeds the default 5 apps on first load if the table is empty
 
+### Invoicing
+- **Route** `/invoicing` — accessible from the "Invoicing" tile on the dashboard
+- **Clients** — manage customers: name, email, phone, address, notes; stored in `clients` DB table
+- **Invoices** — create invoices with line items (description, qty, unit price); stored in `invoices` + `invoice_items` tables
+- **Auto-numbering** — invoice numbers auto-generated: INV-0001, INV-0002, …
+- **Status tracking** — draft / sent / paid / overdue; status can be changed inline via dropdown per invoice
+- **Payment tracking** — `paid_at` timestamp set automatically when status → paid
+- **Stripe-ready** — `stripe_payment_intent_id` column reserved for future Stripe integration
+- **Summary stats** — header cards show Outstanding balance, Collected (paid) total, Overdue count
+- **API** — `GET/POST /api/clients`, `PATCH/DELETE /api/clients/:id`, `GET/POST /api/invoices`, `GET/PATCH/DELETE /api/invoices/:id`
+
+### Calendar
+- **Route** `/calendar` — accessible from the "Calendar" tile on the dashboard
+- **Summary cards** — Checkouts Today, Check-ins Today, Occupied Now
+- **Property status list** — all iCal-linked properties with status badge, next checkout/checkin dates, last sync time
+- **Upcoming bookings timeline** — all bookings sorted by date; today's events highlighted
+- **API** — uses `GET /api/bookings/upcoming` and `GET /api/properties`
+
 ### Airbnb iCal Calendar Sync
 - **iCal URL per property** — optional field stored in `properties.ical_url`
 - **Auto-sync** — server syncs all iCal URLs every 15 minutes via `setInterval` in `server/index.ts`

@@ -8,6 +8,9 @@ import {
   dashboardApps,
   properties,
   bookings,
+  clients,
+  invoices,
+  invoiceItems,
   type InventoryItem,
   type CartItem,
   type CreateItemPayload,
@@ -22,6 +25,12 @@ import {
   type UpcomingBookings,
   type AnalyticsRange,
   type AnalyticsResponse,
+  type Client,
+  type CreateClientPayload,
+  type UpdateClientPayload,
+  type InvoiceWithDetails,
+  type CreateInvoicePayload,
+  type UpdateInvoicePayload,
 } from "@shared/schema";
 
 // ─── SSRF protection ─────────────────────────────────────────────────────────
@@ -130,22 +139,36 @@ export interface IStorage {
   syncAllCalendars(): Promise<void>;
   getPropertyBookings(id: number): Promise<BookingInfo[]>;
   getUpcomingBookings(): Promise<UpcomingBookings>;
+  // Clients
+  getClients(): Promise<Client[]>;
+  getClient(id: number): Promise<Client | undefined>;
+  createClient(data: CreateClientPayload): Promise<Client>;
+  updateClient(data: UpdateClientPayload): Promise<Client>;
+  deleteClient(id: number): Promise<void>;
+  // Invoices
+  getInvoices(): Promise<InvoiceWithDetails[]>;
+  getInvoice(id: number): Promise<InvoiceWithDetails | undefined>;
+  createInvoice(data: CreateInvoicePayload): Promise<InvoiceWithDetails>;
+  updateInvoice(data: UpdateInvoicePayload): Promise<InvoiceWithDetails>;
+  deleteInvoice(id: number): Promise<void>;
 }
 
 const DEFAULT_DASHBOARD_APPS: Omit<CreateDashboardAppPayload, "sortOrder">[] = [
-  { name: "Supply Kiosk", description: "Manage inventory & cleaning supplies", icon: "Package",      color: "#E8F4FD", iconColor: "#2196F3", route: "/kiosk",     available: true },
-  { name: "Reviews",      description: "View Airbnb guest feedback",           icon: "Star",         color: "#FFF8E1", iconColor: "#F59E0B", route: "/reviews",   available: true },
-  { name: "Calendar",     description: "Property bookings & iCal sync",        icon: "CalendarDays", color: "#E8F5E9", iconColor: "#22C55E", route: "/calendar",  available: true },
-  { name: "Analytics",    description: "Usage trends & cost tracking",          icon: "BarChart3",    color: "#F3E5F5", iconColor: "#9C27B0", route: "/analytics", available: true },
-  { name: "Task Board",   description: "Cleaning checklists & assignments",     icon: "ClipboardList",color: "#FFF3E0", iconColor: "#4CAF50", route: "/tasks",     available: false },
-  { name: "Team",         description: "Staff management & schedules",          icon: "Users",        color: "#FBE9E7", iconColor: "#FF5722", route: "/team",      available: false },
+  { name: "Supply Kiosk", description: "Manage inventory & cleaning supplies", icon: "Package",      color: "#E8F4FD", iconColor: "#2196F3", route: "/kiosk",      available: true  },
+  { name: "Reviews",      description: "View Airbnb guest feedback",           icon: "Star",         color: "#FFF8E1", iconColor: "#F59E0B", route: "/reviews",    available: true  },
+  { name: "Calendar",     description: "Property bookings & iCal sync",        icon: "CalendarDays", color: "#E8F5E9", iconColor: "#22C55E", route: "/calendar",   available: true  },
+  { name: "Invoicing",    description: "Bill clients & track payments",         icon: "Receipt",      color: "#EDE9FE", iconColor: "#7C3AED", route: "/invoicing",  available: true  },
+  { name: "Analytics",    description: "Usage trends & cost tracking",          icon: "BarChart3",    color: "#F3E5F5", iconColor: "#9C27B0", route: "/analytics",  available: true  },
+  { name: "Task Board",   description: "Cleaning checklists & assignments",     icon: "ClipboardList",color: "#FFF3E0", iconColor: "#4CAF50", route: "/tasks",      available: false },
+  { name: "Team",         description: "Staff management & schedules",          icon: "Users",        color: "#FBE9E7", iconColor: "#FF5722", route: "/team",       available: false },
 ];
 
 const REQUIRED_APPS = [
-  { route: "/kiosk",     name: "Supply Kiosk", description: "Manage inventory & cleaning supplies", icon: "Package",      color: "#E8F4FD", iconColor: "#2196F3", available: true },
-  { route: "/reviews",   name: "Reviews",      description: "View Airbnb guest feedback",           icon: "Star",         color: "#FFF8E1", iconColor: "#F59E0B", available: true },
-  { route: "/calendar",  name: "Calendar",     description: "Property bookings & iCal sync",        icon: "CalendarDays", color: "#E8F5E9", iconColor: "#22C55E", available: true },
-  { route: "/analytics", name: "Analytics",    description: "Usage trends & cost tracking",         icon: "BarChart3",    color: "#F3E5F5", iconColor: "#9C27B0", available: true },
+  { route: "/kiosk",      name: "Supply Kiosk", description: "Manage inventory & cleaning supplies", icon: "Package",      color: "#E8F4FD", iconColor: "#2196F3", available: true },
+  { route: "/reviews",    name: "Reviews",      description: "View Airbnb guest feedback",           icon: "Star",         color: "#FFF8E1", iconColor: "#F59E0B", available: true },
+  { route: "/calendar",   name: "Calendar",     description: "Property bookings & iCal sync",        icon: "CalendarDays", color: "#E8F5E9", iconColor: "#22C55E", available: true },
+  { route: "/invoicing",  name: "Invoicing",    description: "Bill clients & track payments",        icon: "Receipt",      color: "#EDE9FE", iconColor: "#7C3AED", available: true },
+  { route: "/analytics",  name: "Analytics",    description: "Usage trends & cost tracking",         icon: "BarChart3",    color: "#F3E5F5", iconColor: "#9C27B0", available: true },
 ];
 
 export class DatabaseStorage implements IStorage {
@@ -492,6 +515,127 @@ export class DatabaseStorage implements IStorage {
       });
     }
     return result;
+  }
+
+  // ─── Clients ──────────────────────────────────────────────────────────────
+
+  async getClients(): Promise<Client[]> {
+    return await db.select().from(clients).orderBy(clients.name);
+  }
+
+  async getClient(id: number): Promise<Client | undefined> {
+    const [client] = await db.select().from(clients).where(eq(clients.id, id));
+    return client;
+  }
+
+  async createClient(data: CreateClientPayload): Promise<Client> {
+    const [client] = await db.insert(clients).values(data).returning();
+    return client;
+  }
+
+  async updateClient(data: UpdateClientPayload): Promise<Client> {
+    const { id, ...rest } = data;
+    const [client] = await db.update(clients).set(rest).where(eq(clients.id, id)).returning();
+    if (!client) throw new Error(`Client with id ${id} not found`);
+    return client;
+  }
+
+  async deleteClient(id: number): Promise<void> {
+    await db.delete(clients).where(eq(clients.id, id));
+  }
+
+  // ─── Invoices ─────────────────────────────────────────────────────────────
+
+  private async buildInvoiceWithDetails(invoiceId: number): Promise<InvoiceWithDetails> {
+    const [inv] = await db.select().from(invoices).where(eq(invoices.id, invoiceId));
+    if (!inv) throw new Error(`Invoice with id ${invoiceId} not found`);
+    const [client] = await db.select().from(clients).where(eq(clients.id, inv.clientId));
+    if (!client) throw new Error(`Client with id ${inv.clientId} not found`);
+    const items = await db.select().from(invoiceItems).where(eq(invoiceItems.invoiceId, invoiceId));
+    const total = items.reduce((sum, it) => sum + Number(it.quantity) * Number(it.unitPrice), 0);
+    return { ...inv, client, items, total };
+  }
+
+  async getInvoices(): Promise<InvoiceWithDetails[]> {
+    const allInvoices = await db.select().from(invoices).orderBy(invoices.createdAt);
+    const allClients = await db.select().from(clients);
+    const allItems = await db.select().from(invoiceItems);
+
+    return allInvoices.map(inv => {
+      const client = allClients.find(c => c.id === inv.clientId)!;
+      const items = allItems.filter(it => it.invoiceId === inv.id);
+      const total = items.reduce((sum, it) => sum + Number(it.quantity) * Number(it.unitPrice), 0);
+      return { ...inv, client, items, total };
+    });
+  }
+
+  async getInvoice(id: number): Promise<InvoiceWithDetails | undefined> {
+    const [inv] = await db.select().from(invoices).where(eq(invoices.id, id));
+    if (!inv) return undefined;
+    const [client] = await db.select().from(clients).where(eq(clients.id, inv.clientId));
+    const items = await db.select().from(invoiceItems).where(eq(invoiceItems.invoiceId, id));
+    const total = items.reduce((sum, it) => sum + Number(it.quantity) * Number(it.unitPrice), 0);
+    return { ...inv, client: client!, items, total };
+  }
+
+  async createInvoice(data: CreateInvoicePayload): Promise<InvoiceWithDetails> {
+    const countResult = await db.select({ count: sql<number>`count(*)::int` }).from(invoices);
+    const nextNum = (countResult[0]?.count ?? 0) + 1;
+    const invoiceNumber = `INV-${String(nextNum).padStart(4, "0")}`;
+
+    const [inv] = await db.insert(invoices).values({
+      clientId: data.clientId,
+      invoiceNumber,
+      dueDate: data.dueDate ? new Date(data.dueDate) : null,
+      notes: data.notes ?? "",
+    }).returning();
+
+    if (data.items.length > 0) {
+      await db.insert(invoiceItems).values(
+        data.items.map(it => ({
+          invoiceId: inv.id,
+          description: it.description,
+          quantity: String(it.quantity),
+          unitPrice: String(it.unitPrice),
+        }))
+      );
+    }
+
+    return await this.buildInvoiceWithDetails(inv.id);
+  }
+
+  async updateInvoice(data: UpdateInvoicePayload): Promise<InvoiceWithDetails> {
+    const { id, items, ...rest } = data;
+    const updates: Record<string, unknown> = {};
+    if (rest.clientId !== undefined) updates.clientId = rest.clientId;
+    if (rest.notes !== undefined) updates.notes = rest.notes;
+    if (rest.status !== undefined) updates.status = rest.status;
+    if ("dueDate" in rest) updates.dueDate = rest.dueDate ? new Date(rest.dueDate) : null;
+    if (rest.status === "paid") updates.paidAt = new Date();
+
+    if (Object.keys(updates).length > 0) {
+      await db.update(invoices).set(updates).where(eq(invoices.id, id));
+    }
+
+    if (items !== undefined) {
+      await db.delete(invoiceItems).where(eq(invoiceItems.invoiceId, id));
+      if (items.length > 0) {
+        await db.insert(invoiceItems).values(
+          items.map(it => ({
+            invoiceId: id,
+            description: it.description,
+            quantity: String(it.quantity),
+            unitPrice: String(it.unitPrice),
+          }))
+        );
+      }
+    }
+
+    return await this.buildInvoiceWithDetails(id);
+  }
+
+  async deleteInvoice(id: number): Promise<void> {
+    await db.delete(invoices).where(eq(invoices.id, id));
   }
 }
 

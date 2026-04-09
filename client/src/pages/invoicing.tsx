@@ -1,0 +1,636 @@
+import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { useLocation } from "wouter";
+import {
+  ArrowLeft, Plus, Trash2, Pencil, Receipt, Users, Check,
+  ChevronDown, Send, DollarSign, Clock, AlertCircle, X,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
+import { queryClient, apiRequest } from "@/lib/queryClient";
+import type { Client, InvoiceWithDetails } from "@shared/schema";
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+const fmt = (n: number) =>
+  n.toLocaleString("en-US", { style: "currency", currency: "USD" });
+
+const fmtDate = (iso: string | null | undefined) =>
+  iso ? new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—";
+
+type InvoiceStatus = "draft" | "sent" | "paid" | "overdue";
+
+const STATUS_CONFIG: Record<InvoiceStatus, { label: string; className: string; icon: React.ElementType }> = {
+  draft:   { label: "Draft",   className: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",       icon: Clock },
+  sent:    { label: "Sent",    className: "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300",     icon: Send },
+  paid:    { label: "Paid",    className: "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300", icon: Check },
+  overdue: { label: "Overdue", className: "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300",         icon: AlertCircle },
+};
+
+function StatusBadge({ status }: { status: string }) {
+  const cfg = STATUS_CONFIG[status as InvoiceStatus] ?? STATUS_CONFIG.draft;
+  const Icon = cfg.icon;
+  return (
+    <Badge className={`gap-1 text-xs font-medium ${cfg.className}`}>
+      <Icon className="w-3 h-3" />{cfg.label}
+    </Badge>
+  );
+}
+
+// ─── Line-item editor row ──────────────────────────────────────────────────────
+
+interface LineItem { description: string; quantity: number; unitPrice: number }
+
+function LineItemRow({ item, onChange, onRemove, canRemove }: {
+  item: LineItem;
+  onChange: (updated: LineItem) => void;
+  onRemove: () => void;
+  canRemove: boolean;
+}) {
+  return (
+    <div className="grid grid-cols-[1fr_80px_90px_36px] gap-2 items-center">
+      <Input
+        value={item.description}
+        onChange={e => onChange({ ...item, description: e.target.value })}
+        placeholder="Description"
+        data-testid="input-line-description"
+      />
+      <Input
+        type="number"
+        min="0.01"
+        step="0.01"
+        value={item.quantity}
+        onChange={e => onChange({ ...item, quantity: parseFloat(e.target.value) || 0 })}
+        placeholder="Qty"
+        data-testid="input-line-qty"
+      />
+      <Input
+        type="number"
+        min="0"
+        step="0.01"
+        value={item.unitPrice}
+        onChange={e => onChange({ ...item, unitPrice: parseFloat(e.target.value) || 0 })}
+        placeholder="Unit $"
+        data-testid="input-line-price"
+      />
+      <Button
+        size="icon"
+        variant="ghost"
+        onClick={onRemove}
+        disabled={!canRemove}
+        data-testid="button-remove-line"
+      >
+        <X className="w-4 h-4" />
+      </Button>
+    </div>
+  );
+}
+
+// ─── Client Modal ─────────────────────────────────────────────────────────────
+
+function ClientModal({ open, onClose, initial }: {
+  open: boolean;
+  onClose: () => void;
+  initial?: Client;
+}) {
+  const { toast } = useToast();
+  const isEdit = !!initial;
+  const [form, setForm] = useState({
+    name: initial?.name ?? "",
+    email: initial?.email ?? "",
+    phone: initial?.phone ?? "",
+    address: initial?.address ?? "",
+    notes: initial?.notes ?? "",
+  });
+
+  const set = (k: keyof typeof form, v: string) => setForm(f => ({ ...f, [k]: v }));
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      const res = isEdit
+        ? await apiRequest("PATCH", `/api/clients/${initial!.id}`, form)
+        : await apiRequest("POST", "/api/clients", form);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
+      toast({ title: isEdit ? "Client updated" : "Client added" });
+      onClose();
+    },
+    onError: () => toast({ title: "Error", description: "Could not save client", variant: "destructive" }),
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>{isEdit ? "Edit Client" : "New Client"}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <Label>Name *</Label>
+            <Input value={form.name} onChange={e => set("name", e.target.value)} placeholder="Client name" data-testid="input-client-name" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Email</Label>
+              <Input type="email" value={form.email} onChange={e => set("email", e.target.value)} placeholder="email@example.com" data-testid="input-client-email" />
+            </div>
+            <div>
+              <Label>Phone</Label>
+              <Input value={form.phone} onChange={e => set("phone", e.target.value)} placeholder="(555) 000-0000" data-testid="input-client-phone" />
+            </div>
+          </div>
+          <div>
+            <Label>Address</Label>
+            <Input value={form.address} onChange={e => set("address", e.target.value)} placeholder="Street, City, State" data-testid="input-client-address" />
+          </div>
+          <div>
+            <Label>Notes</Label>
+            <Textarea value={form.notes} onChange={e => set("notes", e.target.value)} placeholder="Optional notes" rows={2} data-testid="input-client-notes" />
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={onClose}>Cancel</Button>
+            <Button onClick={() => mutation.mutate()} disabled={!form.name.trim() || mutation.isPending} data-testid="button-save-client">
+              {mutation.isPending ? "Saving…" : "Save"}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── Invoice Modal ────────────────────────────────────────────────────────────
+
+function InvoiceModal({ open, onClose, clients, initial }: {
+  open: boolean;
+  onClose: () => void;
+  clients: Client[];
+  initial?: InvoiceWithDetails;
+}) {
+  const { toast } = useToast();
+  const isEdit = !!initial;
+
+  const [clientId, setClientId] = useState<number | "">(initial?.clientId ?? "");
+  const [dueDate, setDueDate] = useState(initial?.dueDate ? initial.dueDate.toString().split("T")[0] : "");
+  const [notes, setNotes] = useState(initial?.notes ?? "");
+  const [lineItems, setLineItems] = useState<LineItem[]>(
+    initial?.items.map(it => ({
+      description: it.description,
+      quantity: Number(it.quantity),
+      unitPrice: Number(it.unitPrice),
+    })) ?? [{ description: "", quantity: 1, unitPrice: 0 }]
+  );
+
+  const total = lineItems.reduce((s, it) => s + it.quantity * it.unitPrice, 0);
+
+  const addLine = () => setLineItems(l => [...l, { description: "", quantity: 1, unitPrice: 0 }]);
+  const removeLine = (i: number) => setLineItems(l => l.filter((_, idx) => idx !== i));
+  const updateLine = (i: number, val: LineItem) => setLineItems(l => l.map((it, idx) => idx === i ? val : it));
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      const body = {
+        clientId: clientId as number,
+        dueDate: dueDate || undefined,
+        notes,
+        items: lineItems,
+      };
+      const res = isEdit
+        ? await apiRequest("PATCH", `/api/invoices/${initial!.id}`, body)
+        : await apiRequest("POST", "/api/invoices", body);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
+      toast({ title: isEdit ? "Invoice updated" : "Invoice created" });
+      onClose();
+    },
+    onError: (e: Error) => toast({ title: "Error", description: e.message ?? "Could not save invoice", variant: "destructive" }),
+  });
+
+  const canSubmit =
+    clientId !== "" &&
+    lineItems.length > 0 &&
+    lineItems.every(it => it.description.trim() && it.quantity > 0);
+
+  return (
+    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{isEdit ? `Edit ${initial!.invoiceNumber}` : "New Invoice"}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label>Client *</Label>
+              <Select value={clientId === "" ? "" : String(clientId)} onValueChange={v => setClientId(Number(v))}>
+                <SelectTrigger data-testid="select-client">
+                  <SelectValue placeholder="Select client…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {clients.map(c => (
+                    <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Due Date</Label>
+              <Input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} data-testid="input-due-date" />
+            </div>
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <Label>Line Items</Label>
+              <Button size="sm" variant="outline" onClick={addLine} data-testid="button-add-line">
+                <Plus className="w-3.5 h-3.5 mr-1" />Add Line
+              </Button>
+            </div>
+            <div className="grid grid-cols-[1fr_80px_90px_36px] gap-2 mb-1 px-0.5">
+              <span className="text-xs text-muted-foreground">Description</span>
+              <span className="text-xs text-muted-foreground">Qty</span>
+              <span className="text-xs text-muted-foreground">Unit Price</span>
+              <span />
+            </div>
+            <div className="space-y-2">
+              {lineItems.map((item, i) => (
+                <LineItemRow
+                  key={i}
+                  item={item}
+                  onChange={v => updateLine(i, v)}
+                  onRemove={() => removeLine(i)}
+                  canRemove={lineItems.length > 1}
+                />
+              ))}
+            </div>
+            <div className="flex justify-end mt-3 pt-3 border-t">
+              <span className="text-sm font-semibold">Total: {fmt(total)}</span>
+            </div>
+          </div>
+
+          <div>
+            <Label>Notes</Label>
+            <Textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Payment instructions, terms, etc." rows={2} data-testid="input-invoice-notes" />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={onClose}>Cancel</Button>
+            <Button onClick={() => mutation.mutate()} disabled={!canSubmit || mutation.isPending} data-testid="button-save-invoice">
+              {mutation.isPending ? "Saving…" : isEdit ? "Save Changes" : "Create Invoice"}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
+
+type Tab = "invoices" | "clients";
+
+export default function Invoicing() {
+  const [, navigate] = useLocation();
+  const { toast } = useToast();
+  const [tab, setTab] = useState<Tab>("invoices");
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [showClientModal, setShowClientModal] = useState(false);
+  const [editInvoice, setEditInvoice] = useState<InvoiceWithDetails | undefined>();
+  const [editClient, setEditClient] = useState<Client | undefined>();
+  const [deleteConfirm, setDeleteConfirm] = useState<{ type: "invoice" | "client"; id: number } | null>(null);
+  const [statusDropdown, setStatusDropdown] = useState<number | null>(null);
+
+  const { data: invoiceList = [], isLoading: invLoading } = useQuery<InvoiceWithDetails[]>({
+    queryKey: ["/api/invoices"],
+  });
+
+  const { data: clientList = [], isLoading: clientLoading } = useQuery<Client[]>({
+    queryKey: ["/api/clients"],
+  });
+
+  const deleteInvoiceMut = useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest("DELETE", `/api/invoices/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
+      setDeleteConfirm(null);
+      toast({ title: "Invoice deleted" });
+    },
+  });
+
+  const deleteClientMut = useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest("DELETE", `/api/clients/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
+      setDeleteConfirm(null);
+      toast({ title: "Client deleted" });
+    },
+    onError: () => toast({ title: "Cannot delete", description: "Client has existing invoices", variant: "destructive" }),
+  });
+
+  const updateStatusMut = useMutation({
+    mutationFn: async ({ id, status }: { id: number; status: string }) => {
+      const res = await apiRequest("PATCH", `/api/invoices/${id}`, { status });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
+      setStatusDropdown(null);
+    },
+  });
+
+  // Summary stats
+  const totalOutstanding = invoiceList
+    .filter(i => i.status === "sent" || i.status === "overdue")
+    .reduce((s, i) => s + i.total, 0);
+  const totalPaid = invoiceList
+    .filter(i => i.status === "paid")
+    .reduce((s, i) => s + i.total, 0);
+  const overdueCount = invoiceList.filter(i => i.status === "overdue").length;
+
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <header className="sticky top-0 z-50 bg-background border-b px-4 py-3 flex items-center gap-3">
+        <Button size="icon" variant="ghost" onClick={() => navigate("/")} data-testid="button-back-home">
+          <ArrowLeft className="w-4 h-4" />
+        </Button>
+        <div className="flex items-center gap-2 flex-1">
+          <Receipt className="w-5 h-5 text-violet-600" />
+          <h1 className="text-lg font-semibold">Invoicing</h1>
+        </div>
+        <Button
+          size="sm"
+          onClick={() => {
+            if (tab === "invoices") {
+              setEditInvoice(undefined);
+              setShowInvoiceModal(true);
+            } else {
+              setEditClient(undefined);
+              setShowClientModal(true);
+            }
+          }}
+          disabled={tab === "invoices" && clientList.length === 0}
+          data-testid="button-new"
+        >
+          <Plus className="w-4 h-4 mr-1" />
+          {tab === "invoices" ? "New Invoice" : "New Client"}
+        </Button>
+      </header>
+
+      <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
+        {/* Summary cards */}
+        <div className="grid grid-cols-3 gap-3">
+          <Card data-testid="card-outstanding">
+            <CardContent className="pt-4 pb-3 text-center">
+              <div className="flex items-center justify-center mb-1 text-blue-500">
+                <Send className="w-4 h-4" />
+              </div>
+              <p className="text-xl font-bold">{fmt(totalOutstanding)}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Outstanding</p>
+            </CardContent>
+          </Card>
+          <Card data-testid="card-paid">
+            <CardContent className="pt-4 pb-3 text-center">
+              <div className="flex items-center justify-center mb-1 text-green-500">
+                <Check className="w-4 h-4" />
+              </div>
+              <p className="text-xl font-bold">{fmt(totalPaid)}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Collected</p>
+            </CardContent>
+          </Card>
+          <Card data-testid="card-overdue">
+            <CardContent className="pt-4 pb-3 text-center">
+              <div className="flex items-center justify-center mb-1 text-red-500">
+                <AlertCircle className="w-4 h-4" />
+              </div>
+              <p className="text-xl font-bold">{overdueCount}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Overdue</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex gap-1 border-b">
+          {(["invoices", "clients"] as Tab[]).map(t => (
+            <button
+              key={t}
+              className={`px-4 py-2 text-sm font-medium capitalize border-b-2 transition-colors ${
+                tab === t
+                  ? "border-violet-600 text-violet-700 dark:text-violet-400"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}
+              onClick={() => setTab(t)}
+              data-testid={`tab-${t}`}
+            >
+              {t === "invoices" ? (
+                <span className="flex items-center gap-1.5"><Receipt className="w-3.5 h-3.5" />Invoices</span>
+              ) : (
+                <span className="flex items-center gap-1.5"><Users className="w-3.5 h-3.5" />Clients</span>
+              )}
+            </button>
+          ))}
+        </div>
+
+        {/* ── Invoices tab ── */}
+        {tab === "invoices" && (
+          <div>
+            {invLoading && <p className="text-center text-muted-foreground py-8">Loading invoices…</p>}
+            {!invLoading && invoiceList.length === 0 && (
+              <Card>
+                <CardContent className="py-12 text-center text-muted-foreground">
+                  <Receipt className="w-8 h-8 mx-auto mb-3 opacity-40" />
+                  <p className="font-medium">No invoices yet</p>
+                  <p className="text-sm mt-1">
+                    {clientList.length === 0
+                      ? "Add a client first, then create your first invoice."
+                      : "Click \"New Invoice\" to bill your first client."}
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+            {!invLoading && invoiceList.length > 0 && (
+              <Card>
+                <CardContent className="pt-0 divide-y">
+                  {invoiceList.map(inv => (
+                    <div key={inv.id} className="py-3 flex items-center gap-3" data-testid={`row-invoice-${inv.id}`}>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-mono text-sm font-semibold" data-testid={`text-invoice-number-${inv.id}`}>{inv.invoiceNumber}</span>
+                          <StatusBadge status={inv.status} />
+                        </div>
+                        <p className="text-sm text-muted-foreground truncate mt-0.5" data-testid={`text-invoice-client-${inv.id}`}>{inv.client?.name ?? "—"}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {fmtDate(inv.issueDate?.toString())}
+                          {inv.dueDate ? ` · Due ${fmtDate(inv.dueDate.toString())}` : ""}
+                        </p>
+                      </div>
+                      <p className="font-semibold text-sm shrink-0" data-testid={`text-invoice-total-${inv.id}`}>{fmt(inv.total)}</p>
+                      {/* Status changer */}
+                      <div className="relative">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => setStatusDropdown(statusDropdown === inv.id ? null : inv.id)}
+                          data-testid={`button-status-${inv.id}`}
+                        >
+                          <ChevronDown className="w-4 h-4" />
+                        </Button>
+                        {statusDropdown === inv.id && (
+                          <div className="absolute right-0 top-9 z-50 w-36 bg-popover border rounded-md shadow-md p-1" data-testid={`dropdown-status-${inv.id}`}>
+                            {(["draft", "sent", "paid", "overdue"] as InvoiceStatus[]).map(s => (
+                              <button
+                                key={s}
+                                className="w-full text-left px-2 py-1.5 text-sm rounded hover-elevate"
+                                onClick={() => updateStatusMut.mutate({ id: inv.id, status: s })}
+                                data-testid={`option-status-${s}`}
+                              >
+                                {STATUS_CONFIG[s].label}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => { setEditInvoice(inv); setShowInvoiceModal(true); }}
+                        data-testid={`button-edit-invoice-${inv.id}`}
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => setDeleteConfirm({ type: "invoice", id: inv.id })}
+                        data-testid={`button-delete-invoice-${inv.id}`}
+                      >
+                        <Trash2 className="w-4 h-4 text-red-400" />
+                      </Button>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        )}
+
+        {/* ── Clients tab ── */}
+        {tab === "clients" && (
+          <div>
+            {clientLoading && <p className="text-center text-muted-foreground py-8">Loading clients…</p>}
+            {!clientLoading && clientList.length === 0 && (
+              <Card>
+                <CardContent className="py-12 text-center text-muted-foreground">
+                  <Users className="w-8 h-8 mx-auto mb-3 opacity-40" />
+                  <p className="font-medium">No clients yet</p>
+                  <p className="text-sm mt-1">Add your first client to start billing.</p>
+                </CardContent>
+              </Card>
+            )}
+            {!clientLoading && clientList.length > 0 && (
+              <Card>
+                <CardContent className="pt-0 divide-y">
+                  {clientList.map(client => {
+                    const clientInvoices = invoiceList.filter(i => i.clientId === client.id);
+                    const clientTotal = clientInvoices.filter(i => i.status === "paid").reduce((s, i) => s + i.total, 0);
+                    return (
+                      <div key={client.id} className="py-3 flex items-center gap-3" data-testid={`row-client-${client.id}`}>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm" data-testid={`text-client-name-${client.id}`}>{client.name}</p>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {[client.email, client.phone].filter(Boolean).join(" · ") || "No contact info"}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {clientInvoices.length} invoice{clientInvoices.length !== 1 ? "s" : ""}
+                            {clientTotal > 0 ? ` · ${fmt(clientTotal)} paid` : ""}
+                          </p>
+                        </div>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => { setEditClient(client); setShowClientModal(true); }}
+                          data-testid={`button-edit-client-${client.id}`}
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => setDeleteConfirm({ type: "client", id: client.id })}
+                          data-testid={`button-delete-client-${client.id}`}
+                        >
+                          <Trash2 className="w-4 h-4 text-red-400" />
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Modals */}
+      {showInvoiceModal && (
+        <InvoiceModal
+          open={showInvoiceModal}
+          onClose={() => { setShowInvoiceModal(false); setEditInvoice(undefined); }}
+          clients={clientList}
+          initial={editInvoice}
+        />
+      )}
+
+      {showClientModal && (
+        <ClientModal
+          open={showClientModal}
+          onClose={() => { setShowClientModal(false); setEditClient(undefined); }}
+          initial={editClient}
+        />
+      )}
+
+      {/* Delete confirmation */}
+      {deleteConfirm && (
+        <Dialog open onOpenChange={() => setDeleteConfirm(null)}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Confirm Delete</DialogTitle>
+            </DialogHeader>
+            <p className="text-sm text-muted-foreground">
+              {deleteConfirm.type === "invoice"
+                ? "This invoice will be permanently deleted."
+                : "This client and all their invoices will be deleted."}
+            </p>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setDeleteConfirm(null)}>Cancel</Button>
+              <Button
+                variant="destructive"
+                onClick={() => {
+                  if (deleteConfirm.type === "invoice") deleteInvoiceMut.mutate(deleteConfirm.id);
+                  else deleteClientMut.mutate(deleteConfirm.id);
+                }}
+                data-testid="button-confirm-delete"
+              >
+                Delete
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+    </div>
+  );
+}

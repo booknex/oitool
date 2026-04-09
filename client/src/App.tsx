@@ -7,6 +7,7 @@ import Dashboard from "@/pages/dashboard";
 import Kiosk from "@/pages/kiosk";
 import Reviews from "@/pages/reviews";
 import CalendarPage from "@/pages/calendar";
+import Invoicing from "@/pages/invoicing";
 import Analytics from "@/pages/analytics";
 import NotFound from "@/pages/not-found";
 
@@ -17,6 +18,7 @@ function Router() {
       <Route path="/kiosk" component={Kiosk} />
       <Route path="/reviews" component={Reviews} />
       <Route path="/calendar" component={CalendarPage} />
+      <Route path="/invoicing" component={Invoicing} />
       <Route path="/analytics" component={Analytics} />
       <Route component={NotFound} />
     </Switch>
