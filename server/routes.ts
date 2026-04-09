@@ -264,6 +264,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ─── Calendar Sync ───────────────────────────────────────────────────────────
+
+  app.post("/api/properties/:id/sync", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid property id" });
+      const result = await storage.syncPropertyCalendar(id);
+      res.json({ success: true, count: result.count, lastSynced: result.lastSynced });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Sync failed";
+      if (msg.includes("not found")) return res.status(404).json({ error: "Property not found" });
+      if (msg.includes("No iCal URL")) return res.status(400).json({ error: msg });
+      res.status(500).json({ error: msg });
+    }
+  });
+
+  app.get("/api/bookings/upcoming", async (_req, res) => {
+    try {
+      const data = await storage.getUpcomingBookings();
+      res.json(data);
+    } catch {
+      res.status(500).json({ error: "Failed to fetch bookings" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

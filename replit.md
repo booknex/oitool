@@ -19,6 +19,17 @@ A self-service inventory kiosk application for cleaning service operations. Maid
 - **Mobile fallback** — Compact teal brand bar shown on small screens when the left panel is hidden
 - Auto-seeds the default 5 apps on first load if the table is empty
 
+### Airbnb iCal Calendar Sync
+- **iCal URL per property** — optional field stored in `properties.ical_url`
+- **Auto-sync** — server syncs all iCal URLs every 15 minutes via `setInterval` in `server/index.ts`
+- **Manual sync** — "Sync Now" button in property edit modal triggers `POST /api/properties/:id/sync`
+- **Upcoming bookings** — `bookings` table stores uid, startDate, endDate, summary per property
+- **Status badges** — property cards show colored pill: Available / Occupied / Checkout Today / Check-in Today
+- **Next date hint** — calendar icon + next check-in date shown below cards with iCal configured
+- **Last synced** — edit modal shows "Last synced X ago" after first sync
+- **API** — `POST /api/properties/:id/sync`, `GET /api/bookings/upcoming`
+- **Deploy script** — migrations for `ical_url`, `last_synced` columns and `bookings` table
+
 ### Property Reviews Gallery
 - **Route** `/reviews` — accessible from the "Reviews" tile on the dashboard
 - **Property squares** — grid of clickable colored cards (2–3 per row); each opens its Airbnb reviews URL in a new tab

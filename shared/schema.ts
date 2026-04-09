@@ -90,6 +90,8 @@ export const properties = pgTable("properties", {
   color: text("color").notNull().default("#E8F4FD"),
   sortOrder: integer("sort_order").notNull().default(0),
   imageUrl: text("image_url").default(""),
+  icalUrl: text("ical_url").default(""),
+  lastSynced: timestamp("last_synced"),
 });
 
 export const insertPropertySchema = createInsertSchema(properties).omit({ id: true });
@@ -103,6 +105,7 @@ export const createPropertySchema = z.object({
   color: z.string().default("#E8F4FD"),
   sortOrder: z.number().default(0),
   imageUrl: z.string().default(""),
+  icalUrl: z.string().default(""),
 });
 
 export const updatePropertySchema = z.object({
@@ -113,10 +116,31 @@ export const updatePropertySchema = z.object({
   color: z.string().optional(),
   sortOrder: z.number().optional(),
   imageUrl: z.string().optional(),
+  icalUrl: z.string().optional(),
 });
 
 export type CreatePropertyPayload = z.infer<typeof createPropertySchema>;
 export type UpdatePropertyPayload = z.infer<typeof updatePropertySchema>;
+
+// ─── Bookings (from iCal sync) ────────────────────────────────────────────────
+
+export const bookings = pgTable("bookings", {
+  id: serial("id").primaryKey(),
+  propertyId: integer("property_id").notNull(),
+  uid: text("uid").notNull(),
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date").notNull(),
+  summary: text("summary").notNull().default(""),
+  syncedAt: timestamp("synced_at").notNull().defaultNow(),
+});
+
+export type Booking = typeof bookings.$inferSelect;
+
+export type UpcomingBookings = Record<number, {
+  startDate: string;
+  endDate: string;
+  summary: string;
+}[]>;
 
 // ─── Dashboard Apps ───────────────────────────────────────────────────────────
 

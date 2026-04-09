@@ -120,6 +120,38 @@ BEGIN
         ALTER TABLE properties ADD COLUMN image_url TEXT NOT NULL DEFAULT '';
     END IF;
 
+    -- Add ical_url to properties if missing
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'properties' AND column_name = 'ical_url'
+    ) THEN
+        ALTER TABLE properties ADD COLUMN ical_url TEXT NOT NULL DEFAULT '';
+    END IF;
+
+    -- Add last_synced to properties if missing
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'properties' AND column_name = 'last_synced'
+    ) THEN
+        ALTER TABLE properties ADD COLUMN last_synced TIMESTAMPTZ;
+    END IF;
+
+    -- Create bookings table if it doesn't exist
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_name = 'bookings'
+    ) THEN
+        CREATE TABLE bookings (
+            id          SERIAL PRIMARY KEY,
+            property_id INTEGER NOT NULL,
+            uid         TEXT NOT NULL,
+            start_date  TIMESTAMPTZ NOT NULL,
+            end_date    TIMESTAMPTZ NOT NULL,
+            summary     TEXT NOT NULL DEFAULT '',
+            synced_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );
+    END IF;
+
     -- Create checkout_logs table if it doesn't exist
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.tables

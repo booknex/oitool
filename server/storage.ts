@@ -7,6 +7,7 @@ import {
   checkoutLogs,
   dashboardApps,
   properties,
+  bookings,
   type InventoryItem,
   type CartItem,
   type CreateItemPayload,
@@ -17,9 +18,62 @@ import {
   type Property,
   type CreatePropertyPayload,
   type UpdatePropertyPayload,
+  type UpcomingBookings,
   type AnalyticsRange,
   type AnalyticsResponse,
 } from "@shared/schema";
+
+// ─── iCal parser (no external dependency) ────────────────────────────────────
+
+function parseIcalDate(value: string, keyWithParams: string): Date {
+  const isDateOnly = keyWithParams.includes("VALUE=DATE") || /^\d{8}$/.test(value);
+  const y = parseInt(value.substring(0, 4), 10);
+  const m = parseInt(value.substring(4, 6), 10) - 1;
+  const d = parseInt(value.substring(6, 8), 10);
+  if (isDateOnly || value.length === 8) {
+    return new Date(Date.UTC(y, m, d));
+  }
+  const h = parseInt(value.substring(9, 11), 10);
+  const min = parseInt(value.substring(11, 13), 10);
+  const s = parseInt(value.substring(13, 15), 10);
+  if (value.endsWith("Z")) return new Date(Date.UTC(y, m, d, h, min, s));
+  return new Date(y, m, d, h, min, s);
+}
+
+function parseIcal(text: string): Array<{ uid: string; start: Date; end: Date; summary: string }> {
+  const unfolded = text.replace(/\r?\n[ \t]/g, "");
+  const lines = unfolded.split(/\r?\n/);
+  const events: Array<{ uid: string; start: Date; end: Date; summary: string }> = [];
+  let inEvent = false;
+  let current: { uid?: string; start?: Date; end?: Date; summary?: string } = {};
+
+  for (const line of lines) {
+    if (line === "BEGIN:VEVENT") {
+      inEvent = true;
+      current = {};
+    } else if (line === "END:VEVENT") {
+      if (inEvent && current.uid && current.start && current.end) {
+        events.push({ uid: current.uid, start: current.start, end: current.end, summary: current.summary ?? "" });
+      }
+      inEvent = false;
+    } else if (inEvent) {
+      const colonIdx = line.indexOf(":");
+      if (colonIdx === -1) continue;
+      const keyPart = line.substring(0, colonIdx);
+      const baseKey = keyPart.split(";")[0];
+      const value = line.substring(colonIdx + 1);
+      switch (baseKey) {
+        case "UID": current.uid = value.trim(); break;
+        case "SUMMARY": current.summary = value.replace(/\\n/g, "\n").replace(/\\,/g, ",").replace(/\\;/g, ";").trim(); break;
+        case "DTSTART": current.start = parseIcalDate(value.trim(), keyPart); break;
+        case "DTEND": current.end = parseIcalDate(value.trim(), keyPart); break;
+      }
+    }
+  }
+  return events;
+}
+
+// ─── Interface ───────────────────────────────────────────────────────────────
 
 export interface IStorage {
   getItems(): Promise<InventoryItem[]>;
@@ -42,6 +96,10 @@ export interface IStorage {
   createProperty(data: CreatePropertyPayload): Promise<Property>;
   updateProperty(data: UpdatePropertyPayload): Promise<Property>;
   deleteProperty(id: number): Promise<void>;
+  // Calendar sync
+  syncPropertyCalendar(id: number): Promise<{ count: number; lastSynced: Date }>;
+  syncAllCalendars(): Promise<void>;
+  getUpcomingBookings(): Promise<UpcomingBookings>;
 }
 
 const DEFAULT_DASHBOARD_APPS: Omit<CreateDashboardAppPayload, "sortOrder">[] = [
@@ -92,7 +150,6 @@ const DEFAULT_DASHBOARD_APPS: Omit<CreateDashboardAppPayload, "sortOrder">[] = [
   },
 ];
 
-// Required apps that must always exist regardless of DB state
 const REQUIRED_APPS = [
   { route: "/kiosk",     name: "Supply Kiosk", description: "Manage inventory & cleaning supplies", icon: "Package",    color: "#E8F4FD", iconColor: "#2196F3", available: true },
   { route: "/reviews",   name: "Reviews",      description: "View Airbnb guest feedback",           icon: "Star",       color: "#FFF8E1", iconColor: "#F59E0B", available: true },
@@ -150,7 +207,6 @@ export class DatabaseStorage implements IStorage {
         });
       }
 
-      // Insert checkout log entries within same transaction
       if (logEntries.length > 0) {
         await txDb.insert(checkoutLogs).values(logEntries);
       }
@@ -260,13 +316,11 @@ export class DatabaseStorage implements IStorage {
       dateFilter = "WHERE checked_out_at >= NOW() - INTERVAL '30 days'";
     }
 
-    // Typed row shapes for the raw SQL results
     type ItemRow = { itemName: string; category: string; unitsSold: string; unitCost: string; totalCost: string };
     type CatRow  = { category: string; unitsSold: string; totalCost: string };
     type TotalRow = { totalSpend: string; totalUnits: string };
     type MonthRow = { month: string; spend: string };
 
-    // Item breakdown
     const itemResult = await db.execute(sql.raw(`
       SELECT
         item_name   AS "itemName",
@@ -280,7 +334,6 @@ export class DatabaseStorage implements IStorage {
       ORDER BY SUM(quantity) DESC
     `));
 
-    // Category totals
     const catResult = await db.execute(sql.raw(`
       SELECT
         category,
@@ -292,7 +345,6 @@ export class DatabaseStorage implements IStorage {
       ORDER BY SUM(total_cost) DESC
     `));
 
-    // Grand total
     const totalResult = await db.execute(sql.raw(`
       SELECT
         COALESCE(SUM(total_cost), 0)::text AS "totalSpend",
@@ -322,7 +374,6 @@ export class DatabaseStorage implements IStorage {
       })),
     };
 
-    // Monthly trend — only for alltime; always returns a full 12-month series
     if (range === "alltime") {
       const monthResult = await db.execute(sql.raw(`
         SELECT
@@ -334,13 +385,11 @@ export class DatabaseStorage implements IStorage {
         ORDER BY DATE_TRUNC('month', checked_out_at) ASC
       `));
 
-      // Build a map of month -> spend from query results
       const spendByMonth = new Map<string, number>();
       for (const r of monthResult.rows as MonthRow[]) {
         spendByMonth.set(r.month, Number(r.spend ?? 0));
       }
 
-      // Generate complete 12-month series (current month + 11 previous)
       const fullSeries: { month: string; spend: number }[] = [];
       const now = new Date();
       for (let i = 11; i >= 0; i--) {
@@ -455,6 +504,7 @@ export class DatabaseStorage implements IStorage {
     if (data.color !== undefined) updates.color = data.color;
     if (data.sortOrder !== undefined) updates.sortOrder = data.sortOrder;
     if (data.imageUrl !== undefined) updates.imageUrl = data.imageUrl;
+    if (data.icalUrl !== undefined) updates.icalUrl = data.icalUrl;
 
     const [updated] = await db
       .update(properties)
@@ -467,7 +517,84 @@ export class DatabaseStorage implements IStorage {
   async deleteProperty(id: number): Promise<void> {
     const [existing] = await db.select().from(properties).where(eq(properties.id, id));
     if (!existing) throw new Error(`Property with id ${id} not found`);
+    await db.delete(bookings).where(eq(bookings.propertyId, id));
     await db.delete(properties).where(eq(properties.id, id));
+  }
+
+  // ─── Calendar Sync ─────────────────────────────────────────────────────────
+
+  async syncPropertyCalendar(id: number): Promise<{ count: number; lastSynced: Date }> {
+    const [prop] = await db.select().from(properties).where(eq(properties.id, id));
+    if (!prop) throw new Error(`Property with id ${id} not found`);
+    if (!prop.icalUrl) throw new Error("No iCal URL configured for this property");
+
+    const response = await fetch(prop.icalUrl);
+    if (!response.ok) throw new Error(`Failed to fetch iCal: HTTP ${response.status}`);
+    const text = await response.text();
+
+    const events = parseIcal(text);
+    const now = new Date();
+
+    // Keep events that end in the future (or started recently — within 1 day past)
+    const cutoff = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const relevant = events.filter(e => e.end >= cutoff);
+
+    // Replace all bookings for this property
+    await db.delete(bookings).where(eq(bookings.propertyId, id));
+
+    if (relevant.length > 0) {
+      await db.insert(bookings).values(
+        relevant.map(e => ({
+          propertyId: id,
+          uid: e.uid,
+          startDate: e.start,
+          endDate: e.end,
+          summary: e.summary,
+          syncedAt: now,
+        }))
+      );
+    }
+
+    const lastSynced = now;
+    await db.update(properties)
+      .set({ lastSynced })
+      .where(eq(properties.id, id));
+
+    return { count: relevant.length, lastSynced };
+  }
+
+  async syncAllCalendars(): Promise<void> {
+    const props = await db.select().from(properties);
+    for (const prop of props) {
+      if (!prop.icalUrl) continue;
+      try {
+        await this.syncPropertyCalendar(prop.id);
+      } catch (e) {
+        console.error(`[ical] Failed to sync property ${prop.id} (${prop.name}):`, e);
+      }
+    }
+  }
+
+  async getUpcomingBookings(): Promise<UpcomingBookings> {
+    const now = new Date();
+    const cutoff = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
+    const rows = await db
+      .select()
+      .from(bookings)
+      .where(gte(bookings.endDate, cutoff))
+      .orderBy(bookings.startDate);
+
+    const result: UpcomingBookings = {};
+    for (const row of rows) {
+      if (!result[row.propertyId]) result[row.propertyId] = [];
+      result[row.propertyId].push({
+        startDate: row.startDate.toISOString(),
+        endDate: row.endDate.toISOString(),
+        summary: row.summary,
+      });
+    }
+    return result;
   }
 }
 
