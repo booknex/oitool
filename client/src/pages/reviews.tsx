@@ -4,16 +4,16 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import {
   ArrowLeft, Plus, Star, Pencil, Trash2, Check, ExternalLink,
-  ImagePlus, Loader2, RefreshCw, Calendar,
+  ImagePlus, Loader2, RefreshCw, CalendarClock, LogIn, LogOut,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import type { Property, UpcomingBookings } from "@shared/schema";
+import type { Property, BookingInfo, UpcomingBookings } from "@shared/schema";
 
-// ─── Color palette for property squares ───────────────────────────────────────
+// ─── Color palette ────────────────────────────────────────────────────────────
 
 const SQUARE_COLORS = [
   "#E8F4FD", "#FFF8E1", "#F3E5F5", "#E8F5E9", "#FBE9E7",
@@ -29,24 +29,24 @@ const ACCENT_MAP: Record<string, string> = {
   "#E8EAF6": "#3F51B5", "#FFF9C4": "#F9A825", "#F9FBE7": "#689F38",
 };
 
-// ─── Calendar status helpers ───────────────────────────────────────────────────
+// ─── Calendar helpers ─────────────────────────────────────────────────────────
 
 type BookingStatus = "available" | "occupied" | "checking_out" | "checking_in";
 
 const STATUS_CONFIG: Record<BookingStatus, { bg: string; text: string; label: string }> = {
-  available:     { bg: "#dcfce7", text: "#15803d", label: "Available" },
-  occupied:      { bg: "#dbeafe", text: "#1d4ed8", label: "Occupied" },
-  checking_out:  { bg: "#ffedd5", text: "#c2410c", label: "Checkout Today" },
-  checking_in:   { bg: "#f3e8ff", text: "#7e22ce", label: "Check-in Today" },
+  available:    { bg: "#dcfce7", text: "#15803d", label: "Available" },
+  occupied:     { bg: "#dbeafe", text: "#1d4ed8", label: "Occupied" },
+  checking_out: { bg: "#ffedd5", text: "#c2410c", label: "Checkout Today" },
+  checking_in:  { bg: "#f3e8ff", text: "#7e22ce", label: "Check-in Today" },
 };
 
-function getPropertyStatus(bookings: { startDate: string; endDate: string }[]): BookingStatus {
+function getPropertyStatus(propBookings: BookingInfo[]): BookingStatus {
   const todayStr = new Date().toISOString().split("T")[0];
   let isCheckingOut = false;
   let isCheckingIn = false;
   let isOccupied = false;
 
-  for (const b of bookings) {
+  for (const b of propBookings) {
     const start = b.startDate.split("T")[0];
     const end = b.endDate.split("T")[0];
     if (end === todayStr) isCheckingOut = true;
@@ -60,16 +60,16 @@ function getPropertyStatus(bookings: { startDate: string; endDate: string }[]): 
   return "available";
 }
 
-function getNextDate(bookings: { startDate: string; endDate: string }[], field: "startDate" | "endDate", strict = false): string | null {
+function nextDateOf(propBookings: BookingInfo[], field: "startDate" | "endDate", strictlyAfterToday = false): string | null {
   const todayStr = new Date().toISOString().split("T")[0];
-  const dates = bookings
+  const dates = propBookings
     .map(b => b[field].split("T")[0])
-    .filter(d => strict ? d > todayStr : d >= todayStr)
+    .filter(d => strictlyAfterToday ? d > todayStr : d >= todayStr)
     .sort();
   return dates[0] ?? null;
 }
 
-function formatDate(iso: string): string {
+function fmtDate(iso: string): string {
   const [y, m, d] = iso.split("-").map(Number);
   return new Date(y, m - 1, d).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
@@ -85,15 +85,13 @@ function timeAgo(date: Date | string | null | undefined): string | null {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
+type SyncResult = { count: number; lastSynced: string };
+
 // ─── Add / Edit modal ─────────────────────────────────────────────────────────
 
 type FormState = {
-  name: string;
-  address: string;
-  airbnbUrl: string;
-  color: string;
-  imageUrl: string;
-  icalUrl: string;
+  name: string; address: string; airbnbUrl: string;
+  color: string; imageUrl: string; icalUrl: string;
 };
 
 const BLANK: FormState = {
@@ -101,13 +99,7 @@ const BLANK: FormState = {
 };
 
 function PropertyModal({
-  open,
-  onClose,
-  initial,
-  onSave,
-  saving,
-  propertyId,
-  lastSynced,
+  open, onClose, initial, onSave, saving, propertyId, lastSynced,
 }: {
   open: boolean;
   onClose: () => void;
@@ -119,6 +111,7 @@ function PropertyModal({
 }) {
   const [form, setForm] = useState<FormState>(initial);
   const [uploading, setUploading] = useState(false);
+  const [syncedAt, setSyncedAt] = useState<Date | string | null | undefined>(lastSynced);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -126,14 +119,18 @@ function PropertyModal({
     setForm((p) => ({ ...p, [k]: e.target.value }));
 
   const syncMutation = useMutation({
-    mutationFn: () => apiRequest("POST", `/api/properties/${propertyId}/sync`),
-    onSuccess: (data: any) => {
+    mutationFn: async (): Promise<SyncResult> => {
+      const res = await apiRequest("POST", `/api/properties/${propertyId}/sync`);
+      return res.json() as Promise<SyncResult>;
+    },
+    onSuccess: (data) => {
+      setSyncedAt(data.lastSynced);
       queryClient.invalidateQueries({ queryKey: ["/api/bookings/upcoming"] });
       queryClient.invalidateQueries({ queryKey: ["/api/properties"] });
-      toast({ title: `Calendar synced — ${data.count} booking(s) loaded` });
+      toast({ title: `Calendar synced — ${data.count} upcoming booking(s) loaded` });
     },
-    onError: (e: any) =>
-      toast({ title: "Sync failed", description: e?.message ?? "Check the iCal URL", variant: "destructive" }),
+    onError: (err: Error) =>
+      toast({ title: "Sync failed", description: err.message, variant: "destructive" }),
   });
 
   const handleImageFile = async (file: File) => {
@@ -172,7 +169,7 @@ function PropertyModal({
         </DialogHeader>
 
         <div className="space-y-4 pt-2">
-          {/* Image upload */}
+          {/* Photo upload */}
           <div className="space-y-1.5">
             <Label>Photo <span className="text-muted-foreground font-normal">(optional)</span></Label>
             <div
@@ -220,35 +217,20 @@ function PropertyModal({
 
           <div className="space-y-1.5">
             <Label>Property Name</Label>
-            <Input
-              value={form.name}
-              onChange={set("name")}
-              placeholder="e.g. Beach House"
-              data-testid="input-property-name"
-            />
+            <Input value={form.name} onChange={set("name")} placeholder="e.g. Beach House" data-testid="input-property-name" />
           </div>
 
           <div className="space-y-1.5">
             <Label>Address <span className="text-muted-foreground font-normal">(optional)</span></Label>
-            <Input
-              value={form.address}
-              onChange={set("address")}
-              placeholder="e.g. 123 Ocean Dr, Miami"
-              data-testid="input-property-address"
-            />
+            <Input value={form.address} onChange={set("address")} placeholder="e.g. 123 Ocean Dr, Miami" data-testid="input-property-address" />
           </div>
 
           <div className="space-y-1.5">
             <Label>Airbnb Reviews URL</Label>
-            <Input
-              value={form.airbnbUrl}
-              onChange={set("airbnbUrl")}
-              placeholder="https://airbnb.com/rooms/..."
-              data-testid="input-property-url"
-            />
+            <Input value={form.airbnbUrl} onChange={set("airbnbUrl")} placeholder="https://airbnb.com/rooms/..." data-testid="input-property-url" />
           </div>
 
-          {/* iCal URL */}
+          {/* Airbnb iCal URL */}
           <div className="space-y-1.5">
             <Label>
               Airbnb iCal URL{" "}
@@ -260,13 +242,12 @@ function PropertyModal({
               placeholder="https://www.airbnb.com/calendar/ical/..."
               data-testid="input-property-ical"
             />
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-[11px] text-muted-foreground leading-snug">
               Find this in Airbnb → Manage listing → Calendar → Export calendar
             </p>
 
-            {/* Sync button — only when editing a saved property with a URL */}
             {propertyId && form.icalUrl && (
-              <div className="flex items-center gap-3 pt-1">
+              <div className="flex items-center gap-3 pt-0.5">
                 <Button
                   variant="outline"
                   size="sm"
@@ -274,22 +255,21 @@ function PropertyModal({
                   disabled={syncMutation.isPending}
                   data-testid={`button-sync-calendar-${propertyId}`}
                 >
-                  {syncMutation.isPending ? (
-                    <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                  ) : (
-                    <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
-                  )}
+                  {syncMutation.isPending
+                    ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                    : <RefreshCw className="w-3.5 h-3.5 mr-1.5" />}
                   Sync Now
                 </Button>
-                {lastSynced && (
+                {syncedAt && (
                   <span className="text-[11px] text-muted-foreground">
-                    Last synced {timeAgo(lastSynced)}
+                    Last synced {timeAgo(syncedAt)}
                   </span>
                 )}
               </div>
             )}
           </div>
 
+          {/* Color */}
           <div className="space-y-1.5">
             <Label>Square Color</Label>
             <div className="flex flex-wrap gap-2">
@@ -345,6 +325,7 @@ export default function Reviews() {
 
   const { data: upcomingBookings = {} as UpcomingBookings } = useQuery<UpcomingBookings>({
     queryKey: ["/api/bookings/upcoming"],
+    refetchInterval: 5 * 60 * 1000, // auto-refetch every 5 min
   });
 
   const createMutation = useMutation({
@@ -379,6 +360,21 @@ export default function Reviews() {
     onError: () => toast({ title: "Failed to delete property", variant: "destructive" }),
   });
 
+  // Card-level quick sync
+  const cardSyncMutation = useMutation({
+    mutationFn: async (id: number): Promise<SyncResult> => {
+      const res = await apiRequest("POST", `/api/properties/${id}/sync`);
+      return res.json() as Promise<SyncResult>;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/bookings/upcoming"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/properties"] });
+      toast({ title: `Synced — ${data.count} upcoming booking(s)` });
+    },
+    onError: (err: Error) =>
+      toast({ title: "Sync failed", description: err.message, variant: "destructive" }),
+  });
+
   const handleSaveNew = (form: FormState) => createMutation.mutate(form);
   const handleSaveEdit = (form: FormState) => {
     if (!editTarget) return;
@@ -392,12 +388,7 @@ export default function Reviews() {
       {/* ── Header ── */}
       <div className="bg-white border-b border-black/5 px-5 py-4 flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <Button
-            size="icon"
-            variant="ghost"
-            onClick={() => navigate("/")}
-            data-testid="button-back"
-          >
+          <Button size="icon" variant="ghost" onClick={() => navigate("/")} data-testid="button-back">
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <div>
@@ -448,14 +439,13 @@ export default function Reviews() {
             {props.map((prop) => {
               const ac = accent(prop.color);
               const isConfirmingDelete = deleteId === prop.id;
-
-              // Calendar status for this property
-              const propBookings = upcomingBookings[prop.id] ?? [];
               const hasCalendar = !!prop.icalUrl;
-              const status = hasCalendar ? getPropertyStatus(propBookings) : null;
+              const propBookings: BookingInfo[] = upcomingBookings[prop.id] ?? [];
+              const status: BookingStatus | null = hasCalendar ? getPropertyStatus(propBookings) : null;
               const statusCfg = status ? STATUS_CONFIG[status] : null;
-              const nextCheckout = hasCalendar ? getNextDate(propBookings, "endDate") : null;
-              const nextCheckin = hasCalendar ? getNextDate(propBookings, "startDate", true) : null;
+              const nextCheckout = hasCalendar ? nextDateOf(propBookings, "endDate") : null;
+              const nextCheckin = hasCalendar ? nextDateOf(propBookings, "startDate", true) : null;
+              const isSyncing = cardSyncMutation.isPending && cardSyncMutation.variables === prop.id;
 
               return (
                 <div key={prop.id} className="relative" data-testid={`property-card-${prop.id}`}>
@@ -474,16 +464,10 @@ export default function Reviews() {
                     disabled={editMode}
                     data-testid={`button-open-property-${prop.id}`}
                   >
-                    {/* Property photo */}
                     {prop.imageUrl && (
-                      <img
-                        src={prop.imageUrl}
-                        alt={prop.name}
-                        className="absolute inset-0 w-full h-full object-contain"
-                      />
+                      <img src={prop.imageUrl} alt={prop.name} className="absolute inset-0 w-full h-full object-contain" />
                     )}
 
-                    {/* Gradient overlay for readability */}
                     <div
                       className="absolute inset-0"
                       style={{
@@ -493,7 +477,6 @@ export default function Reviews() {
                       }}
                     />
 
-                    {/* Star icon top-left (only when no image) */}
                     {!prop.imageUrl && (
                       <div
                         className="absolute top-2 left-2 w-7 h-7 rounded-lg flex items-center justify-center"
@@ -503,61 +486,78 @@ export default function Reviews() {
                       </div>
                     )}
 
-                    {/* External link hint on hover */}
                     {!editMode && prop.airbnbUrl && (
                       <div
                         className="absolute top-2 right-2 w-6 h-6 rounded-md flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                         style={{ backgroundColor: prop.imageUrl ? "rgba(0,0,0,0.4)" : `${ac}20` }}
                       >
-                        <ExternalLink
-                          className="w-3 h-3"
-                          style={{ color: prop.imageUrl ? "#fff" : ac }}
-                        />
+                        <ExternalLink className="w-3 h-3" style={{ color: prop.imageUrl ? "#fff" : ac }} />
                       </div>
                     )}
 
                     {/* Property name + address */}
                     <div className="w-full relative">
-                      <p
-                        className="text-[12px] font-bold leading-snug line-clamp-2"
-                        style={{ color: prop.imageUrl ? "#fff" : ac }}
-                      >
+                      <p className="text-[12px] font-bold leading-snug line-clamp-2" style={{ color: prop.imageUrl ? "#fff" : ac }}>
                         {prop.name}
                       </p>
                       {prop.address && (
-                        <p
-                          className="text-[10px] mt-0.5 truncate"
-                          style={{ color: prop.imageUrl ? "rgba(255,255,255,0.75)" : `${ac}99` }}
-                        >
+                        <p className="text-[10px] mt-0.5 truncate" style={{ color: prop.imageUrl ? "rgba(255,255,255,0.75)" : `${ac}99` }}>
                           {prop.address}
                         </p>
                       )}
                     </div>
                   </button>
 
-                  {/* Calendar status badge — shown below card */}
-                  <div className="mt-1 h-[18px] flex items-center gap-1 px-0.5">
-                    {statusCfg && (
-                      <span
-                        className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full leading-none"
-                        style={{ backgroundColor: statusCfg.bg, color: statusCfg.text }}
-                        data-testid={`status-badge-${prop.id}`}
-                      >
-                        {statusCfg.label}
-                      </span>
-                    )}
-                    {hasCalendar && (status === "checking_out" || status === "available") && nextCheckin && (
-                      <span className="text-[9px] text-slate-400 flex items-center gap-0.5 truncate">
-                        <Calendar className="w-2.5 h-2.5 flex-shrink-0" />
-                        {formatDate(nextCheckin)}
-                      </span>
-                    )}
-                    {hasCalendar && status === "checking_out" && nextCheckout && (
-                      <span className="text-[9px] text-orange-500 font-semibold truncate">
-                        Out: {formatDate(nextCheckout)}
-                      </span>
-                    )}
-                  </div>
+                  {/* Calendar info row — below the card */}
+                  {hasCalendar && (
+                    <div className="mt-1 space-y-0.5 px-0.5">
+                      {/* Status badge + sync button */}
+                      <div className="flex items-center gap-1">
+                        {statusCfg && (
+                          <span
+                            className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full leading-none"
+                            style={{ backgroundColor: statusCfg.bg, color: statusCfg.text }}
+                            data-testid={`status-badge-${prop.id}`}
+                          >
+                            {statusCfg.label}
+                          </span>
+                        )}
+                        <button
+                          className="ml-auto flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center bg-white border border-slate-200 shadow-sm"
+                          onClick={() => cardSyncMutation.mutate(prop.id)}
+                          disabled={isSyncing || cardSyncMutation.isPending}
+                          data-testid={`button-card-sync-${prop.id}`}
+                          title="Sync calendar"
+                        >
+                          <RefreshCw className={`w-2.5 h-2.5 text-slate-500 ${isSyncing ? "animate-spin" : ""}`} />
+                        </button>
+                      </div>
+
+                      {/* Next checkout + checkin dates */}
+                      <div className="flex items-center gap-1.5">
+                        {nextCheckout && (
+                          <span className="flex items-center gap-0.5 text-[9px] text-orange-600 font-medium">
+                            <LogOut className="w-2.5 h-2.5" />
+                            {fmtDate(nextCheckout)}
+                          </span>
+                        )}
+                        {nextCheckin && (
+                          <span className="flex items-center gap-0.5 text-[9px] text-violet-600 font-medium">
+                            <LogIn className="w-2.5 h-2.5" />
+                            {fmtDate(nextCheckin)}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Last synced */}
+                      {prop.lastSynced && (
+                        <p className="flex items-center gap-0.5 text-[8px] text-slate-400" data-testid={`last-synced-${prop.id}`}>
+                          <CalendarClock className="w-2 h-2" />
+                          {timeAgo(prop.lastSynced)}
+                        </p>
+                      )}
+                    </div>
+                  )}
 
                   {/* Always-visible edit button + delete in edit mode */}
                   <div className="absolute -top-2 -right-2 flex gap-1">
@@ -576,7 +576,6 @@ export default function Reviews() {
                       Edit
                     </button>
 
-                    {/* Delete button — only in edit mode */}
                     {editMode && (
                       isConfirmingDelete ? (
                         <button

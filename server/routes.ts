@@ -266,6 +266,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ─── Calendar Sync ───────────────────────────────────────────────────────────
 
+  app.get("/api/properties/:id/bookings", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid property id" });
+      const data = await storage.getPropertyBookings(id);
+      res.json(data);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Failed to fetch bookings";
+      if (msg.includes("not found")) return res.status(404).json({ error: "Property not found" });
+      res.status(500).json({ error: msg });
+    }
+  });
+
   app.post("/api/properties/:id/sync", async (req, res) => {
     try {
       const id = parseInt(req.params.id, 10);

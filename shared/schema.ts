@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, boolean, numeric, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, boolean, numeric, timestamp, unique } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -132,15 +132,19 @@ export const bookings = pgTable("bookings", {
   endDate: timestamp("end_date").notNull(),
   summary: text("summary").notNull().default(""),
   syncedAt: timestamp("synced_at").notNull().defaultNow(),
-});
+}, (table) => ({
+  propertyUidUnique: unique("bookings_property_uid_uniq").on(table.propertyId, table.uid),
+}));
 
 export type Booking = typeof bookings.$inferSelect;
 
-export type UpcomingBookings = Record<number, {
+export type BookingInfo = {
   startDate: string;
   endDate: string;
   summary: string;
-}[]>;
+};
+
+export type UpcomingBookings = Record<number, BookingInfo[]>;
 
 // ─── Dashboard Apps ───────────────────────────────────────────────────────────
 

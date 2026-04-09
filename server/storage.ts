@@ -1,4 +1,4 @@
-import { eq, sql, and, gte } from "drizzle-orm";
+import { eq, sql, and, gte, not, inArray } from "drizzle-orm";
 import { db } from "./db";
 import { pool } from "./db";
 import { drizzle } from "drizzle-orm/node-postgres";
@@ -18,10 +18,39 @@ import {
   type Property,
   type CreatePropertyPayload,
   type UpdatePropertyPayload,
+  type BookingInfo,
   type UpcomingBookings,
   type AnalyticsRange,
   type AnalyticsResponse,
 } from "@shared/schema";
+
+// ─── SSRF protection ─────────────────────────────────────────────────────────
+
+function validateIcalUrl(urlStr: string): void {
+  let parsed: URL;
+  try {
+    parsed = new URL(urlStr);
+  } catch {
+    throw new Error("Invalid iCal URL");
+  }
+  if (parsed.protocol !== "https:") {
+    throw new Error("iCal URL must use HTTPS");
+  }
+  const h = parsed.hostname.toLowerCase();
+  if (
+    h === "localhost" ||
+    h === "127.0.0.1" ||
+    h === "0.0.0.0" ||
+    h === "[::1]" ||
+    h.endsWith(".local") ||
+    h.startsWith("192.168.") ||
+    h.startsWith("10.") ||
+    /^172\.(1[6-9]|2\d|3[01])\./.test(h) ||
+    h.startsWith("169.254.")
+  ) {
+    throw new Error("iCal URL must point to a public host");
+  }
+}
 
 // ─── iCal parser (no external dependency) ────────────────────────────────────
 
@@ -99,55 +128,16 @@ export interface IStorage {
   // Calendar sync
   syncPropertyCalendar(id: number): Promise<{ count: number; lastSynced: Date }>;
   syncAllCalendars(): Promise<void>;
+  getPropertyBookings(id: number): Promise<BookingInfo[]>;
   getUpcomingBookings(): Promise<UpcomingBookings>;
 }
 
 const DEFAULT_DASHBOARD_APPS: Omit<CreateDashboardAppPayload, "sortOrder">[] = [
-  {
-    name: "Supply Kiosk",
-    description: "Manage inventory & cleaning supplies",
-    icon: "Package",
-    color: "#E8F4FD",
-    iconColor: "#2196F3",
-    route: "/kiosk",
-    available: true,
-  },
-  {
-    name: "Reviews",
-    description: "View Airbnb guest feedback",
-    icon: "Star",
-    color: "#FFF8E1",
-    iconColor: "#F59E0B",
-    route: "/reviews",
-    available: true,
-  },
-  {
-    name: "Analytics",
-    description: "Usage trends & cost tracking",
-    icon: "BarChart3",
-    color: "#F3E5F5",
-    iconColor: "#9C27B0",
-    route: "/analytics",
-    available: true,
-  },
-  {
-    name: "Task Board",
-    description: "Cleaning checklists & assignments",
-    icon: "ClipboardList",
-    color: "#E8F5E9",
-    iconColor: "#4CAF50",
-    route: "/tasks",
-    available: false,
-  },
-  {
-    name: "Team",
-    description: "Staff management & schedules",
-    icon: "Users",
-    color: "#FBE9E7",
-    iconColor: "#FF5722",
-    route: "/team",
-    available: false,
-  },
+  { name: "Supply Kiosk", description: "Manage inventory & cleaning supplies", icon: "Package", color: "#E8F4FD", iconColor: "#2196F3", route: "/kiosk", available: true },
+  { name: "Reviews", description: "View Airbnb guest feedback", icon: "Star", color: "#FFF8E1", iconColor: "#F59E0B", route: "/reviews", available: true },
+  { name: "Analytics", description: "Usage trends & cost tracking", icon: "BarChart3", color: "#F3E5F5", iconColor: "#9C27B0", route: "/analytics", available: true },
+  { name: "Task Board", description: "Cleaning checklists & assignments", icon: "ClipboardList", color: "#E8F5E9", iconColor: "#4CAF50", route: "/tasks", available: false },
+  { name: "Team", description: "Staff management & schedules", icon: "Users", color: "#FBE9E7", iconColor: "#FF5722", route: "/team", available: false },
 ];
 
 const REQUIRED_APPS = [
@@ -173,19 +163,13 @@ export class DatabaseStorage implements IStorage {
       const txDb = drizzle(client);
 
       const logEntries: {
-        itemId: number;
-        itemName: string;
-        category: string;
-        quantity: number;
-        unitCost: string;
-        totalCost: string;
+        itemId: number; itemName: string; category: string;
+        quantity: number; unitCost: string; totalCost: string;
       }[] = [];
 
       for (const cartItem of cartItems) {
         const [item] = await txDb.select().from(inventoryItems).where(eq(inventoryItems.id, cartItem.itemId));
-        if (!item) {
-          throw new Error(`Item with id ${cartItem.itemId} not found`);
-        }
+        if (!item) throw new Error(`Item with id ${cartItem.itemId} not found`);
         if (item.stock < cartItem.quantity) {
           throw new Error(`Not enough stock for "${item.name}". Requested: ${cartItem.quantity}, Available: ${item.stock}`);
         }
@@ -196,21 +180,15 @@ export class DatabaseStorage implements IStorage {
           .where(and(eq(inventoryItems.id, cartItem.itemId), gte(inventoryItems.stock, cartItem.quantity)));
 
         const unitCostNum = parseFloat(item.cost ?? "0");
-        const totalCostNum = unitCostNum * cartItem.quantity;
         logEntries.push({
-          itemId: item.id,
-          itemName: item.name,
-          category: item.category,
+          itemId: item.id, itemName: item.name, category: item.category,
           quantity: cartItem.quantity,
           unitCost: unitCostNum.toFixed(2),
-          totalCost: totalCostNum.toFixed(2),
+          totalCost: (unitCostNum * cartItem.quantity).toFixed(2),
         });
       }
 
-      if (logEntries.length > 0) {
-        await txDb.insert(checkoutLogs).values(logEntries);
-      }
-
+      if (logEntries.length > 0) await txDb.insert(checkoutLogs).values(logEntries);
       await client.query("COMMIT");
     } catch (e) {
       await client.query("ROLLBACK");
@@ -224,50 +202,31 @@ export class DatabaseStorage implements IStorage {
 
   async restockItem(id: number, quantity?: number): Promise<InventoryItem> {
     const item = await this.getItem(id);
-    if (!item) {
-      throw new Error(`Item with id ${id} not found`);
-    }
-
+    if (!item) throw new Error(`Item with id ${id} not found`);
     const newStock = quantity !== undefined ? Math.min(quantity, item.maxStock) : item.maxStock;
-    const [updated] = await db
-      .update(inventoryItems)
-      .set({ stock: newStock })
-      .where(eq(inventoryItems.id, id))
-      .returning();
+    const [updated] = await db.update(inventoryItems).set({ stock: newStock }).where(eq(inventoryItems.id, id)).returning();
     return updated;
   }
 
   async restockAll(): Promise<InventoryItem[]> {
-    await db
-      .update(inventoryItems)
-      .set({ stock: sql`${inventoryItems.maxStock}` });
+    await db.update(inventoryItems).set({ stock: sql`${inventoryItems.maxStock}` });
     return this.getItems();
   }
 
   async createItem(data: CreateItemPayload): Promise<InventoryItem> {
     const stock = data.stock !== undefined ? Math.min(data.stock, data.maxStock) : data.maxStock;
-    const [item] = await db
-      .insert(inventoryItems)
-      .values({
-        name: data.name,
-        description: data.description,
-        category: data.category,
-        maxStock: data.maxStock,
-        stock,
-        visible: true,
-        cost: data.cost ?? "0",
-        itemType: data.itemType ?? "consumable",
-        lowStockThreshold: data.lowStockThreshold ?? null,
-      })
-      .returning();
+    const [item] = await db.insert(inventoryItems).values({
+      name: data.name, description: data.description, category: data.category,
+      maxStock: data.maxStock, stock, visible: true,
+      cost: data.cost ?? "0", itemType: data.itemType ?? "consumable",
+      lowStockThreshold: data.lowStockThreshold ?? null,
+    }).returning();
     return item;
   }
 
   async updateItem(data: UpdateItemPayload): Promise<InventoryItem> {
     const item = await this.getItem(data.id);
-    if (!item) {
-      throw new Error(`Item with id ${data.id} not found`);
-    }
+    if (!item) throw new Error(`Item with id ${data.id} not found`);
 
     const updates: Partial<typeof inventoryItems.$inferInsert> = {};
     if (data.name !== undefined) updates.name = data.name;
@@ -282,27 +241,17 @@ export class DatabaseStorage implements IStorage {
 
     const newMaxStock = updates.maxStock ?? item.maxStock;
     const newStock = updates.stock ?? item.stock;
-    if (newStock > newMaxStock) {
-      updates.stock = newMaxStock;
-    }
+    if (newStock > newMaxStock) updates.stock = newMaxStock;
 
-    if (Object.keys(updates).length === 0) {
-      return item;
-    }
+    if (Object.keys(updates).length === 0) return item;
 
-    const [updated] = await db
-      .update(inventoryItems)
-      .set(updates)
-      .where(eq(inventoryItems.id, data.id))
-      .returning();
+    const [updated] = await db.update(inventoryItems).set(updates).where(eq(inventoryItems.id, data.id)).returning();
     return updated;
   }
 
   async deleteItem(id: number): Promise<void> {
     const item = await this.getItem(id);
-    if (!item) {
-      throw new Error(`Item with id ${id} not found`);
-    }
+    if (!item) throw new Error(`Item with id ${id} not found`);
     await db.delete(inventoryItems).where(eq(inventoryItems.id, id));
   }
 
@@ -310,86 +259,40 @@ export class DatabaseStorage implements IStorage {
 
   async getAnalytics(range: AnalyticsRange): Promise<AnalyticsResponse> {
     let dateFilter = "";
-    if (range === "week") {
-      dateFilter = "WHERE checked_out_at >= NOW() - INTERVAL '7 days'";
-    } else if (range === "month") {
-      dateFilter = "WHERE checked_out_at >= NOW() - INTERVAL '30 days'";
-    }
+    if (range === "week") dateFilter = "WHERE checked_out_at >= NOW() - INTERVAL '7 days'";
+    else if (range === "month") dateFilter = "WHERE checked_out_at >= NOW() - INTERVAL '30 days'";
 
     type ItemRow = { itemName: string; category: string; unitsSold: string; unitCost: string; totalCost: string };
     type CatRow  = { category: string; unitsSold: string; totalCost: string };
     type TotalRow = { totalSpend: string; totalUnits: string };
     type MonthRow = { month: string; spend: string };
 
-    const itemResult = await db.execute(sql.raw(`
-      SELECT
-        item_name   AS "itemName",
-        category,
-        SUM(quantity)::text           AS "unitsSold",
-        MAX(unit_cost)::text          AS "unitCost",
-        SUM(total_cost)::text         AS "totalCost"
-      FROM checkout_logs
-      ${dateFilter}
-      GROUP BY item_name, category
-      ORDER BY SUM(quantity) DESC
-    `));
+    const [itemResult, catResult, totalResult] = await Promise.all([
+      db.execute(sql.raw(`SELECT item_name AS "itemName", category, SUM(quantity)::text AS "unitsSold", MAX(unit_cost)::text AS "unitCost", SUM(total_cost)::text AS "totalCost" FROM checkout_logs ${dateFilter} GROUP BY item_name, category ORDER BY SUM(quantity) DESC`)),
+      db.execute(sql.raw(`SELECT category, SUM(quantity)::text AS "unitsSold", SUM(total_cost)::text AS "totalCost" FROM checkout_logs ${dateFilter} GROUP BY category ORDER BY SUM(total_cost) DESC`)),
+      db.execute(sql.raw(`SELECT COALESCE(SUM(total_cost), 0)::text AS "totalSpend", COALESCE(SUM(quantity), 0)::text AS "totalUnits" FROM checkout_logs ${dateFilter}`)),
+    ]);
 
-    const catResult = await db.execute(sql.raw(`
-      SELECT
-        category,
-        SUM(quantity)::text     AS "unitsSold",
-        SUM(total_cost)::text   AS "totalCost"
-      FROM checkout_logs
-      ${dateFilter}
-      GROUP BY category
-      ORDER BY SUM(total_cost) DESC
-    `));
-
-    const totalResult = await db.execute(sql.raw(`
-      SELECT
-        COALESCE(SUM(total_cost), 0)::text AS "totalSpend",
-        COALESCE(SUM(quantity), 0)::text   AS "totalUnits"
-      FROM checkout_logs
-      ${dateFilter}
-    `));
-
-    const rawTotals = totalResult.rows[0] as TotalRow | undefined;
-    const totals: TotalRow = rawTotals ?? { totalSpend: "0", totalUnits: "0" };
+    const totals = (totalResult.rows[0] as TotalRow | undefined) ?? { totalSpend: "0", totalUnits: "0" };
 
     const result: AnalyticsResponse = {
       range,
       totalSpend: Number(totals.totalSpend ?? 0),
       totalUnits: Number(totals.totalUnits ?? 0),
       itemBreakdown: (itemResult.rows as ItemRow[]).map((r) => ({
-        itemName: r.itemName,
-        category: r.category,
-        unitsSold: Number(r.unitsSold ?? 0),
-        unitCost: r.unitCost ?? "0",
+        itemName: r.itemName, category: r.category,
+        unitsSold: Number(r.unitsSold ?? 0), unitCost: r.unitCost ?? "0",
         totalCost: Number(r.totalCost ?? 0),
       })),
       categoryTotals: (catResult.rows as CatRow[]).map((r) => ({
-        category: r.category,
-        unitsSold: Number(r.unitsSold ?? 0),
-        totalCost: Number(r.totalCost ?? 0),
+        category: r.category, unitsSold: Number(r.unitsSold ?? 0), totalCost: Number(r.totalCost ?? 0),
       })),
     };
 
     if (range === "alltime") {
-      const monthResult = await db.execute(sql.raw(`
-        SELECT
-          TO_CHAR(DATE_TRUNC('month', checked_out_at), 'YYYY-MM') AS month,
-          SUM(total_cost)::text AS spend
-        FROM checkout_logs
-        WHERE checked_out_at >= DATE_TRUNC('month', NOW()) - INTERVAL '11 months'
-        GROUP BY DATE_TRUNC('month', checked_out_at)
-        ORDER BY DATE_TRUNC('month', checked_out_at) ASC
-      `));
-
+      const monthResult = await db.execute(sql.raw(`SELECT TO_CHAR(DATE_TRUNC('month', checked_out_at), 'YYYY-MM') AS month, SUM(total_cost)::text AS spend FROM checkout_logs WHERE checked_out_at >= DATE_TRUNC('month', NOW()) - INTERVAL '11 months' GROUP BY DATE_TRUNC('month', checked_out_at) ORDER BY DATE_TRUNC('month', checked_out_at) ASC`));
       const spendByMonth = new Map<string, number>();
-      for (const r of monthResult.rows as MonthRow[]) {
-        spendByMonth.set(r.month, Number(r.spend ?? 0));
-      }
-
+      for (const r of monthResult.rows as MonthRow[]) spendByMonth.set(r.month, Number(r.spend ?? 0));
       const fullSeries: { month: string; spend: number }[] = [];
       const now = new Date();
       for (let i = 11; i >= 0; i--) {
@@ -397,7 +300,6 @@ export class DatabaseStorage implements IStorage {
         const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
         fullSeries.push({ month: key, spend: spendByMonth.get(key) ?? 0 });
       }
-
       result.monthlyTrend = fullSeries;
     }
 
@@ -407,28 +309,17 @@ export class DatabaseStorage implements IStorage {
   // ─── Dashboard Apps ────────────────────────────────────────────────────────
 
   async getDashboardApps(): Promise<DashboardApp[]> {
-    let apps = await db
-      .select()
-      .from(dashboardApps)
-      .orderBy(dashboardApps.sortOrder);
+    let apps = await db.select().from(dashboardApps).orderBy(dashboardApps.sortOrder);
 
     if (apps.length === 0) {
-      const inserted = await db
-        .insert(dashboardApps)
-        .values(
-          DEFAULT_DASHBOARD_APPS.map((app, i) => ({ ...app, sortOrder: i }))
-        )
-        .returning();
+      const inserted = await db.insert(dashboardApps).values(DEFAULT_DASHBOARD_APPS.map((app, i) => ({ ...app, sortOrder: i }))).returning();
       apps = inserted.sort((a, b) => a.sortOrder - b.sortOrder);
     } else {
       const existingRoutes = new Set(apps.map(a => a.route));
       const missing = REQUIRED_APPS.filter(a => !existingRoutes.has(a.route));
       if (missing.length > 0) {
         const maxSort = apps.reduce((m, a) => Math.max(m, a.sortOrder), -1);
-        const inserted = await db
-          .insert(dashboardApps)
-          .values(missing.map((app, i) => ({ ...app, sortOrder: maxSort + 1 + i })))
-          .returning();
+        const inserted = await db.insert(dashboardApps).values(missing.map((app, i) => ({ ...app, sortOrder: maxSort + 1 + i }))).returning();
         apps = [...apps, ...inserted].sort((a, b) => a.sortOrder - b.sortOrder);
       }
     }
@@ -437,21 +328,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createDashboardApp(data: CreateDashboardAppPayload): Promise<DashboardApp> {
-    const [app] = await db
-      .insert(dashboardApps)
-      .values(data)
-      .returning();
+    const [app] = await db.insert(dashboardApps).values(data).returning();
     return app;
   }
 
   async updateDashboardApp(data: UpdateDashboardAppPayload): Promise<DashboardApp> {
-    const [existing] = await db
-      .select()
-      .from(dashboardApps)
-      .where(eq(dashboardApps.id, data.id));
-    if (!existing) {
-      throw new Error(`Dashboard app with id ${data.id} not found`);
-    }
+    const [existing] = await db.select().from(dashboardApps).where(eq(dashboardApps.id, data.id));
+    if (!existing) throw new Error(`Dashboard app with id ${data.id} not found`);
 
     const updates: Partial<typeof dashboardApps.$inferInsert> = {};
     if (data.name !== undefined) updates.name = data.name;
@@ -463,22 +346,13 @@ export class DatabaseStorage implements IStorage {
     if (data.available !== undefined) updates.available = data.available;
     if (data.sortOrder !== undefined) updates.sortOrder = data.sortOrder;
 
-    const [updated] = await db
-      .update(dashboardApps)
-      .set(updates)
-      .where(eq(dashboardApps.id, data.id))
-      .returning();
+    const [updated] = await db.update(dashboardApps).set(updates).where(eq(dashboardApps.id, data.id)).returning();
     return updated;
   }
 
   async deleteDashboardApp(id: number): Promise<void> {
-    const [existing] = await db
-      .select()
-      .from(dashboardApps)
-      .where(eq(dashboardApps.id, id));
-    if (!existing) {
-      throw new Error(`Dashboard app with id ${id} not found`);
-    }
+    const [existing] = await db.select().from(dashboardApps).where(eq(dashboardApps.id, id));
+    if (!existing) throw new Error(`Dashboard app with id ${id} not found`);
     await db.delete(dashboardApps).where(eq(dashboardApps.id, id));
   }
 
@@ -506,11 +380,7 @@ export class DatabaseStorage implements IStorage {
     if (data.imageUrl !== undefined) updates.imageUrl = data.imageUrl;
     if (data.icalUrl !== undefined) updates.icalUrl = data.icalUrl;
 
-    const [updated] = await db
-      .update(properties)
-      .set(updates)
-      .where(eq(properties.id, data.id))
-      .returning();
+    const [updated] = await db.update(properties).set(updates).where(eq(properties.id, data.id)).returning();
     return updated;
   }
 
@@ -528,21 +398,19 @@ export class DatabaseStorage implements IStorage {
     if (!prop) throw new Error(`Property with id ${id} not found`);
     if (!prop.icalUrl) throw new Error("No iCal URL configured for this property");
 
+    validateIcalUrl(prop.icalUrl);
+
     const response = await fetch(prop.icalUrl);
     if (!response.ok) throw new Error(`Failed to fetch iCal: HTTP ${response.status}`);
     const text = await response.text();
 
     const events = parseIcal(text);
     const now = new Date();
-
-    // Keep events that end in the future (or started recently — within 1 day past)
     const cutoff = new Date(now.getTime() - 24 * 60 * 60 * 1000);
     const relevant = events.filter(e => e.end >= cutoff);
 
-    // Replace all bookings for this property
-    await db.delete(bookings).where(eq(bookings.propertyId, id));
-
     if (relevant.length > 0) {
+      // Upsert by (propertyId, uid)
       await db.insert(bookings).values(
         relevant.map(e => ({
           propertyId: id,
@@ -552,13 +420,28 @@ export class DatabaseStorage implements IStorage {
           summary: e.summary,
           syncedAt: now,
         }))
+      ).onConflictDoUpdate({
+        target: [bookings.propertyId, bookings.uid],
+        set: {
+          startDate: sql`excluded.start_date`,
+          endDate: sql`excluded.end_date`,
+          summary: sql`excluded.summary`,
+          syncedAt: sql`excluded.synced_at`,
+        },
+      });
+
+      // Remove stale events that are no longer in the feed
+      const currentUids = relevant.map(e => e.uid);
+      await db.delete(bookings).where(
+        and(eq(bookings.propertyId, id), not(inArray(bookings.uid, currentUids)))
       );
+    } else {
+      // No future events — clear all
+      await db.delete(bookings).where(eq(bookings.propertyId, id));
     }
 
     const lastSynced = now;
-    await db.update(properties)
-      .set({ lastSynced })
-      .where(eq(properties.id, id));
+    await db.update(properties).set({ lastSynced }).where(eq(properties.id, id));
 
     return { count: relevant.length, lastSynced };
   }
@@ -575,13 +458,25 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async getUpcomingBookings(): Promise<UpcomingBookings> {
-    const now = new Date();
-    const cutoff = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  async getPropertyBookings(id: number): Promise<BookingInfo[]> {
+    const [prop] = await db.select().from(properties).where(eq(properties.id, id));
+    if (!prop) throw new Error(`Property with id ${id} not found`);
 
-    const rows = await db
-      .select()
-      .from(bookings)
+    const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const rows = await db.select().from(bookings)
+      .where(and(eq(bookings.propertyId, id), gte(bookings.endDate, cutoff)))
+      .orderBy(bookings.startDate);
+
+    return rows.map(r => ({
+      startDate: r.startDate.toISOString(),
+      endDate: r.endDate.toISOString(),
+      summary: r.summary,
+    }));
+  }
+
+  async getUpcomingBookings(): Promise<UpcomingBookings> {
+    const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const rows = await db.select().from(bookings)
       .where(gte(bookings.endDate, cutoff))
       .orderBy(bookings.startDate);
 

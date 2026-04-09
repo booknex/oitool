@@ -143,13 +143,22 @@ BEGIN
     ) THEN
         CREATE TABLE bookings (
             id          SERIAL PRIMARY KEY,
-            property_id INTEGER NOT NULL,
+            property_id INTEGER NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
             uid         TEXT NOT NULL,
             start_date  TIMESTAMPTZ NOT NULL,
             end_date    TIMESTAMPTZ NOT NULL,
             summary     TEXT NOT NULL DEFAULT '',
-            synced_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            synced_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            CONSTRAINT bookings_property_uid_uniq UNIQUE (property_id, uid)
         );
+    END IF;
+
+    -- Add unique constraint to existing bookings table if missing
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints
+        WHERE table_name = 'bookings' AND constraint_name = 'bookings_property_uid_uniq'
+    ) THEN
+        ALTER TABLE bookings ADD CONSTRAINT bookings_property_uid_uniq UNIQUE (property_id, uid);
     END IF;
 
     -- Create checkout_logs table if it doesn't exist
