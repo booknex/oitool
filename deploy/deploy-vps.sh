@@ -161,6 +161,14 @@ BEGIN
         ALTER TABLE bookings ADD CONSTRAINT bookings_property_uid_uniq UNIQUE (property_id, uid);
     END IF;
 
+    -- Add item_type to inventory_items if missing
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'inventory_items' AND column_name = 'item_type'
+    ) THEN
+        ALTER TABLE inventory_items ADD COLUMN item_type TEXT NOT NULL DEFAULT 'consumable';
+    END IF;
+
     -- Create checkout_logs table if it doesn't exist
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.tables
@@ -177,6 +185,56 @@ BEGIN
             checked_out_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         );
     END IF;
+
+    -- Create clients table if it doesn't exist
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_name = 'clients'
+    ) THEN
+        CREATE TABLE clients (
+            id         SERIAL PRIMARY KEY,
+            name       TEXT NOT NULL,
+            email      TEXT NOT NULL DEFAULT '',
+            phone      TEXT NOT NULL DEFAULT '',
+            address    TEXT NOT NULL DEFAULT '',
+            notes      TEXT NOT NULL DEFAULT '',
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );
+    END IF;
+
+    -- Create invoices table if it doesn't exist
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_name = 'invoices'
+    ) THEN
+        CREATE TABLE invoices (
+            id                        SERIAL PRIMARY KEY,
+            client_id                 INTEGER NOT NULL REFERENCES clients(id),
+            invoice_number            TEXT NOT NULL UNIQUE,
+            status                    TEXT NOT NULL DEFAULT 'draft',
+            issue_date                TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            due_date                  TIMESTAMPTZ,
+            notes                     TEXT NOT NULL DEFAULT '',
+            stripe_payment_intent_id  TEXT,
+            paid_at                   TIMESTAMPTZ,
+            created_at                TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );
+    END IF;
+
+    -- Create invoice_items table if it doesn't exist
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_name = 'invoice_items'
+    ) THEN
+        CREATE TABLE invoice_items (
+            id          SERIAL PRIMARY KEY,
+            invoice_id  INTEGER NOT NULL REFERENCES invoices(id) ON DELETE CASCADE,
+            description TEXT NOT NULL,
+            quantity    NUMERIC(10,2) NOT NULL DEFAULT 1,
+            unit_price  NUMERIC(10,2) NOT NULL DEFAULT 0
+        );
+    END IF;
+
 END \$\$;
 " 2>&1 | tail -3
 
