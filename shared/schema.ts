@@ -90,7 +90,7 @@ export const properties = pgTable("properties", {
   color: text("color").notNull().default("#E8F4FD"),
   sortOrder: integer("sort_order").notNull().default(0),
   imageUrl: text("image_url").default(""),
-  icalUrl: text("ical_url").default(""),
+  icalUrl: text("ical_url"),
   lastSynced: timestamp("last_synced"),
 });
 
@@ -126,7 +126,7 @@ export type UpdatePropertyPayload = z.infer<typeof updatePropertySchema>;
 
 export const bookings = pgTable("bookings", {
   id: serial("id").primaryKey(),
-  propertyId: integer("property_id").notNull(),
+  propertyId: integer("property_id").notNull().references(() => properties.id, { onDelete: "cascade" }),
   uid: text("uid").notNull(),
   startDate: timestamp("start_date").notNull(),
   endDate: timestamp("end_date").notNull(),
