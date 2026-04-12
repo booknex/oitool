@@ -146,6 +146,96 @@ export type BookingInfo = {
 
 export type UpcomingBookings = Record<number, BookingInfo[]>;
 
+// ─── SaaS Affiliates ──────────────────────────────────────────────────────────
+
+export const saasAffiliates = pgTable("saas_affiliates", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  email: text("email").notNull().default(""),
+  phone: text("phone").notNull().default(""),
+  commissionRate: numeric("commission_rate", { precision: 5, scale: 2 }).notNull().default("20"),
+  status: text("status").notNull().default("active"),
+  notes: text("notes").notNull().default(""),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export type SaasAffiliate = typeof saasAffiliates.$inferSelect;
+
+export const createSaasAffiliateSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  email: z.string().default(""),
+  phone: z.string().default(""),
+  commissionRate: z.number().min(0).max(100).default(20),
+  status: z.enum(["active", "inactive"]).default("active"),
+  notes: z.string().default(""),
+});
+
+export const updateSaasAffiliateSchema = z.object({
+  id: z.number(),
+  name: z.string().min(1).optional(),
+  email: z.string().optional(),
+  phone: z.string().optional(),
+  commissionRate: z.number().min(0).max(100).optional(),
+  status: z.enum(["active", "inactive"]).optional(),
+  notes: z.string().optional(),
+});
+
+export type CreateSaasAffiliatePayload = z.infer<typeof createSaasAffiliateSchema>;
+export type UpdateSaasAffiliatePayload = z.infer<typeof updateSaasAffiliateSchema>;
+
+// ─── SaaS Companies (tenants) ─────────────────────────────────────────────────
+
+export const saasCompanies = pgTable("saas_companies", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  ownerName: text("owner_name").notNull().default(""),
+  email: text("email").notNull().default(""),
+  phone: text("phone").notNull().default(""),
+  status: text("status").notNull().default("trial"),
+  plan: text("plan").notNull().default("starter"),
+  mrr: numeric("mrr", { precision: 10, scale: 2 }).notNull().default("0"),
+  affiliateId: integer("affiliate_id").references(() => saasAffiliates.id),
+  trialEndsAt: timestamp("trial_ends_at"),
+  notes: text("notes").notNull().default(""),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export type SaasCompany = typeof saasCompanies.$inferSelect;
+
+export type SaasCompanyWithAffiliate = SaasCompany & {
+  affiliate: SaasAffiliate | null;
+};
+
+export const createSaasCompanySchema = z.object({
+  name: z.string().min(1, "Company name is required"),
+  ownerName: z.string().default(""),
+  email: z.string().default(""),
+  phone: z.string().default(""),
+  status: z.enum(["trial", "active", "paused", "cancelled"]).default("trial"),
+  plan: z.enum(["starter", "pro", "enterprise"]).default("starter"),
+  mrr: z.number().min(0).default(0),
+  affiliateId: z.number().nullable().default(null),
+  trialEndsAt: z.string().nullable().optional(),
+  notes: z.string().default(""),
+});
+
+export const updateSaasCompanySchema = z.object({
+  id: z.number(),
+  name: z.string().min(1).optional(),
+  ownerName: z.string().optional(),
+  email: z.string().optional(),
+  phone: z.string().optional(),
+  status: z.enum(["trial", "active", "paused", "cancelled"]).optional(),
+  plan: z.enum(["starter", "pro", "enterprise"]).optional(),
+  mrr: z.number().min(0).optional(),
+  affiliateId: z.number().nullable().optional(),
+  trialEndsAt: z.string().nullable().optional(),
+  notes: z.string().optional(),
+});
+
+export type CreateSaasCompanyPayload = z.infer<typeof createSaasCompanySchema>;
+export type UpdateSaasCompanyPayload = z.infer<typeof updateSaasCompanySchema>;
+
 // ─── Clients ──────────────────────────────────────────────────────────────────
 
 export const clients = pgTable("clients", {

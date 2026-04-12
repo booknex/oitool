@@ -11,6 +11,8 @@ import {
   clients,
   invoices,
   invoiceItems,
+  saasAffiliates,
+  saasCompanies,
   type InventoryItem,
   type CartItem,
   type CreateItemPayload,
@@ -31,6 +33,12 @@ import {
   type InvoiceWithDetails,
   type CreateInvoicePayload,
   type UpdateInvoicePayload,
+  type SaasAffiliate,
+  type SaasCompanyWithAffiliate,
+  type CreateSaasAffiliatePayload,
+  type UpdateSaasAffiliatePayload,
+  type CreateSaasCompanyPayload,
+  type UpdateSaasCompanyPayload,
 } from "@shared/schema";
 
 // ─── SSRF protection ─────────────────────────────────────────────────────────
@@ -151,6 +159,16 @@ export interface IStorage {
   createInvoice(data: CreateInvoicePayload): Promise<InvoiceWithDetails>;
   updateInvoice(data: UpdateInvoicePayload): Promise<InvoiceWithDetails>;
   deleteInvoice(id: number): Promise<void>;
+  // SaaS Affiliates
+  getSaasAffiliates(): Promise<SaasAffiliate[]>;
+  createSaasAffiliate(data: CreateSaasAffiliatePayload): Promise<SaasAffiliate>;
+  updateSaasAffiliate(data: UpdateSaasAffiliatePayload): Promise<SaasAffiliate>;
+  deleteSaasAffiliate(id: number): Promise<void>;
+  // SaaS Companies
+  getSaasCompanies(): Promise<SaasCompanyWithAffiliate[]>;
+  createSaasCompany(data: CreateSaasCompanyPayload): Promise<SaasCompanyWithAffiliate>;
+  updateSaasCompany(data: UpdateSaasCompanyPayload): Promise<SaasCompanyWithAffiliate>;
+  deleteSaasCompany(id: number): Promise<void>;
 }
 
 const DEFAULT_DASHBOARD_APPS: Omit<CreateDashboardAppPayload, "sortOrder">[] = [
@@ -158,6 +176,7 @@ const DEFAULT_DASHBOARD_APPS: Omit<CreateDashboardAppPayload, "sortOrder">[] = [
   { name: "Reviews",      description: "View Airbnb guest feedback",           icon: "Star",         color: "#FFF8E1", iconColor: "#F59E0B", route: "/reviews",    available: true  },
   { name: "Calendar",     description: "Property bookings & iCal sync",        icon: "CalendarDays", color: "#E8F5E9", iconColor: "#22C55E", route: "/calendar",   available: true  },
   { name: "Invoicing",    description: "Bill clients & track payments",         icon: "Receipt",      color: "#EDE9FE", iconColor: "#7C3AED", route: "/invoicing",  available: true  },
+  { name: "SaaS Admin",   description: "Manage accounts & affiliates",          icon: "Building2",    color: "#FFF1F2", iconColor: "#E11D48", route: "/saas",       available: true  },
   { name: "Analytics",    description: "Usage trends & cost tracking",          icon: "BarChart3",    color: "#F3E5F5", iconColor: "#9C27B0", route: "/analytics",  available: true  },
   { name: "Task Board",   description: "Cleaning checklists & assignments",     icon: "ClipboardList",color: "#FFF3E0", iconColor: "#4CAF50", route: "/tasks",      available: false },
   { name: "Team",         description: "Staff management & schedules",          icon: "Users",        color: "#FBE9E7", iconColor: "#FF5722", route: "/team",       available: false },
@@ -168,6 +187,7 @@ const REQUIRED_APPS = [
   { route: "/reviews",    name: "Reviews",      description: "View Airbnb guest feedback",           icon: "Star",         color: "#FFF8E1", iconColor: "#F59E0B", available: true },
   { route: "/calendar",   name: "Calendar",     description: "Property bookings & iCal sync",        icon: "CalendarDays", color: "#E8F5E9", iconColor: "#22C55E", available: true },
   { route: "/invoicing",  name: "Invoicing",    description: "Bill clients & track payments",        icon: "Receipt",      color: "#EDE9FE", iconColor: "#7C3AED", available: true },
+  { route: "/saas",       name: "SaaS Admin",   description: "Manage accounts & affiliates",        icon: "Building2",    color: "#FFF1F2", iconColor: "#E11D48", available: true },
   { route: "/analytics",  name: "Analytics",    description: "Usage trends & cost tracking",         icon: "BarChart3",    color: "#F3E5F5", iconColor: "#9C27B0", available: true },
 ];
 
@@ -636,6 +656,84 @@ export class DatabaseStorage implements IStorage {
 
   async deleteInvoice(id: number): Promise<void> {
     await db.delete(invoices).where(eq(invoices.id, id));
+  }
+
+  // ─── SaaS Affiliates ──────────────────────────────────────────────────────
+
+  async getSaasAffiliates(): Promise<SaasAffiliate[]> {
+    return await db.select().from(saasAffiliates).orderBy(saasAffiliates.name);
+  }
+
+  async createSaasAffiliate(data: CreateSaasAffiliatePayload): Promise<SaasAffiliate> {
+    const [row] = await db.insert(saasAffiliates).values({
+      ...data,
+      commissionRate: String(data.commissionRate),
+    }).returning();
+    return row;
+  }
+
+  async updateSaasAffiliate(data: UpdateSaasAffiliatePayload): Promise<SaasAffiliate> {
+    const { id, commissionRate, ...rest } = data;
+    const updates: Record<string, unknown> = { ...rest };
+    if (commissionRate !== undefined) updates.commissionRate = String(commissionRate);
+    const [row] = await db.update(saasAffiliates).set(updates).where(eq(saasAffiliates.id, id)).returning();
+    if (!row) throw new Error(`Affiliate with id ${id} not found`);
+    return row;
+  }
+
+  async deleteSaasAffiliate(id: number): Promise<void> {
+    await db.delete(saasAffiliates).where(eq(saasAffiliates.id, id));
+  }
+
+  // ─── SaaS Companies ───────────────────────────────────────────────────────
+
+  private async buildCompanyWithAffiliate(companyId: number): Promise<SaasCompanyWithAffiliate> {
+    const [company] = await db.select().from(saasCompanies).where(eq(saasCompanies.id, companyId));
+    if (!company) throw new Error(`Company with id ${companyId} not found`);
+    let affiliate: SaasAffiliate | null = null;
+    if (company.affiliateId) {
+      const [aff] = await db.select().from(saasAffiliates).where(eq(saasAffiliates.id, company.affiliateId));
+      affiliate = aff ?? null;
+    }
+    return { ...company, affiliate };
+  }
+
+  async getSaasCompanies(): Promise<SaasCompanyWithAffiliate[]> {
+    const companies = await db.select().from(saasCompanies).orderBy(saasCompanies.createdAt);
+    const affiliateList = await db.select().from(saasAffiliates);
+    return companies.map(c => ({
+      ...c,
+      affiliate: c.affiliateId ? (affiliateList.find(a => a.id === c.affiliateId) ?? null) : null,
+    }));
+  }
+
+  async createSaasCompany(data: CreateSaasCompanyPayload): Promise<SaasCompanyWithAffiliate> {
+    const [row] = await db.insert(saasCompanies).values({
+      name: data.name,
+      ownerName: data.ownerName ?? "",
+      email: data.email ?? "",
+      phone: data.phone ?? "",
+      status: data.status ?? "trial",
+      plan: data.plan ?? "starter",
+      mrr: String(data.mrr ?? 0),
+      affiliateId: data.affiliateId ?? null,
+      trialEndsAt: data.trialEndsAt ? new Date(data.trialEndsAt) : null,
+      notes: data.notes ?? "",
+    }).returning();
+    return await this.buildCompanyWithAffiliate(row.id);
+  }
+
+  async updateSaasCompany(data: UpdateSaasCompanyPayload): Promise<SaasCompanyWithAffiliate> {
+    const { id, mrr, trialEndsAt, ...rest } = data;
+    const updates: Record<string, unknown> = { ...rest };
+    if (mrr !== undefined) updates.mrr = String(mrr);
+    if ("trialEndsAt" in data) updates.trialEndsAt = trialEndsAt ? new Date(trialEndsAt) : null;
+    await db.update(saasCompanies).set(updates).where(eq(saasCompanies.id, id));
+    return await this.buildCompanyWithAffiliate(id);
+  }
+
+  async deleteSaasCompany(id: number): Promise<void> {
+    await db.delete(saasCompanies).where(eq(saasCompanies.id, id));
   }
 }
 

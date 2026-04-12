@@ -235,6 +235,44 @@ BEGIN
         );
     END IF;
 
+    -- Create saas_affiliates table if it doesn't exist
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_name = 'saas_affiliates'
+    ) THEN
+        CREATE TABLE saas_affiliates (
+            id              SERIAL PRIMARY KEY,
+            name            TEXT NOT NULL,
+            email           TEXT NOT NULL DEFAULT '',
+            phone           TEXT NOT NULL DEFAULT '',
+            commission_rate NUMERIC(5,2) NOT NULL DEFAULT 20,
+            status          TEXT NOT NULL DEFAULT 'active',
+            notes           TEXT NOT NULL DEFAULT '',
+            created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );
+    END IF;
+
+    -- Create saas_companies table if it doesn't exist
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_name = 'saas_companies'
+    ) THEN
+        CREATE TABLE saas_companies (
+            id             SERIAL PRIMARY KEY,
+            name           TEXT NOT NULL,
+            owner_name     TEXT NOT NULL DEFAULT '',
+            email          TEXT NOT NULL DEFAULT '',
+            phone          TEXT NOT NULL DEFAULT '',
+            status         TEXT NOT NULL DEFAULT 'trial',
+            plan           TEXT NOT NULL DEFAULT 'starter',
+            mrr            NUMERIC(10,2) NOT NULL DEFAULT 0,
+            affiliate_id   INTEGER REFERENCES saas_affiliates(id),
+            trial_ends_at  TIMESTAMPTZ,
+            notes          TEXT NOT NULL DEFAULT '',
+            created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );
+    END IF;
+
 END \$\$;
 " 2>&1 | tail -3
 

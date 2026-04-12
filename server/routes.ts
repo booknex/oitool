@@ -2,7 +2,7 @@ import type { Express } from "express";
 import express from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { checkoutSchema, restockSchema, createItemSchema, updateItemSchema, createDashboardAppSchema, updateDashboardAppSchema, createPropertySchema, updatePropertySchema, createClientSchema, updateClientSchema, createInvoiceSchema, updateInvoiceSchema, type AnalyticsRange } from "@shared/schema";
+import { checkoutSchema, restockSchema, createItemSchema, updateItemSchema, createDashboardAppSchema, updateDashboardAppSchema, createPropertySchema, updatePropertySchema, createClientSchema, updateClientSchema, createInvoiceSchema, updateInvoiceSchema, createSaasAffiliateSchema, updateSaasAffiliateSchema, createSaasCompanySchema, updateSaasCompanySchema, type AnalyticsRange } from "@shared/schema";
 import fs from "fs";
 import path from "path";
 
@@ -401,6 +401,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch {
       res.status(500).json({ error: "Failed to delete invoice" });
     }
+  });
+
+  // ─── SaaS Affiliates ───────────────────────────────────────────────────────
+
+  app.get("/api/saas/affiliates", async (_req, res) => {
+    try { res.json(await storage.getSaasAffiliates()); }
+    catch { res.status(500).json({ error: "Failed to fetch affiliates" }); }
+  });
+
+  app.post("/api/saas/affiliates", async (req, res) => {
+    try {
+      const parsed = createSaasAffiliateSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: parsed.error.errors });
+      res.status(201).json(await storage.createSaasAffiliate(parsed.data));
+    } catch { res.status(500).json({ error: "Failed to create affiliate" }); }
+  });
+
+  app.patch("/api/saas/affiliates/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid id" });
+      const parsed = updateSaasAffiliateSchema.safeParse({ id, ...req.body });
+      if (!parsed.success) return res.status(400).json({ error: parsed.error.errors });
+      res.json(await storage.updateSaasAffiliate(parsed.data));
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Failed to update affiliate";
+      res.status(500).json({ error: msg });
+    }
+  });
+
+  app.delete("/api/saas/affiliates/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid id" });
+      await storage.deleteSaasAffiliate(id);
+      res.json({ success: true });
+    } catch { res.status(500).json({ error: "Failed to delete affiliate" }); }
+  });
+
+  // ─── SaaS Companies ────────────────────────────────────────────────────────
+
+  app.get("/api/saas/companies", async (_req, res) => {
+    try { res.json(await storage.getSaasCompanies()); }
+    catch { res.status(500).json({ error: "Failed to fetch companies" }); }
+  });
+
+  app.post("/api/saas/companies", async (req, res) => {
+    try {
+      const parsed = createSaasCompanySchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: parsed.error.errors });
+      res.status(201).json(await storage.createSaasCompany(parsed.data));
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Failed to create company";
+      res.status(500).json({ error: msg });
+    }
+  });
+
+  app.patch("/api/saas/companies/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid id" });
+      const parsed = updateSaasCompanySchema.safeParse({ id, ...req.body });
+      if (!parsed.success) return res.status(400).json({ error: parsed.error.errors });
+      res.json(await storage.updateSaasCompany(parsed.data));
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Failed to update company";
+      res.status(500).json({ error: msg });
+    }
+  });
+
+  app.delete("/api/saas/companies/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid id" });
+      await storage.deleteSaasCompany(id);
+      res.json({ success: true });
+    } catch { res.status(500).json({ error: "Failed to delete company" }); }
   });
 
   const httpServer = createServer(app);
