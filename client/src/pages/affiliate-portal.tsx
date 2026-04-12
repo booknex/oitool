@@ -163,7 +163,7 @@ function DashboardPage({ data }: { data: PortalData }) {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/affiliate/me"] });
+      queryClient.removeQueries({ queryKey: ["/api/affiliate/me"] });
       navigate("/portal");
     },
     onError: () => toast({ title: "Error logging out", variant: "destructive" }),
