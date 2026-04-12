@@ -247,9 +247,18 @@ BEGIN
             phone           TEXT NOT NULL DEFAULT '',
             commission_rate NUMERIC(5,2) NOT NULL DEFAULT 20,
             status          TEXT NOT NULL DEFAULT 'active',
+            access_code     TEXT NOT NULL DEFAULT '',
             notes           TEXT NOT NULL DEFAULT '',
             created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
         );
+    END IF;
+
+    -- Add access_code to saas_affiliates if missing
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'saas_affiliates' AND column_name = 'access_code'
+    ) THEN
+        ALTER TABLE saas_affiliates ADD COLUMN access_code TEXT NOT NULL DEFAULT '';
     END IF;
 
     -- Create saas_companies table if it doesn't exist

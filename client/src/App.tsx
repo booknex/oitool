@@ -9,6 +9,7 @@ import Reviews from "@/pages/reviews";
 import CalendarPage from "@/pages/calendar";
 import Invoicing from "@/pages/invoicing";
 import SaasAdmin from "@/pages/saas";
+import { AffiliateLogin, AffiliateDashboard } from "@/pages/affiliate-portal";
 import Analytics from "@/pages/analytics";
 import NotFound from "@/pages/not-found";
 
@@ -21,6 +22,8 @@ function Router() {
       <Route path="/calendar" component={CalendarPage} />
       <Route path="/invoicing" component={Invoicing} />
       <Route path="/saas" component={SaasAdmin} />
+      <Route path="/portal" component={AffiliateLogin} />
+      <Route path="/portal/dashboard" component={AffiliateDashboard} />
       <Route path="/analytics" component={Analytics} />
       <Route component={NotFound} />
     </Switch>

@@ -155,6 +155,7 @@ export const saasAffiliates = pgTable("saas_affiliates", {
   phone: text("phone").notNull().default(""),
   commissionRate: numeric("commission_rate", { precision: 5, scale: 2 }).notNull().default("20"),
   status: text("status").notNull().default("active"),
+  accessCode: text("access_code").notNull().default(""),
   notes: text("notes").notNull().default(""),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
@@ -167,6 +168,7 @@ export const createSaasAffiliateSchema = z.object({
   phone: z.string().default(""),
   commissionRate: z.number().min(0).max(100).default(20),
   status: z.enum(["active", "inactive"]).default("active"),
+  accessCode: z.string().default(""),
   notes: z.string().default(""),
 });
 
@@ -177,6 +179,7 @@ export const updateSaasAffiliateSchema = z.object({
   phone: z.string().optional(),
   commissionRate: z.number().min(0).max(100).optional(),
   status: z.enum(["active", "inactive"]).optional(),
+  accessCode: z.string().optional(),
   notes: z.string().optional(),
 });
 

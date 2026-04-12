@@ -403,6 +403,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ─── Affiliate Portal Auth ────────────────────────────────────────────────
+
+  app.post("/api/affiliate/login", async (req, res) => {
+    try {
+      const { email, accessCode } = req.body;
+      if (!email || !accessCode) return res.status(400).json({ error: "Email and access code required" });
+      const affiliates = await storage.getSaasAffiliates();
+      const aff = affiliates.find(a =>
+        a.email.toLowerCase() === email.toLowerCase() &&
+        a.accessCode === accessCode &&
+        a.status === "active"
+      );
+      if (!aff) return res.status(401).json({ error: "Invalid email or access code" });
+      req.session.affiliateId = aff.id;
+      res.json({ id: aff.id, name: aff.name, email: aff.email });
+    } catch { res.status(500).json({ error: "Login failed" }); }
+  });
+
+  app.post("/api/affiliate/logout", (req, res) => {
+    req.session.destroy(() => res.json({ success: true }));
+  });
+
+  app.get("/api/affiliate/me", async (req, res) => {
+    try {
+      if (!req.session.affiliateId) return res.status(401).json({ error: "Not authenticated" });
+      const affiliates = await storage.getSaasAffiliates();
+      const aff = affiliates.find(a => a.id === req.session.affiliateId);
+      if (!aff) return res.status(401).json({ error: "Affiliate not found" });
+      const companies = await storage.getSaasCompanies();
+      const myCompanies = companies.filter(c => c.affiliateId === aff.id);
+      const totalMRR = myCompanies.reduce((s, c) => s + Number(c.mrr), 0);
+      const commission = totalMRR * (Number(aff.commissionRate) / 100);
+      res.json({
+        affiliate: aff,
+        stats: {
+          totalCompanies: myCompanies.length,
+          activeCompanies: myCompanies.filter(c => c.status === "active").length,
+          trialCompanies: myCompanies.filter(c => c.status === "trial").length,
+          totalMRR,
+          commission,
+        },
+        companies: myCompanies,
+      });
+    } catch { res.status(500).json({ error: "Failed to fetch portal data" }); }
+  });
+
   // ─── SaaS Affiliates ───────────────────────────────────────────────────────
 
   app.get("/api/saas/affiliates", async (_req, res) => {

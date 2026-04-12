@@ -80,6 +80,7 @@ function AffiliateModal({ open, affiliate, onClose }: AffiliateModalProps) {
     phone: affiliate?.phone ?? "",
     commissionRate: affiliate?.commissionRate ?? "20",
     status: affiliate?.status ?? "active",
+    accessCode: affiliate?.accessCode ?? "",
     notes: affiliate?.notes ?? "",
   });
 
@@ -152,6 +153,19 @@ function AffiliateModal({ open, affiliate, onClose }: AffiliateModalProps) {
                 </SelectContent>
               </Select>
             </div>
+          </div>
+          <div className="grid gap-1.5">
+            <Label>
+              Access Code
+              <span className="ml-1 text-xs text-gray-400 font-normal">(affiliate uses this to log into their portal)</span>
+            </Label>
+            <Input
+              data-testid="input-affiliate-access-code"
+              value={form.accessCode}
+              onChange={e => field("accessCode", e.target.value)}
+              placeholder="e.g. JANE2024"
+              autoComplete="off"
+            />
           </div>
           <div className="grid gap-1.5">
             <Label>Notes</Label>
@@ -638,6 +652,14 @@ export default function SaasAdmin() {
         {/* ─── Affiliates Tab ─────────────────────────────────────────────────── */}
 
         {tab === "affiliates" && (
+          <div className="space-y-3">
+          <div className="flex items-center gap-2 text-xs text-gray-500 bg-blue-50 border border-blue-200 rounded-lg px-4 py-2.5">
+            <ArrowUpRight className="w-4 h-4 text-blue-500 shrink-0" />
+            <span>
+              Affiliate login portal: <a href="/portal" target="_blank" rel="noopener noreferrer" className="font-semibold text-blue-700 underline">{window.location.origin}/portal</a>
+              &nbsp;— share this URL with your affiliates along with their email and access code.
+            </span>
+          </div>
           <Card>
             <CardContent className="p-0">
               {loadingAffiliates ? (
@@ -663,6 +685,7 @@ export default function SaasAdmin() {
                         <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Accounts</th>
                         <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">MRR Generated</th>
                         <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Est. Payout</th>
+                        <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Access Code</th>
                         <th className="px-4 py-3"></th>
                       </tr>
                     </thead>
@@ -714,6 +737,11 @@ export default function SaasAdmin() {
                             <span className="text-xs text-gray-400 font-normal">/mo</span>
                           </td>
                           <td className="px-4 py-3">
+                            {aff.accessCode
+                              ? <code className="text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded font-mono">{aff.accessCode}</code>
+                              : <span className="text-xs text-gray-300 italic">not set</span>}
+                          </td>
+                          <td className="px-4 py-3">
                             <div className="flex items-center gap-1 justify-end">
                               <Button
                                 data-testid={`button-edit-affiliate-${aff.id}`}
@@ -756,6 +784,7 @@ export default function SaasAdmin() {
               )}
             </CardContent>
           </Card>
+          </div>
         )}
       </div>
 

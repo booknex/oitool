@@ -19,6 +19,18 @@ A self-service inventory kiosk application for cleaning service operations. Maid
 - **Mobile fallback** — Compact teal brand bar shown on small screens when the left panel is hidden
 - Auto-seeds the default 5 apps on first load if the table is empty
 
+### Affiliate Portal
+- **Route** `/portal` — login page (served to affiliates); `/portal/dashboard` — authenticated dashboard
+- **Login** — affiliate enters their email + access code (set by admin in SaaS Admin); session-based auth via express-session
+- **Dashboard (post-login)**:
+  - 4 KPI cards: Est. Monthly Payout, MRR Generated, Active Accounts, Total Referred
+  - Account info card with commission structure breakdown
+  - Companies table showing all their referred accounts, status, plan, MRR, and their per-account commission cut
+  - Running totals row showing total MRR and total payout
+- **Session** — 7-day cookie, httpOnly, SESSION_SECRET from env
+- **Auth API** — `POST /api/affiliate/login`, `POST /api/affiliate/logout`, `GET /api/affiliate/me` (returns affiliate + stats + companies)
+- Admin sets `access_code` per affiliate in SaaS Admin; affiliates table shows the code for easy sharing
+
 ### SaaS Admin Dashboard
 - **Route** `/saas` — accessible from the "SaaS Admin" tile on the dashboard
 - **Companies tab** — manage cleaning company accounts: name, owner, email, phone, status (trial/active/paused/cancelled), plan (Starter $99 / Pro $199 / Enterprise $399), MRR, trial end date, and referring affiliate
