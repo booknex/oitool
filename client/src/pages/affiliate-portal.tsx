@@ -419,7 +419,9 @@ export function AffiliateLogin() {
     if (!isLoading && data) {
       navigate("/portal/dashboard");
     }
-  }, [isLoading, data, navigate]);
+    // navigate is stable in wouter — intentionally omitted from deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoading, data]);
 
   if (isLoading) {
     return (
@@ -428,6 +430,8 @@ export function AffiliateLogin() {
       </div>
     );
   }
+
+  if (data) return null;
 
   return <LoginPage />;
 }
@@ -444,7 +448,9 @@ export function AffiliateDashboard() {
     if (!isLoading && isError) {
       navigate("/portal");
     }
-  }, [isLoading, isError, navigate]);
+    // navigate is stable in wouter — intentionally omitted from deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoading, isError]);
 
   if (isLoading) {
     return (
