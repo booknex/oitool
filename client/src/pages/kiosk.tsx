@@ -120,8 +120,12 @@ export default function Kiosk() {
 
         fetch(`/api/items/barcode/${encodeURIComponent(code)}`)
           .then(async (res) => {
-            if (!res.ok) {
+            if (res.status === 404) {
               toast({ title: "Barcode not found", description: `No item assigned to barcode: ${code}`, variant: "destructive" });
+              return;
+            }
+            if (!res.ok) {
+              toast({ title: "Scan Error", description: "Could not look up barcode. Please try again.", variant: "destructive" });
               return;
             }
             const item: InventoryItem = await res.json();
@@ -215,7 +219,12 @@ export default function Kiosk() {
       toast({ title: "Item Updated", description: "Item has been updated successfully." });
     },
     onError: (err) => {
-      toast({ title: "Update Failed", description: err.message, variant: "destructive" });
+      const match = err.message.match(/^\d+: (.+)$/s);
+      let desc = err.message;
+      if (match) {
+        try { desc = JSON.parse(match[1]).error ?? desc; } catch { desc = match[1]; }
+      }
+      toast({ title: "Update Failed", description: desc, variant: "destructive" });
     },
   });
 
@@ -228,6 +237,14 @@ export default function Kiosk() {
       setAddingItem(false);
       setNewItem({ name: "", description: "", category: "", maxStock: 10, cost: "0.00", itemType: "consumable", lowStockThreshold: null, barcode: "" });
       toast({ title: "Item Added", description: "New item has been added to inventory." });
+    },
+    onError: (err) => {
+      const match = err.message.match(/^\d+: (.+)$/s);
+      let desc = err.message;
+      if (match) {
+        try { desc = JSON.parse(match[1]).error ?? desc; } catch { desc = match[1]; }
+      }
+      toast({ title: "Add Failed", description: desc, variant: "destructive" });
     },
   });
 
@@ -926,7 +943,7 @@ export default function Kiosk() {
                           toast({ title: "Missing Fields", description: "Please fill in all fields.", variant: "destructive" });
                           return;
                         }
-                        createItemMutation.mutate({ ...newItem, maxStock: isNaN(newItem.maxStock) ? 10 : newItem.maxStock, barcode: newItem.barcode || null });
+                        createItemMutation.mutate({ ...newItem, maxStock: isNaN(newItem.maxStock) ? 10 : newItem.maxStock, barcode: newItem.barcode.trim() || null });
                       }}
                       disabled={createItemMutation.isPending}
                       data-testid="button-save-new-item"
@@ -1085,7 +1102,7 @@ export default function Kiosk() {
                             cost: editingItem.cost,
                             itemType: editingItem.itemType,
                             lowStockThreshold: editingItem.lowStockThreshold,
-                            barcode: editingItem.barcode ?? null,
+                            barcode: editingItem.barcode?.trim() || null,
                           })}
                           disabled={updateItemMutation.isPending}
                           data-testid={`button-save-edit-${item.id}`}

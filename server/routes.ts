@@ -102,6 +102,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const item = await storage.createItem(result.data);
       res.json(item);
     } catch (error) {
+      if (error instanceof Error && error.message.includes("unique") && error.message.toLowerCase().includes("barcode")) {
+        return res.status(409).json({ error: "That barcode is already assigned to another item." });
+      }
       res.status(500).json({ error: "Failed to create item" });
     }
   });
@@ -121,6 +124,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       if (error instanceof Error && error.message.includes("not found")) {
         return res.status(404).json({ error: "Item not found" });
+      }
+      if (error instanceof Error && error.message.includes("unique") && error.message.toLowerCase().includes("barcode")) {
+        return res.status(409).json({ error: "That barcode is already assigned to another item." });
       }
       res.status(500).json({ error: "Failed to update item" });
     }
