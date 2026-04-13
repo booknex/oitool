@@ -101,7 +101,7 @@ export default function Kiosk() {
   useEffect(() => {
     let buffer = "";
     let lastKeyTime = 0;
-    const SCAN_TIMEOUT = 50;
+    const SCAN_TIMEOUT = 150;
 
     function handleBarcodeScan(e: KeyboardEvent) {
       if (manageOpen) return;
