@@ -40,6 +40,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/items/barcode/:code", async (req, res) => {
+    try {
+      const item = await storage.getItemByBarcode(req.params.code);
+      if (!item) return res.status(404).json({ error: "Item not found" });
+      res.json(item);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to lookup barcode" });
+    }
+  });
+
   app.post("/api/cart/checkout", async (req, res) => {
     try {
       const result = checkoutSchema.safeParse(req.body);

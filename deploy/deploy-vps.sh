@@ -261,6 +261,14 @@ BEGIN
         ALTER TABLE saas_affiliates ADD COLUMN access_code TEXT NOT NULL DEFAULT '';
     END IF;
 
+    -- Add barcode column to inventory_items if missing
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'inventory_items' AND column_name = 'barcode'
+    ) THEN
+        ALTER TABLE inventory_items ADD COLUMN barcode TEXT UNIQUE;
+    END IF;
+
     -- Create saas_companies table if it doesn't exist
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.tables

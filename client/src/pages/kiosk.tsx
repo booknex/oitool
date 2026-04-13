@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { ShoppingCart, Plus, Minus, Trash2, Package, CheckCircle, RotateCcw, ChevronDown, Settings, X, Save, PlusCircle, Maximize, Minimize, ChevronLeft, Pencil } from "lucide-react";
+import { ShoppingCart, Plus, Minus, Trash2, Package, CheckCircle, RotateCcw, ChevronDown, Settings, X, Save, PlusCircle, Maximize, Minimize, ChevronLeft, Pencil, ScanBarcode } from "lucide-react";
 import { type InventoryItem } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -66,7 +66,7 @@ export default function Kiosk() {
   const [manageOpen, setManageOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
   const [addingItem, setAddingItem] = useState(false);
-  const [newItem, setNewItem] = useState({ name: "", description: "", category: "", maxStock: 10, cost: "0.00", itemType: "consumable" as "consumable" | "cleaning", lowStockThreshold: null as number | null });
+  const [newItem, setNewItem] = useState({ name: "", description: "", category: "", maxStock: 10, cost: "0.00", itemType: "consumable" as "consumable" | "cleaning", lowStockThreshold: null as number | null, barcode: "" });
   const [isFullscreen, setIsFullscreen] = useState(false);
   const restockDropdownRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
@@ -97,6 +97,63 @@ export default function Kiosk() {
       document.exitFullscreen();
     }
   }
+
+  useEffect(() => {
+    let buffer = "";
+    let lastKeyTime = 0;
+    const SCAN_TIMEOUT = 50;
+
+    function handleBarcodeScan(e: KeyboardEvent) {
+      if (manageOpen) return;
+      if ((e.target as HTMLElement).tagName === "INPUT" || (e.target as HTMLElement).tagName === "TEXTAREA") return;
+
+      const now = Date.now();
+      if (now - lastKeyTime > SCAN_TIMEOUT) {
+        buffer = "";
+      }
+      lastKeyTime = now;
+
+      if (e.key === "Enter") {
+        const code = buffer.trim();
+        buffer = "";
+        if (code.length < 2) return;
+
+        fetch(`/api/items/barcode/${encodeURIComponent(code)}`)
+          .then(async (res) => {
+            if (!res.ok) {
+              toast({ title: "Barcode not found", description: `No item assigned to barcode: ${code}`, variant: "destructive" });
+              return;
+            }
+            const item: InventoryItem = await res.json();
+            if (item.stock <= 0) {
+              toast({ title: "Out of Stock", description: `${item.name} is out of stock.`, variant: "destructive" });
+              return;
+            }
+            setCart((prev) => {
+              const existing = prev.find((c) => c.itemId === item.id);
+              const currentInCart = existing?.quantity || 0;
+              if (currentInCart >= item.stock) {
+                toast({ title: "Not enough stock", description: `Only ${item.stock} available for ${item.name}.`, variant: "destructive" });
+                return prev;
+              }
+              toast({ title: "Item Added", description: `${item.name} added to cart.` });
+              if (existing) {
+                return prev.map((c) => c.itemId === item.id ? { ...c, quantity: c.quantity + 1 } : c);
+              }
+              return [...prev, { itemId: item.id, quantity: 1 }];
+            });
+          })
+          .catch(() => {
+            toast({ title: "Scan Error", description: "Could not look up barcode.", variant: "destructive" });
+          });
+      } else if (e.key.length === 1) {
+        buffer += e.key;
+      }
+    }
+
+    document.addEventListener("keydown", handleBarcodeScan);
+    return () => document.removeEventListener("keydown", handleBarcodeScan);
+  }, [manageOpen, toast]);
 
   const { data: items = [], isLoading } = useQuery<InventoryItem[]>({
     queryKey: ["/api/items"],
@@ -144,7 +201,7 @@ export default function Kiosk() {
   });
 
   const updateItemMutation = useMutation({
-    mutationFn: async (data: { id: number; name?: string; description?: string; category?: string; maxStock?: number; stock?: number; cost?: string; visible?: boolean; itemType?: string; lowStockThreshold?: number | null }) => {
+    mutationFn: async (data: { id: number; name?: string; description?: string; category?: string; maxStock?: number; stock?: number; cost?: string; visible?: boolean; itemType?: string; lowStockThreshold?: number | null; barcode?: string | null }) => {
       const res = await apiRequest("PATCH", `/api/items/${data.id}`, data);
       return res.json() as Promise<InventoryItem>;
     },
@@ -163,13 +220,13 @@ export default function Kiosk() {
   });
 
   const createItemMutation = useMutation({
-    mutationFn: async (data: { name: string; description: string; category: string; maxStock: number; cost: string; itemType: string; lowStockThreshold?: number | null }) => {
+    mutationFn: async (data: { name: string; description: string; category: string; maxStock: number; cost: string; itemType: string; lowStockThreshold?: number | null; barcode?: string | null }) => {
       return apiRequest("POST", "/api/items", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/items"] });
       setAddingItem(false);
-      setNewItem({ name: "", description: "", category: "", maxStock: 10, cost: "0.00", itemType: "consumable", lowStockThreshold: null });
+      setNewItem({ name: "", description: "", category: "", maxStock: 10, cost: "0.00", itemType: "consumable", lowStockThreshold: null, barcode: "" });
       toast({ title: "Item Added", description: "New item has been added to inventory." });
     },
   });
@@ -290,6 +347,14 @@ export default function Kiosk() {
           </h1>
         </div>
         <div className="flex items-center gap-1.5">
+          <div
+            className="flex items-center gap-1 px-2 py-1 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-md text-emerald-600 dark:text-emerald-400"
+            data-testid="badge-scanner-ready"
+            title="Barcode scanner is active — scan any item to add it to the cart"
+          >
+            <ScanBarcode className="w-3.5 h-3.5" />
+            <span className="text-[11px] font-medium">Scanner Ready</span>
+          </div>
           <Button
             variant="ghost"
             size="icon"
@@ -840,6 +905,16 @@ export default function Kiosk() {
                       data-testid="input-new-low-stock"
                     />
                   </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground">Barcode (optional — scan or type to assign)</label>
+                    <input
+                      className="w-full mt-1 px-3 py-2 bg-card border border-border rounded-md text-sm text-foreground"
+                      value={newItem.barcode}
+                      onChange={(e) => setNewItem(prev => ({ ...prev, barcode: e.target.value }))}
+                      placeholder="e.g. 012345678905"
+                      data-testid="input-new-barcode"
+                    />
+                  </div>
                   <div className="flex items-center gap-2 justify-end">
                     <Button variant="ghost" size="sm" onClick={() => setAddingItem(false)} data-testid="button-cancel-add">
                       Cancel
@@ -851,7 +926,7 @@ export default function Kiosk() {
                           toast({ title: "Missing Fields", description: "Please fill in all fields.", variant: "destructive" });
                           return;
                         }
-                        createItemMutation.mutate({ ...newItem, maxStock: isNaN(newItem.maxStock) ? 10 : newItem.maxStock });
+                        createItemMutation.mutate({ ...newItem, maxStock: isNaN(newItem.maxStock) ? 10 : newItem.maxStock, barcode: newItem.barcode || null });
                       }}
                       disabled={createItemMutation.isPending}
                       data-testid="button-save-new-item"
@@ -984,6 +1059,16 @@ export default function Kiosk() {
                           data-testid={`input-edit-low-stock-${item.id}`}
                         />
                       </div>
+                      <div>
+                        <label className="text-xs text-muted-foreground">Barcode (optional — scan or type to assign)</label>
+                        <input
+                          className="w-full mt-1 px-2 py-1 bg-card border border-border rounded-md text-sm text-foreground"
+                          value={editingItem.barcode ?? ""}
+                          onChange={(e) => setEditingItem(prev => prev ? { ...prev, barcode: e.target.value || null } : null)}
+                          placeholder="e.g. 012345678905"
+                          data-testid={`input-edit-barcode-${item.id}`}
+                        />
+                      </div>
                       <div className="flex items-center gap-2 justify-end">
                         <Button variant="ghost" size="sm" onClick={() => setEditingItem(null)} data-testid={`button-cancel-edit-${item.id}`}>
                           Cancel
@@ -1000,6 +1085,7 @@ export default function Kiosk() {
                             cost: editingItem.cost,
                             itemType: editingItem.itemType,
                             lowStockThreshold: editingItem.lowStockThreshold,
+                            barcode: editingItem.barcode ?? null,
                           })}
                           disabled={updateItemMutation.isPending}
                           data-testid={`button-save-edit-${item.id}`}
@@ -1026,6 +1112,12 @@ export default function Kiosk() {
                           {item.lowStockThreshold != null && item.lowStockThreshold > 0 && (
                             <span className="text-[10px] px-1.5 py-0.5 rounded font-bold bg-red-100 text-red-700" data-testid={`badge-threshold-${item.id}`}>
                               Alert: {item.lowStockThreshold}
+                            </span>
+                          )}
+                          {item.barcode && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded font-bold bg-purple-100 text-purple-700 flex items-center gap-0.5" data-testid={`badge-barcode-${item.id}`}>
+                              <ScanBarcode className="w-2.5 h-2.5" />
+                              {item.barcode}
                             </span>
                           )}
                         </div>

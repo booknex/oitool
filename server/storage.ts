@@ -124,6 +124,7 @@ function parseIcal(text: string): Array<{ uid: string; start: Date; end: Date; s
 export interface IStorage {
   getItems(): Promise<InventoryItem[]>;
   getItem(id: number): Promise<InventoryItem | undefined>;
+  getItemByBarcode(barcode: string): Promise<InventoryItem | undefined>;
   checkout(items: CartItem[]): Promise<InventoryItem[]>;
   restockItem(id: number, quantity?: number): Promise<InventoryItem>;
   restockAll(): Promise<InventoryItem[]>;
@@ -201,6 +202,11 @@ export class DatabaseStorage implements IStorage {
     return item;
   }
 
+  async getItemByBarcode(barcode: string): Promise<InventoryItem | undefined> {
+    const [item] = await db.select().from(inventoryItems).where(eq(inventoryItems.barcode, barcode));
+    return item;
+  }
+
   async checkout(cartItems: CartItem[]): Promise<InventoryItem[]> {
     const client = await pool.connect();
     try {
@@ -265,6 +271,7 @@ export class DatabaseStorage implements IStorage {
       maxStock: data.maxStock, stock, visible: true,
       cost: data.cost ?? "0", itemType: data.itemType ?? "consumable",
       lowStockThreshold: data.lowStockThreshold ?? null,
+      barcode: data.barcode ?? null,
     }).returning();
     return item;
   }
@@ -283,6 +290,7 @@ export class DatabaseStorage implements IStorage {
     if (data.cost !== undefined) updates.cost = data.cost;
     if (data.itemType !== undefined) updates.itemType = data.itemType;
     if (data.lowStockThreshold !== undefined) updates.lowStockThreshold = data.lowStockThreshold;
+    if (data.barcode !== undefined) updates.barcode = data.barcode;
 
     const newMaxStock = updates.maxStock ?? item.maxStock;
     const newStock = updates.stock ?? item.stock;
