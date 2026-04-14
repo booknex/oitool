@@ -544,111 +544,127 @@ function InvoiceDashboard({
 
       {/* Monthly Revenue Chart */}
       {!isLoading && (() => {
-        const currentYear = new Date().getFullYear();
-        const currentMonth = new Date().getMonth();
-        const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-        const CHART_H = 96;
+        const now = new Date();
+        const MONTH_ABBR = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+        const CHART_H = 160;
+        const Y_AXIS_W = 36;
 
-        // Build per-month buckets: paid, outstanding, overdue
-        const monthly = MONTHS.map((_, idx) => {
+        // Rolling last 12 months
+        const months = Array.from({ length: 12 }, (_, i) => {
+          const d = new Date(now.getFullYear(), now.getMonth() - 11 + i, 1);
+          return { year: d.getFullYear(), month: d.getMonth(), label: MONTH_ABBR[d.getMonth()] };
+        });
+
+        const data = months.map(({ year, month }) => {
           const inMonth = invoiceList.filter(inv => {
             const d = inv.issueDate ? new Date(inv.issueDate) : null;
-            return d && d.getFullYear() === currentYear && d.getMonth() === idx;
+            return d && d.getFullYear() === year && d.getMonth() === month;
           });
           return {
-            paid:        inMonth.filter(i => i.status === "paid").reduce((s, i) => s + i.total, 0),
-            outstanding: inMonth.filter(i => i.status === "sent" || i.status === "draft").reduce((s, i) => s + i.total, 0),
-            overdue:     inMonth.filter(i => i.status === "overdue").reduce((s, i) => s + i.total, 0),
-            total:       inMonth.reduce((s, i) => s + i.total, 0),
+            total:   inMonth.reduce((s, i) => s + i.total, 0),
+            paid:    inMonth.filter(i => i.status === "paid").reduce((s, i) => s + i.total, 0),
+            unpaid:  inMonth.filter(i => i.status !== "paid").reduce((s, i) => s + i.total, 0),
           };
         });
 
-        const maxVal = Math.max(...monthly.map(m => m.total), 1);
-        const yearTotal = monthly.reduce((s, m) => s + m.total, 0);
+        // Nice Y-axis
+        const rawMax = Math.max(...data.map(d => d.total), 1);
+        const mag = Math.pow(10, Math.floor(Math.log10(rawMax)));
+        const norm = rawMax / mag;
+        const niceMax = norm <= 1 ? mag : norm <= 2 ? 2 * mag : norm <= 5 ? 5 * mag : 10 * mag;
+        const tickStep = niceMax / 4;
+        const ticks = [0, 1, 2, 3, 4].map(i => i * tickStep);
+        const fmtY = (v: number) => v === 0 ? "0" : v >= 1000 ? `${(v / 1000 % 1 === 0 ? v / 1000 : (v / 1000).toFixed(1))}K` : `${v}`;
+
+        // Totals for legend
+        const totalInvoiced    = data.reduce((s, d) => s + d.total, 0);
+        const totalPaid        = data.reduce((s, d) => s + d.paid, 0);
+        const totalUnpaid      = data.reduce((s, d) => s + d.unpaid, 0);
 
         return (
           <div className="mb-5 rounded-xl border border-border bg-card p-5">
             {/* Header */}
-            <div className="flex items-baseline justify-between mb-1">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Monthly Revenue</p>
-              <span className="text-xs text-muted-foreground">{currentYear} · {fmt(yearTotal)} total</span>
+            <div className="flex items-center justify-between mb-5">
+              <p className="text-sm font-semibold text-foreground">Monthly Revenue</p>
+              <span className="text-[11px] text-muted-foreground border border-border rounded px-2 py-0.5">Last 12 Months</span>
             </div>
 
-            {/* Legend */}
-            <div className="flex items-center gap-4 mb-4">
-              {[
-                { label: "Paid",        dot: "bg-emerald-500" },
-                { label: "Outstanding", dot: "bg-amber-400" },
-                { label: "Overdue",     dot: "bg-rose-500" },
-              ].map(({ label, dot }) => (
-                <div key={label} className="flex items-center gap-1.5">
-                  <span className={`w-2 h-2 rounded-full ${dot}`} />
-                  <span className="text-[11px] text-muted-foreground">{label}</span>
-                </div>
-              ))}
-            </div>
+            <div className="flex gap-5">
+              {/* Chart */}
+              <div className="flex-1 min-w-0">
+                <div className="flex">
+                  {/* Y-axis labels */}
+                  <div className="flex flex-col-reverse justify-between pb-[1px]" style={{ width: `${Y_AXIS_W}px`, height: `${CHART_H}px`, flexShrink: 0 }}>
+                    {ticks.map(tick => (
+                      <span key={tick} className="text-[9px] text-muted-foreground text-right pr-2 leading-none">{fmtY(tick)}</span>
+                    ))}
+                  </div>
 
-            {/* Chart */}
-            <div className="relative" style={{ height: `${CHART_H}px` }}>
-              {/* Gridlines */}
-              {[0.25, 0.5, 0.75, 1].map(g => (
-                <div key={g} className="absolute left-0 right-0 border-t border-dashed border-border"
-                  style={{ bottom: `${g * CHART_H}px` }} />
-              ))}
-              <div className="absolute left-0 right-0 bottom-0 border-t border-border" />
+                  {/* Plot area */}
+                  <div className="flex-1 relative" style={{ height: `${CHART_H}px` }}>
+                    {/* Gridlines */}
+                    {ticks.map(tick => (
+                      <div key={tick} className="absolute left-0 right-0 border-t border-border/60"
+                        style={{ bottom: `${(tick / niceMax) * CHART_H}px` }} />
+                    ))}
 
-              {/* Stacked bars */}
-              <div className="absolute inset-0 flex items-end gap-1">
-                {monthly.map((m, idx) => {
-                  const totalH = Math.max((m.total / maxVal) * CHART_H, m.total > 0 ? 4 : 0);
-                  const paidH        = totalH > 0 ? (m.paid        / m.total) * totalH : 0;
-                  const outstandingH = totalH > 0 ? (m.outstanding / m.total) * totalH : 0;
-                  const overdueH     = totalH > 0 ? (m.overdue     / m.total) * totalH : 0;
-                  const isCurrent = idx === currentMonth;
-                  return (
-                    <div
-                      key={idx}
-                      className="flex-1 flex flex-col justify-end items-center group relative"
-                      style={{ height: `${CHART_H}px` }}
-                    >
-                      {/* Tooltip on hover */}
-                      {m.total > 0 && (
-                        <div className="absolute bottom-full mb-1.5 left-1/2 -translate-x-1/2 z-20 invisible group-hover:visible bg-popover border border-border rounded-md shadow-md px-2.5 py-1.5 text-[11px] whitespace-nowrap pointer-events-none">
-                          <p className="font-semibold text-foreground mb-1">{MONTHS[idx]} {currentYear}</p>
-                          {m.paid > 0        && <p className="text-emerald-600 dark:text-emerald-400">Paid: {fmt(m.paid)}</p>}
-                          {m.outstanding > 0 && <p className="text-amber-500">Outstanding: {fmt(m.outstanding)}</p>}
-                          {m.overdue > 0     && <p className="text-rose-500">Overdue: {fmt(m.overdue)}</p>}
-                          <p className="text-muted-foreground mt-0.5 border-t border-border pt-0.5">Total: {fmt(m.total)}</p>
-                        </div>
-                      )}
-                      {/* Stacked bar segments */}
-                      <div
-                        className={`flex flex-col justify-end overflow-hidden transition-all duration-500 ${isCurrent ? "opacity-100" : "opacity-80"}`}
-                        style={{ width: "40%", height: `${totalH}px`, borderRadius: "3px 3px 0 0" }}
-                      >
-                        {overdueH     > 0 && <div className="bg-rose-500   w-full flex-shrink-0" style={{ height: `${overdueH}px` }} />}
-                        {outstandingH > 0 && <div className="bg-amber-400  w-full flex-shrink-0" style={{ height: `${outstandingH}px` }} />}
-                        {paidH        > 0 && <div className="bg-emerald-500 w-full flex-shrink-0" style={{ height: `${paidH}px` }} />}
-                      </div>
-                      {/* Empty bar ghost */}
-                      {m.total === 0 && (
-                        <div className="rounded-t-sm bg-muted/40" style={{ width: "40%", height: "3px" }} />
-                      )}
+                    {/* Bars */}
+                    <div className="absolute inset-0 flex items-end">
+                      {data.map(({ total, paid, unpaid }, idx) => {
+                        const isCurrent = months[idx].month === now.getMonth() && months[idx].year === now.getFullYear();
+                        const h = (v: number) => Math.max((v / niceMax) * CHART_H, v > 0 ? 2 : 0);
+                        return (
+                          <div key={idx} className="flex-1 flex items-end justify-center gap-[1px] group relative">
+                            {/* Hover tooltip */}
+                            <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 z-20 invisible group-hover:visible bg-popover border border-border rounded-md shadow-md px-3 py-2 text-[11px] whitespace-nowrap pointer-events-none">
+                              <p className="font-semibold text-foreground mb-1">{months[idx].label} {months[idx].year}</p>
+                              <p className="text-blue-500">Total: {fmt(total)}</p>
+                              {paid   > 0 && <p className="text-emerald-600 dark:text-emerald-400">Paid: {fmt(paid)}</p>}
+                              {unpaid > 0 && <p className="text-orange-500">Unpaid: {fmt(unpaid)}</p>}
+                            </div>
+                            {/* Total invoiced bar (blue) */}
+                            <div className={`rounded-t-sm transition-all duration-500 ${isCurrent ? "opacity-100" : "opacity-85"} bg-blue-500`}
+                              style={{ width: "28%", height: `${h(total)}px` }} />
+                            {/* Paid bar (green) */}
+                            <div className={`rounded-t-sm transition-all duration-500 ${isCurrent ? "opacity-100" : "opacity-85"} bg-emerald-500`}
+                              style={{ width: "28%", height: `${h(paid)}px` }} />
+                            {/* Unpaid bar (orange) */}
+                            <div className={`rounded-t-sm transition-all duration-500 ${isCurrent ? "opacity-100" : "opacity-85"} bg-orange-400`}
+                              style={{ width: "28%", height: `${h(unpaid)}px` }} />
+                          </div>
+                        );
+                      })}
                     </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* X-axis month labels */}
-            <div className="flex gap-1 mt-2">
-              {MONTHS.map((m, idx) => (
-                <div key={m} className="flex-1 text-center">
-                  <span className={`text-[9px] font-medium ${idx === currentMonth ? "text-blue-500" : "text-muted-foreground"}`}>
-                    {m}
-                  </span>
+                  </div>
                 </div>
-              ))}
+
+                {/* X-axis */}
+                <div className="flex mt-1.5" style={{ paddingLeft: `${Y_AXIS_W}px` }}>
+                  {months.map(({ label, year, month }, idx) => {
+                    const isCur = month === now.getMonth() && year === now.getFullYear();
+                    return (
+                      <div key={idx} className="flex-1 text-center">
+                        <div className={`text-[9px] leading-tight ${isCur ? "text-blue-500 font-bold" : "text-muted-foreground"}`}>{label}</div>
+                        <div className="text-[8px] text-muted-foreground/50 leading-tight">{String(year).slice(2)}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Right legend */}
+              <div className="flex flex-col justify-center gap-4 pl-5 border-l border-border shrink-0">
+                {[
+                  { label: "Total Invoiced", value: totalInvoiced, color: "text-blue-500" },
+                  { label: "Total Paid",     value: totalPaid,     color: "text-emerald-600 dark:text-emerald-400" },
+                  { label: "Total Unpaid",   value: totalUnpaid,   color: "text-orange-500" },
+                ].map(({ label, value, color }) => (
+                  <div key={label}>
+                    <p className={`text-[11px] font-medium ${color} mb-0.5`}>{label}</p>
+                    <p className={`text-base font-bold tabular-nums ${color}`}>{fmt(value)}</p>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         );
