@@ -1,11 +1,10 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams, useLocation } from "wouter";
 import {
-  ArrowLeft, Plus, ChevronDown, Pencil,
-  Check, Send, Clock, AlertCircle,
+  ArrowLeft, ChevronDown,
+  Check, Send, Clock, AlertCircle, ArrowDownLeft,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { Client, InvoiceWithDetails } from "@shared/schema";
@@ -59,32 +58,96 @@ export default function CustomerDetail() {
     onError: () => toast({ title: "Error", description: "Could not update status", variant: "destructive" }),
   });
 
-  const totalAmount = invoices.reduce((s, i) => s + i.total, 0);
-  const balanceDue = invoices
-    .filter(i => i.status === "sent" || i.status === "overdue")
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const endOfToday   = new Date(startOfToday.getTime() + 86400000 - 1);
+  const in30Days     = new Date(startOfToday.getTime() + 30 * 86400000);
+
+  const unpaidInvoices = invoices.filter(i => i.status === "sent" || i.status === "overdue");
+
+  const totalOutstanding = unpaidInvoices.reduce((s, i) => s + i.total, 0);
+
+  const dueToday = unpaidInvoices
+    .filter(i => i.dueDate && new Date(i.dueDate) >= startOfToday && new Date(i.dueDate) <= endOfToday)
     .reduce((s, i) => s + i.total, 0);
+
+  const dueWithin30 = unpaidInvoices
+    .filter(i => i.dueDate && new Date(i.dueDate) > endOfToday && new Date(i.dueDate) <= in30Days)
+    .reduce((s, i) => s + i.total, 0);
+
+  const overdueTotal = invoices
+    .filter(i => i.status === "overdue")
+    .reduce((s, i) => s + i.total, 0);
+
+  const totalAmount = invoices.reduce((s, i) => s + i.total, 0);
+  const balanceDue  = totalOutstanding;
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Header */}
-      <header className="flex items-center gap-3 px-6 py-3 border-b border-border bg-background flex-shrink-0 flex-wrap">
+      {/* Top nav bar */}
+      <header className="flex items-center gap-3 px-5 py-3 border-b border-border bg-background flex-shrink-0">
         <Button size="icon" variant="ghost" onClick={() => navigate("/invoicing")} data-testid="button-back">
           <ArrowLeft className="w-4 h-4" />
         </Button>
-        <div className="flex-1 min-w-0">
-          <h1 className="text-base font-semibold text-foreground truncate" data-testid="text-customer-name">
-            {client?.name ?? "Customer"}
-          </h1>
-          {client?.companyName && (
-            <p className="text-xs text-muted-foreground">{client.companyName}</p>
-          )}
-        </div>
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <span>Balance Due: <span className="font-semibold text-foreground" data-testid="text-balance-due">{fmt(balanceDue)}</span></span>
-          <span className="text-border">|</span>
-          <span>Total: <span className="font-semibold text-foreground" data-testid="text-total">{fmt(totalAmount)}</span></span>
-        </div>
+        <button
+          className="flex items-center gap-1.5 text-[15px] font-semibold text-foreground hover:opacity-70 transition-opacity"
+          data-testid="text-customer-name"
+        >
+          {client?.name ?? "All Invoices"}
+          <ChevronDown className="w-4 h-4 text-muted-foreground" />
+        </button>
       </header>
+
+      {/* Payment Summary card */}
+      <div className="px-5 py-4 border-b border-border bg-background flex-shrink-0">
+        <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-3">
+          Payment Summary
+        </p>
+        <div className="flex items-start gap-10 flex-wrap">
+          {/* Total Outstanding */}
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center flex-shrink-0">
+              <ArrowDownLeft className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+            </div>
+            <div>
+              <p className="text-[11px] text-muted-foreground leading-tight">Total Outstanding Receivables</p>
+              <p className="text-[15px] font-semibold text-foreground tabular-nums" data-testid="text-outstanding">
+                {fmt(totalOutstanding)}
+              </p>
+            </div>
+          </div>
+
+          <div className="w-px self-stretch bg-border mx-1" />
+
+          {/* Due Today */}
+          <div>
+            <p className="text-[11px] text-muted-foreground leading-tight mb-0.5">Due Today</p>
+            <p className={`text-[15px] font-semibold tabular-nums ${dueToday > 0 ? "text-amber-500" : "text-foreground"}`} data-testid="text-due-today">
+              {fmt(dueToday)}
+            </p>
+          </div>
+
+          <div className="w-px self-stretch bg-border mx-1" />
+
+          {/* Due Within 30 Days */}
+          <div>
+            <p className="text-[11px] text-muted-foreground leading-tight mb-0.5">Due Within 30 Days</p>
+            <p className="text-[15px] font-semibold text-foreground tabular-nums" data-testid="text-due-30">
+              {fmt(dueWithin30)}
+            </p>
+          </div>
+
+          <div className="w-px self-stretch bg-border mx-1" />
+
+          {/* Overdue */}
+          <div>
+            <p className="text-[11px] text-muted-foreground leading-tight mb-0.5">Overdue Invoice</p>
+            <p className="text-[15px] font-semibold text-foreground tabular-nums" data-testid="text-overdue">
+              {fmt(overdueTotal)}
+            </p>
+          </div>
+        </div>
+      </div>
 
       {/* Table */}
       <main className="flex-1 overflow-y-auto">
