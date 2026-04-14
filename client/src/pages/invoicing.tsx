@@ -829,13 +829,7 @@ export default function Invoicing() {
         className="w-96 flex-shrink-0 flex flex-col bg-[#E1F0FA] dark:bg-[#0D1F2D] border-r border-black/[0.08] dark:border-white/[0.08]"
         data-testid="invoicing-sidebar"
       >
-        <div className="px-5 pt-6 pb-3">
-          <p className="text-[11px] font-semibold uppercase tracking-widest text-[#8E8E93] dark:text-[#636366] select-none">
-            Invoicing
-          </p>
-        </div>
-
-        <nav className="px-4 flex-1">
+        <nav className="px-4 flex-1 pt-6">
           <div className="rounded-2xl overflow-hidden bg-white dark:bg-[#2C2C2E] shadow-sm">
             {NAV_ITEMS.map(({ id, label, icon: Icon, iconBg, iconColor }, idx) => {
               const isActive = tab === id;
