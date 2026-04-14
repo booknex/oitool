@@ -208,7 +208,11 @@ export function InvoiceDetailView({
   const paymentLinkMut = useMutation({
     mutationFn: async (id: number) => {
       const res = await apiRequest("POST", `/api/invoices/${id}/payment-link`);
-      return await res.json() as { url: string; sessionId: string };
+      const body = await res.json() as { url?: string; sessionId?: string; error?: string };
+      if (!res.ok) {
+        throw new Error(body.error ?? `Request failed (${res.status})`);
+      }
+      return body as { url: string; sessionId: string };
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
@@ -216,8 +220,8 @@ export function InvoiceDetailView({
       navigator.clipboard.writeText(data.url).catch(() => {});
       toast({ title: "Payment link created", description: "Opened in new tab and copied to clipboard." });
     },
-    onError: (err: any) => {
-      const msg = err.message || "Failed to create payment link";
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : "Failed to create payment link";
       toast({ title: "Payment link failed", description: msg, variant: "destructive" });
     },
   });
