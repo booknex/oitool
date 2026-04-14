@@ -547,33 +547,44 @@ function InvoiceDashboard({
         })}
       </div>
 
-      {/* Breakdown bar */}
-      {!isLoading && invoiceList.length > 0 && (
-        <div className="mb-5 rounded-xl border border-border bg-card p-4">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Revenue Breakdown</p>
-          <div className="flex rounded-full overflow-hidden h-3 bg-muted mb-3">
-            <div className="h-full bg-green-500 transition-all" style={{ width: `${paidPct}%` }} />
-            <div className="h-full bg-orange-400 transition-all" style={{ width: `${outPct}%` }} />
-            <div className="h-full bg-red-500 transition-all" style={{ width: `${overduePct}%` }} />
-          </div>
-          <div className="flex gap-5 flex-wrap">
-            {[
-              { label: "Paid", color: "bg-green-500", value: totalPaid, pct: paidPct },
-              { label: "Outstanding", color: "bg-orange-400", value: totalOutstanding, pct: outPct },
-              { label: "Overdue", color: "bg-red-500", value: totalOverdue, pct: overduePct },
-            ].map(({ label, color, value, pct }) => (
-              <div key={label} className="flex items-center gap-2">
-                <span className={`w-2.5 h-2.5 rounded-full ${color} flex-shrink-0`} />
-                <div>
-                  <span className="text-xs text-muted-foreground">{label}</span>
-                  <span className="text-xs text-foreground font-semibold ml-1.5">{fmt(value)}</span>
-                  <span className="text-xs text-muted-foreground ml-1">({pct.toFixed(0)}%)</span>
+      {/* Revenue Breakdown — vertical bar chart */}
+      {!isLoading && invoiceList.length > 0 && (() => {
+        const bars = [
+          { label: "Paid",        value: totalPaid,        pct: paidPct,    barColor: "bg-green-500",  textColor: "text-green-600 dark:text-green-400" },
+          { label: "Outstanding", value: totalOutstanding, pct: outPct,     barColor: "bg-orange-400", textColor: "text-orange-500" },
+          { label: "Overdue",     value: totalOverdue,     pct: overduePct, barColor: "bg-red-500",    textColor: "text-red-500" },
+        ];
+        const maxVal = Math.max(...bars.map(b => b.value), 1);
+        return (
+          <div className="mb-5 rounded-xl border border-border bg-card p-4">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-4">Revenue Breakdown</p>
+            <div className="flex items-end gap-4 h-36">
+              {bars.map(({ label, value, pct, barColor, textColor }) => (
+                <div key={label} className="flex-1 flex flex-col items-center gap-1.5">
+                  {/* Amount label above bar */}
+                  <span className={`text-[11px] font-bold tabular-nums ${textColor}`}>{fmt(value)}</span>
+                  {/* Bar */}
+                  <div className="w-full flex items-end bg-muted rounded-t-sm" style={{ height: "88px" }}>
+                    <div
+                      className={`w-full rounded-t-sm transition-all duration-500 ${barColor}`}
+                      style={{ height: `${Math.max((value / maxVal) * 88, value > 0 ? 4 : 0)}px` }}
+                    />
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
+            {/* X-axis labels */}
+            <div className="flex gap-4 mt-2">
+              {bars.map(({ label, pct }) => (
+                <div key={label} className="flex-1 text-center">
+                  <p className="text-[11px] text-foreground font-medium">{label}</p>
+                  <p className="text-[10px] text-muted-foreground">{pct.toFixed(0)}%</p>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Recent invoices */}
       <div className="rounded-xl border border-border bg-card overflow-hidden">
