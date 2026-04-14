@@ -4,7 +4,7 @@ import { useLocation } from "wouter";
 import {
   Plus, Trash2, Pencil, Receipt, Users, Check,
   ChevronDown, Send, Clock, AlertCircle, X, Home,
-  Package, Tag, ChevronRight,
+  Package, Tag, ChevronRight, MoreHorizontal,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -495,6 +495,7 @@ export default function Invoicing() {
   const [editCatalogItem, setEditCatalogItem] = useState<CatalogItem | undefined>();
   const [deleteConfirm, setDeleteConfirm] = useState<{ type: "invoice" | "client" | "catalog"; id: number } | null>(null);
   const [statusDropdown, setStatusDropdown] = useState<number | null>(null);
+  const [clientMenu, setClientMenu] = useState<number | null>(null);
 
   const { data: invoiceList = [], isLoading: invLoading } = useQuery<InvoiceWithDetails[]>({ queryKey: ["/api/invoices"] });
   const { data: clientList = [], isLoading: clientLoading } = useQuery<Client[]>({ queryKey: ["/api/clients"] });
@@ -752,13 +753,33 @@ export default function Invoicing() {
                         <span className="text-sm text-foreground truncate">{client.phone ?? "—"}</span>
                         <span className="text-sm text-foreground text-right tabular-nums">{fmt(unpaid)}</span>
                         <span className="text-sm text-foreground text-right tabular-nums">$0.00</span>
-                        <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button size="icon" variant="ghost" onClick={() => { setEditClient(client); setShowClientModal(true); }} data-testid={`button-edit-client-${client.id}`}>
-                            <Pencil className="w-3.5 h-3.5" />
+                        <div className="relative flex items-center justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={e => { e.stopPropagation(); setClientMenu(clientMenu === client.id ? null : client.id); }}
+                            data-testid={`button-menu-client-${client.id}`}
+                          >
+                            <MoreHorizontal className="w-4 h-4" />
                           </Button>
-                          <Button size="icon" variant="ghost" onClick={() => setDeleteConfirm({ type: "client", id: client.id })} data-testid={`button-delete-client-${client.id}`}>
-                            <Trash2 className="w-3.5 h-3.5 text-red-400" />
-                          </Button>
+                          {clientMenu === client.id && (
+                            <div className="absolute right-0 top-9 z-50 w-36 bg-popover border rounded-md shadow-md p-1" data-testid={`dropdown-client-${client.id}`}>
+                              <button
+                                className="w-full text-left px-3 py-1.5 text-sm rounded hover-elevate flex items-center gap-2"
+                                onClick={() => { setEditClient(client); setShowClientModal(true); setClientMenu(null); }}
+                                data-testid={`option-edit-client-${client.id}`}
+                              >
+                                <Pencil className="w-3.5 h-3.5" /> Edit
+                              </button>
+                              <button
+                                className="w-full text-left px-3 py-1.5 text-sm rounded hover-elevate flex items-center gap-2 text-red-500"
+                                onClick={() => { setDeleteConfirm({ type: "client", id: client.id }); setClientMenu(null); }}
+                                data-testid={`option-delete-client-${client.id}`}
+                              >
+                                <Trash2 className="w-3.5 h-3.5" /> Delete
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </div>
                     );
