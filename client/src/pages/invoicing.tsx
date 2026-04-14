@@ -628,6 +628,7 @@ export default function Invoicing() {
           <CustomerDetailPane
             clientId={Number(customerParams.id)}
             onBack={() => { navigate("/invoicing"); setTab("customers"); }}
+            onEdit={inv => { setEditInvoice(inv); setShowInvoiceModal(true); }}
           />
         ) : (
         <><header className="flex items-center justify-between gap-3 px-6 py-3 border-b border-border bg-background flex-shrink-0 flex-wrap">

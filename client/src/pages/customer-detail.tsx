@@ -1,18 +1,20 @@
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import {
   ArrowLeft, ChevronDown,
-  Check, Send, Clock, AlertCircle, ArrowDownLeft,
+  ArrowDownLeft, MoreVertical, Pencil, Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Client, InvoiceWithDetails } from "@shared/schema";
 
 type InvoiceStatus = "draft" | "sent" | "paid" | "overdue";
 
-const STATUS_CONFIG: Record<InvoiceStatus, { color: string }> = {
-  draft:   { color: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300" },
-  sent:    { color: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" },
-  paid:    { color: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300" },
-  overdue: { color: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300" },
+const STATUS_CONFIG: Record<InvoiceStatus, { label: string; color: string }> = {
+  draft:   { label: "Draft",   color: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300" },
+  sent:    { label: "Sent",    color: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" },
+  paid:    { label: "Paid",    color: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300" },
+  overdue: { label: "Overdue", color: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300" },
 };
 
 function fmt(n: number) {
@@ -33,9 +35,20 @@ function StatusPill({ status }: { status: string }) {
   );
 }
 
-export function CustomerDetailPane({ clientId, onBack }: { clientId: number; onBack: () => void }) {
+export function CustomerDetailPane({
+  clientId,
+  onBack,
+  onEdit,
+}: {
+  clientId: number;
+  onBack: () => void;
+  onEdit: (inv: InvoiceWithDetails) => void;
+}) {
   const { data: client } = useQuery<Client>({ queryKey: ["/api/clients", clientId] });
   const { data: allInvoices = [], isLoading } = useQuery<InvoiceWithDetails[]>({ queryKey: ["/api/invoices"] });
+
+  const [invoiceMenu, setInvoiceMenu] = useState<number | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
 
   const invoices = allInvoices
     .filter(i => i.clientId === clientId)
@@ -46,15 +59,26 @@ export function CustomerDetailPane({ clientId, onBack }: { clientId: number; onB
   const endOfToday   = new Date(startOfToday.getTime() + 86400000 - 1);
   const in30Days     = new Date(startOfToday.getTime() + 30 * 86400000);
 
-  const unpaidInvoices    = invoices.filter(i => i.status === "sent" || i.status === "overdue");
-  const totalOutstanding  = unpaidInvoices.reduce((s, i) => s + i.total, 0);
-  const dueToday          = unpaidInvoices.filter(i => i.dueDate && new Date(i.dueDate) >= startOfToday && new Date(i.dueDate) <= endOfToday).reduce((s, i) => s + i.total, 0);
-  const dueWithin30       = unpaidInvoices.filter(i => i.dueDate && new Date(i.dueDate) > endOfToday && new Date(i.dueDate) <= in30Days).reduce((s, i) => s + i.total, 0);
-  const overdueTotal      = invoices.filter(i => i.status === "overdue").reduce((s, i) => s + i.total, 0);
-  const totalAmount       = invoices.reduce((s, i) => s + i.total, 0);
+  const unpaidInvoices   = invoices.filter(i => i.status === "sent" || i.status === "overdue");
+  const totalOutstanding = unpaidInvoices.reduce((s, i) => s + i.total, 0);
+  const dueToday         = unpaidInvoices.filter(i => i.dueDate && new Date(i.dueDate) >= startOfToday && new Date(i.dueDate) <= endOfToday).reduce((s, i) => s + i.total, 0);
+  const dueWithin30      = unpaidInvoices.filter(i => i.dueDate && new Date(i.dueDate) > endOfToday && new Date(i.dueDate) <= in30Days).reduce((s, i) => s + i.total, 0);
+  const overdueTotal     = invoices.filter(i => i.status === "overdue").reduce((s, i) => s + i.total, 0);
+  const totalAmount      = invoices.reduce((s, i) => s + i.total, 0);
+
+  const updateStatusMut = useMutation({
+    mutationFn: ({ id, status }: { id: number; status: InvoiceStatus }) =>
+      apiRequest("PATCH", `/api/invoices/${id}`, { status }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/invoices"] }),
+  });
+
+  const deleteInvoiceMut = useMutation({
+    mutationFn: (id: number) => apiRequest("DELETE", `/api/invoices/${id}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/invoices"] }),
+  });
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div className="flex flex-col h-full overflow-hidden" onClick={() => setInvoiceMenu(null)}>
       {/* Top nav bar */}
       <header className="flex items-center gap-3 px-5 py-3 border-b border-border bg-background flex-shrink-0">
         <Button size="icon" variant="ghost" onClick={onBack} data-testid="button-back">
@@ -116,7 +140,7 @@ export function CustomerDetailPane({ clientId, onBack }: { clientId: number; onB
         )}
         {!isLoading && invoices.length > 0 && (
           <>
-            <div className="grid grid-cols-[32px_140px_160px_160px_1fr_120px_140px_110px_100px] items-center border-b border-border px-4 py-2 gap-3">
+            <div className="grid grid-cols-[32px_140px_160px_160px_1fr_120px_140px_110px_100px_44px] items-center border-b border-border px-4 py-2 gap-3">
               <div />
               <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Date</span>
               <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Invoice #</span>
@@ -126,13 +150,14 @@ export function CustomerDetailPane({ clientId, onBack }: { clientId: number; onB
               <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Due Date</span>
               <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground text-right">Amount</span>
               <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground text-right">Balance Due</span>
+              <div />
             </div>
             {invoices.map(inv => {
               const balance = (inv.status === "sent" || inv.status === "overdue") ? inv.total : 0;
               return (
                 <div
                   key={inv.id}
-                  className="grid grid-cols-[32px_140px_160px_160px_1fr_120px_140px_110px_100px] items-center border-b border-border px-4 py-2.5 gap-3 hover-elevate"
+                  className="group grid grid-cols-[32px_140px_160px_160px_1fr_120px_140px_110px_100px_44px] items-center border-b border-border px-4 py-2.5 gap-3 hover-elevate"
                   data-testid={`row-invoice-${inv.id}`}
                 >
                   <input type="checkbox" className="rounded border-border accent-blue-500" />
@@ -144,13 +169,71 @@ export function CustomerDetailPane({ clientId, onBack }: { clientId: number; onB
                   <span className="text-sm text-foreground">{fmtDate(inv.dueDate?.toString())}</span>
                   <span className="text-sm text-foreground text-right tabular-nums">{fmt(inv.total)}</span>
                   <span className="text-sm text-foreground text-right tabular-nums">{fmt(balance)}</span>
+
+                  {/* 3-dot menu */}
+                  <div className="relative flex items-center justify-end">
+                    {deleteConfirmId === inv.id ? (
+                      <div className="absolute right-0 top-9 z-50 w-44 bg-popover border rounded-md shadow-md p-2 text-sm" data-testid={`confirm-delete-invoice-${inv.id}`}>
+                        <p className="text-foreground mb-2">Delete this invoice?</p>
+                        <div className="flex gap-2">
+                          <Button size="sm" variant="destructive" onClick={e => { e.stopPropagation(); deleteInvoiceMut.mutate(inv.id); setDeleteConfirmId(null); }} data-testid={`confirm-yes-${inv.id}`}>
+                            Delete
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={e => { e.stopPropagation(); setDeleteConfirmId(null); }} data-testid={`confirm-no-${inv.id}`}>
+                            Cancel
+                          </Button>
+                        </div>
+                      </div>
+                    ) : null}
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={e => { e.stopPropagation(); setInvoiceMenu(invoiceMenu === inv.id ? null : inv.id); }}
+                      data-testid={`button-menu-invoice-${inv.id}`}
+                    >
+                      <MoreVertical className="w-4 h-4" />
+                    </Button>
+                    {invoiceMenu === inv.id && (
+                      <div className="absolute right-0 top-9 z-50 w-44 bg-popover border rounded-md shadow-md p-1" data-testid={`dropdown-invoice-${inv.id}`}>
+                        <button
+                          className="w-full text-left px-3 py-1.5 text-sm rounded hover-elevate flex items-center gap-2"
+                          onClick={e => { e.stopPropagation(); onEdit(inv); setInvoiceMenu(null); }}
+                          data-testid={`option-edit-invoice-${inv.id}`}
+                        >
+                          <Pencil className="w-3.5 h-3.5" /> Edit
+                        </button>
+                        <div className="my-1 h-px bg-border" />
+                        <p className="px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Change Status</p>
+                        {(["draft", "sent", "paid", "overdue"] as InvoiceStatus[]).map(s => (
+                          <button
+                            key={s}
+                            className="w-full text-left px-3 py-1.5 text-sm rounded hover-elevate"
+                            onClick={e => { e.stopPropagation(); updateStatusMut.mutate({ id: inv.id, status: s }); setInvoiceMenu(null); }}
+                            data-testid={`option-status-${s}-${inv.id}`}
+                          >
+                            {STATUS_CONFIG[s].label}
+                          </button>
+                        ))}
+                        <div className="my-1 h-px bg-border" />
+                        <button
+                          className="w-full text-left px-3 py-1.5 text-sm rounded hover-elevate flex items-center gap-2 text-red-500"
+                          onClick={e => { e.stopPropagation(); setDeleteConfirmId(inv.id); setInvoiceMenu(null); }}
+                          data-testid={`option-delete-invoice-${inv.id}`}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" /> Delete
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               );
             })}
-            <div className="grid grid-cols-[32px_140px_160px_160px_1fr_120px_140px_110px_100px] items-center px-4 py-3 gap-3 border-t border-border bg-muted/30">
+            <div className="grid grid-cols-[32px_140px_160px_160px_1fr_120px_140px_110px_100px_44px] items-center px-4 py-3 gap-3 border-t border-border bg-muted/30">
               <div /><div /><div /><div /><div /><div /><div />
               <span className="text-sm font-semibold text-foreground text-right tabular-nums">{fmt(totalAmount)}</span>
               <span className="text-sm font-semibold text-foreground text-right tabular-nums">{fmt(totalOutstanding)}</span>
+              <div />
             </div>
           </>
         )}
