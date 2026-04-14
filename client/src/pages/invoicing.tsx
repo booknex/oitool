@@ -90,19 +90,53 @@ function LineItemRow({ item, onChange, onRemove, canRemove }: {
 
 // ─── Client Modal ─────────────────────────────────────────────────────────────
 
+type ClientTab = "details" | "address" | "remarks";
+
+const SALUTATIONS = ["", "Mr.", "Ms.", "Mrs.", "Miss", "Dr.", "Prof."];
+const CURRENCIES = ["USD", "EUR", "GBP", "CAD", "AUD", "MXN"];
+const LANGUAGES = ["English", "Spanish", "French", "Portuguese", "German"];
+
+function FormRow({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
+  return (
+    <div className="grid grid-cols-[180px_1fr] items-start gap-4 py-2.5 border-b border-gray-100 dark:border-gray-800 last:border-0">
+      <span className="text-sm text-gray-600 dark:text-gray-400 pt-2 leading-tight">
+        {label}{required && <span className="text-red-500 ml-0.5">*</span>}
+      </span>
+      <div>{children}</div>
+    </div>
+  );
+}
+
 function ClientModal({ open, onClose, initial }: {
   open: boolean; onClose: () => void; initial?: Client;
 }) {
   const { toast } = useToast();
   const isEdit = !!initial;
+  const [activeTab, setActiveTab] = useState<ClientTab>("details");
   const [form, setForm] = useState({
+    customerType: initial?.customerType ?? "business",
+    salutation: initial?.salutation ?? "",
+    firstName: initial?.firstName ?? "",
+    lastName: initial?.lastName ?? "",
+    companyName: initial?.companyName ?? "",
     name: initial?.name ?? "",
+    currency: initial?.currency ?? "USD",
     email: initial?.email ?? "",
     phone: initial?.phone ?? "",
-    address: initial?.address ?? "",
+    customerLanguage: initial?.customerLanguage ?? "English",
+    attention: initial?.attention ?? "",
+    country: initial?.country ?? "",
+    street1: initial?.street1 ?? "",
+    street2: initial?.street2 ?? "",
+    city: initial?.city ?? "",
+    state: initial?.state ?? "",
+    zipCode: initial?.zipCode ?? "",
+    fax: initial?.fax ?? "",
     notes: initial?.notes ?? "",
   });
+
   const set = (k: keyof typeof form, v: string) => setForm(f => ({ ...f, [k]: v }));
+
   const mutation = useMutation({
     mutationFn: async () => {
       const res = isEdit
@@ -112,44 +146,189 @@ function ClientModal({ open, onClose, initial }: {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
-      toast({ title: isEdit ? "Client updated" : "Client added" });
+      toast({ title: isEdit ? "Customer updated" : "Customer added" });
       onClose();
     },
-    onError: () => toast({ title: "Error", description: "Could not save client", variant: "destructive" }),
+    onError: () => toast({ title: "Error", description: "Could not save customer", variant: "destructive" }),
   });
+
+  const tabs: { id: ClientTab; label: string }[] = [
+    { id: "details", label: "Other Details" },
+    { id: "address", label: "Address" },
+    { id: "remarks", label: "Remarks" },
+  ];
+
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="max-w-md">
-        <DialogHeader><DialogTitle>{isEdit ? "Edit Client" : "New Client"}</DialogTitle></DialogHeader>
-        <div className="space-y-3">
-          <div>
-            <Label>Name *</Label>
-            <Input value={form.name} onChange={e => set("name", e.target.value)} placeholder="Client name" data-testid="input-client-name" />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label>Email</Label>
-              <Input type="email" value={form.email} onChange={e => set("email", e.target.value)} placeholder="email@example.com" data-testid="input-client-email" />
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col p-0">
+        {/* Header */}
+        <div className="px-6 pt-6 pb-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+          <DialogTitle className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+            {isEdit ? "Edit Customer" : "New Customer"}
+          </DialogTitle>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-0">
+          {/* Customer Type */}
+          <FormRow label="Customer Type">
+            <div className="flex items-center gap-6 pt-1.5">
+              {["business", "individual"].map(type => (
+                <label key={type} className="flex items-center gap-2 cursor-pointer">
+                  <div
+                    className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                      form.customerType === type
+                        ? "border-blue-500"
+                        : "border-gray-300 dark:border-gray-600"
+                    }`}
+                    onClick={() => set("customerType", type)}
+                    data-testid={`radio-${type}`}
+                  >
+                    {form.customerType === type && <div className="w-2 h-2 rounded-full bg-blue-500" />}
+                  </div>
+                  <span className="text-sm capitalize">{type}</span>
+                </label>
+              ))}
             </div>
-            <div>
-              <Label>Phone</Label>
-              <Input value={form.phone} onChange={e => set("phone", e.target.value)} placeholder="(555) 000-0000" data-testid="input-client-phone" />
+          </FormRow>
+
+          {/* Primary Contact */}
+          <FormRow label="Primary Contact">
+            <div className="flex gap-2">
+              <Select value={form.salutation} onValueChange={v => set("salutation", v)}>
+                <SelectTrigger className="w-28" data-testid="select-salutation">
+                  <SelectValue placeholder="Salutation" />
+                </SelectTrigger>
+                <SelectContent>
+                  {SALUTATIONS.map(s => (
+                    <SelectItem key={s || "none"} value={s || "none"}>{s || "—"}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Input value={form.firstName} onChange={e => set("firstName", e.target.value)} placeholder="First Name" className="flex-1" data-testid="input-first-name" />
+              <Input value={form.lastName} onChange={e => set("lastName", e.target.value)} placeholder="Last Name" className="flex-1" data-testid="input-last-name" />
             </div>
+          </FormRow>
+
+          {/* Company Name */}
+          <FormRow label="Company Name">
+            <Input value={form.companyName} onChange={e => set("companyName", e.target.value)} placeholder="Company name" data-testid="input-company-name" />
+          </FormRow>
+
+          {/* Display Name */}
+          <FormRow label="Display Name" required>
+            <Input value={form.name} onChange={e => set("name", e.target.value)} placeholder="Select or type to add" data-testid="input-client-name" />
+          </FormRow>
+
+          {/* Currency */}
+          <FormRow label="Currency">
+            <Select value={form.currency} onValueChange={v => set("currency", v)}>
+              <SelectTrigger data-testid="select-currency"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {CURRENCIES.map(c => <SelectItem key={c} value={c}>{c === "USD" ? "USD – United States Dollar" : c}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </FormRow>
+
+          {/* Email */}
+          <FormRow label="Email Address">
+            <Input type="email" value={form.email} onChange={e => set("email", e.target.value)} placeholder="email@example.com" data-testid="input-client-email" />
+          </FormRow>
+
+          {/* Phone */}
+          <FormRow label="Phone">
+            <Input value={form.phone} onChange={e => set("phone", e.target.value)} placeholder="Work Phone" data-testid="input-client-phone" />
+          </FormRow>
+
+          {/* Customer Language */}
+          <FormRow label="Customer Language">
+            <Select value={form.customerLanguage} onValueChange={v => set("customerLanguage", v)}>
+              <SelectTrigger data-testid="select-language"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {LANGUAGES.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </FormRow>
+
+          {/* Tabs */}
+          <div className="pt-4">
+            <div className="flex border-b border-gray-200 dark:border-gray-700 gap-6">
+              {tabs.map(t => (
+                <button
+                  key={t.id}
+                  onClick={() => setActiveTab(t.id)}
+                  className={`pb-2.5 text-sm font-medium transition-colors ${
+                    activeTab === t.id
+                      ? "border-b-2 border-blue-500 text-blue-600 dark:text-blue-400 -mb-px"
+                      : "text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                  }`}
+                  data-testid={`tab-${t.id}`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Address tab */}
+            {activeTab === "address" && (
+              <div className="pt-2">
+                <p className="text-sm font-semibold text-gray-800 dark:text-gray-200 py-3">Billing Address</p>
+                <div className="space-y-0">
+                  <FormRow label="Attention">
+                    <Input value={form.attention} onChange={e => set("attention", e.target.value)} data-testid="input-attention" />
+                  </FormRow>
+                  <FormRow label="Country/Region">
+                    <Input value={form.country} onChange={e => set("country", e.target.value)} placeholder="Select or type to add" data-testid="input-country" />
+                  </FormRow>
+                  <FormRow label="Address">
+                    <div className="space-y-2">
+                      <Textarea value={form.street1} onChange={e => set("street1", e.target.value)} placeholder="Street 1" rows={2} data-testid="input-street1" />
+                      <Textarea value={form.street2} onChange={e => set("street2", e.target.value)} placeholder="Street 2" rows={2} data-testid="input-street2" />
+                    </div>
+                  </FormRow>
+                  <FormRow label="City">
+                    <Input value={form.city} onChange={e => set("city", e.target.value)} data-testid="input-city" />
+                  </FormRow>
+                  <FormRow label="State">
+                    <Input value={form.state} onChange={e => set("state", e.target.value)} data-testid="input-state" />
+                  </FormRow>
+                  <FormRow label="ZIP Code">
+                    <Input value={form.zipCode} onChange={e => set("zipCode", e.target.value)} data-testid="input-zip" />
+                  </FormRow>
+                  <FormRow label="Fax Number">
+                    <Input value={form.fax} onChange={e => set("fax", e.target.value)} data-testid="input-fax" />
+                  </FormRow>
+                </div>
+              </div>
+            )}
+
+            {/* Other Details tab */}
+            {activeTab === "details" && (
+              <div className="py-6 text-sm text-gray-400 dark:text-gray-600 text-center">
+                Additional details can be added here.
+              </div>
+            )}
+
+            {/* Remarks tab */}
+            {activeTab === "remarks" && (
+              <div className="pt-4">
+                <Textarea
+                  value={form.notes}
+                  onChange={e => set("notes", e.target.value)}
+                  placeholder="Add any notes or remarks about this customer…"
+                  rows={5}
+                  data-testid="input-client-notes"
+                />
+              </div>
+            )}
           </div>
-          <div>
-            <Label>Address</Label>
-            <Input value={form.address} onChange={e => set("address", e.target.value)} placeholder="Street, City, State" data-testid="input-client-address" />
-          </div>
-          <div>
-            <Label>Notes</Label>
-            <Textarea value={form.notes} onChange={e => set("notes", e.target.value)} placeholder="Optional notes" rows={2} data-testid="input-client-notes" />
-          </div>
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" onClick={onClose}>Cancel</Button>
-            <Button onClick={() => mutation.mutate()} disabled={!form.name.trim() || mutation.isPending} data-testid="button-save-client">
-              {mutation.isPending ? "Saving…" : "Save"}
-            </Button>
-          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={() => mutation.mutate()} disabled={!form.name.trim() || mutation.isPending} data-testid="button-save-client">
+            {mutation.isPending ? "Saving…" : isEdit ? "Save Changes" : "Save"}
+          </Button>
         </div>
       </DialogContent>
     </Dialog>

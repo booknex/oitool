@@ -246,10 +246,29 @@ export type UpdateSaasCompanyPayload = z.infer<typeof updateSaasCompanySchema>;
 
 export const clients = pgTable("clients", {
   id: serial("id").primaryKey(),
-  name: text("name").notNull(),
+  // Core
+  name: text("name").notNull(),           // display name (used on invoices)
+  customerType: text("customer_type").notNull().default("business"),
+  // Contact
+  salutation: text("salutation").notNull().default(""),
+  firstName: text("first_name").notNull().default(""),
+  lastName: text("last_name").notNull().default(""),
+  companyName: text("company_name").notNull().default(""),
+  currency: text("currency").notNull().default("USD"),
   email: text("email").notNull().default(""),
   phone: text("phone").notNull().default(""),
+  customerLanguage: text("customer_language").notNull().default("English"),
+  // Legacy combined address (kept for compat)
   address: text("address").notNull().default(""),
+  // Structured billing address
+  attention: text("attention").notNull().default(""),
+  country: text("country").notNull().default(""),
+  street1: text("street1").notNull().default(""),
+  street2: text("street2").notNull().default(""),
+  city: text("city").notNull().default(""),
+  state: text("state").notNull().default(""),
+  zipCode: text("zip_code").notNull().default(""),
+  fax: text("fax").notNull().default(""),
   notes: text("notes").notNull().default(""),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
@@ -259,19 +278,49 @@ export type InsertClient = z.infer<typeof insertClientSchema>;
 export type Client = typeof clients.$inferSelect;
 
 export const createClientSchema = z.object({
-  name: z.string().min(1, "Name is required"),
+  name: z.string().min(1, "Display name is required"),
+  customerType: z.string().default("business"),
+  salutation: z.string().default(""),
+  firstName: z.string().default(""),
+  lastName: z.string().default(""),
+  companyName: z.string().default(""),
+  currency: z.string().default("USD"),
   email: z.string().default(""),
   phone: z.string().default(""),
+  customerLanguage: z.string().default("English"),
   address: z.string().default(""),
+  attention: z.string().default(""),
+  country: z.string().default(""),
+  street1: z.string().default(""),
+  street2: z.string().default(""),
+  city: z.string().default(""),
+  state: z.string().default(""),
+  zipCode: z.string().default(""),
+  fax: z.string().default(""),
   notes: z.string().default(""),
 });
 
 export const updateClientSchema = z.object({
   id: z.number(),
   name: z.string().min(1).optional(),
+  customerType: z.string().optional(),
+  salutation: z.string().optional(),
+  firstName: z.string().optional(),
+  lastName: z.string().optional(),
+  companyName: z.string().optional(),
+  currency: z.string().optional(),
   email: z.string().optional(),
   phone: z.string().optional(),
+  customerLanguage: z.string().optional(),
   address: z.string().optional(),
+  attention: z.string().optional(),
+  country: z.string().optional(),
+  street1: z.string().optional(),
+  street2: z.string().optional(),
+  city: z.string().optional(),
+  state: z.string().optional(),
+  zipCode: z.string().optional(),
+  fax: z.string().optional(),
   notes: z.string().optional(),
 });
 
