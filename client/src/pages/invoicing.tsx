@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useLocation } from "wouter";
+import { useLocation, useRoute } from "wouter";
+import { CustomerDetailPane } from "./customer-detail";
 import {
   Plus, Trash2, Pencil, Receipt, Users, Check,
   ChevronDown, Send, Clock, AlertCircle, X, Home,
@@ -485,6 +486,7 @@ const NAV_ITEMS: NavItem[] = [
 
 export default function Invoicing() {
   const [, navigate] = useLocation();
+  const [matchCustomer, customerParams] = useRoute<{ id: string }>("/invoicing/customers/:id");
   const { toast } = useToast();
   const [tab, setTab] = useState<Tab>("invoices");
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
@@ -618,7 +620,14 @@ export default function Invoicing() {
 
       {/* ── Main Content ──────────────────────────────────────────── */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="flex items-center justify-between gap-3 px-6 py-3 border-b border-border bg-background flex-shrink-0 flex-wrap">
+        {/* Customer detail pane — replaces tabs when drilling into a customer */}
+        {matchCustomer && customerParams ? (
+          <CustomerDetailPane
+            clientId={Number(customerParams.id)}
+            onBack={() => { navigate("/invoicing"); setTab("customers"); }}
+          />
+        ) : (
+        <><header className="flex items-center justify-between gap-3 px-6 py-3 border-b border-border bg-background flex-shrink-0 flex-wrap">
           <div>
             <h1 className="text-base font-semibold text-foreground capitalize">
               {tab === "customers" ? "Customers" : tab === "items" ? "Items" : "Invoices"}
@@ -638,7 +647,6 @@ export default function Invoicing() {
             <Plus className="w-4 h-4 mr-1" />{newButtonLabel}
           </Button>
         </header>
-
         <main className="flex-1 overflow-y-auto p-6 flex flex-col">
 
           {/* Invoices */}
@@ -830,6 +838,8 @@ export default function Invoicing() {
           )}
 
         </main>
+          </>
+        )}
       </div>
 
       {/* Modals */}

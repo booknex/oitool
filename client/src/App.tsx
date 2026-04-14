@@ -11,7 +11,6 @@ import Invoicing from "@/pages/invoicing";
 import SaasAdmin from "@/pages/saas";
 import { AffiliateLogin, AffiliateDashboard } from "@/pages/affiliate-portal";
 import Analytics from "@/pages/analytics";
-import CustomerDetail from "@/pages/customer-detail";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -21,8 +20,7 @@ function Router() {
       <Route path="/kiosk" component={Kiosk} />
       <Route path="/reviews" component={Reviews} />
       <Route path="/calendar" component={CalendarPage} />
-      <Route path="/invoicing" component={Invoicing} />
-      <Route path="/invoicing/customers/:id" component={CustomerDetail} />
+      <Route path="/invoicing/:rest*" component={Invoicing} />
       <Route path="/saas" component={SaasAdmin} />
       <Route path="/portal" component={AffiliateLogin} />
       <Route path="/portal/dashboard" component={AffiliateDashboard} />
