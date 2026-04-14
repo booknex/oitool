@@ -5,7 +5,7 @@ import { CustomerDetailPane } from "./customer-detail";
 import {
   Plus, Trash2, Pencil, Receipt, Users, Check,
   ChevronDown, Send, Clock, AlertCircle, X, Home,
-  Package, Tag, ChevronRight, MoreHorizontal,
+  Package, Tag, ChevronRight, MoreHorizontal, MoreVertical,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -500,6 +500,7 @@ export default function Invoicing() {
   const [deleteConfirm, setDeleteConfirm] = useState<{ type: "invoice" | "client" | "catalog"; id: number } | null>(null);
   const [statusDropdown, setStatusDropdown] = useState<number | null>(null);
   const [clientMenu, setClientMenu] = useState<number | null>(null);
+  const [invoiceMenu, setInvoiceMenu] = useState<number | null>(null);
 
   const { data: invoiceList = [], isLoading: invLoading } = useQuery<InvoiceWithDetails[]>({ queryKey: ["/api/invoices"] });
   const { data: clientList = [], isLoading: clientLoading } = useQuery<Client[]>({ queryKey: ["/api/clients"] });
@@ -687,25 +688,46 @@ export default function Invoicing() {
                           </div>
                           <p className="font-semibold text-sm shrink-0" data-testid={`text-invoice-total-${inv.id}`}>{fmt(inv.total)}</p>
                           <div className="relative">
-                            <Button size="icon" variant="ghost" onClick={() => setStatusDropdown(statusDropdown === inv.id ? null : inv.id)} data-testid={`button-status-${inv.id}`}>
-                              <ChevronDown className="w-4 h-4" />
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={e => { e.stopPropagation(); setInvoiceMenu(invoiceMenu === inv.id ? null : inv.id); }}
+                              data-testid={`button-menu-invoice-${inv.id}`}
+                            >
+                              <MoreVertical className="w-4 h-4" />
                             </Button>
-                            {statusDropdown === inv.id && (
-                              <div className="absolute right-0 top-9 z-50 w-36 bg-popover border rounded-md shadow-md p-1" data-testid={`dropdown-status-${inv.id}`}>
+                            {invoiceMenu === inv.id && (
+                              <div className="absolute right-0 top-9 z-50 w-44 bg-popover border rounded-md shadow-md p-1" data-testid={`dropdown-invoice-${inv.id}`}>
+                                <button
+                                  className="w-full text-left px-3 py-1.5 text-sm rounded hover-elevate flex items-center gap-2"
+                                  onClick={() => { setEditInvoice(inv); setShowInvoiceModal(true); setInvoiceMenu(null); }}
+                                  data-testid={`option-edit-invoice-${inv.id}`}
+                                >
+                                  <Pencil className="w-3.5 h-3.5" /> Edit
+                                </button>
+                                <div className="my-1 h-px bg-border" />
+                                <p className="px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Change Status</p>
                                 {(["draft", "sent", "paid", "overdue"] as InvoiceStatus[]).map(s => (
-                                  <button key={s} className="w-full text-left px-2 py-1.5 text-sm rounded hover-elevate" onClick={() => updateStatusMut.mutate({ id: inv.id, status: s })} data-testid={`option-status-${s}`}>
+                                  <button
+                                    key={s}
+                                    className="w-full text-left px-3 py-1.5 text-sm rounded hover-elevate"
+                                    onClick={() => { updateStatusMut.mutate({ id: inv.id, status: s }); setInvoiceMenu(null); }}
+                                    data-testid={`option-status-${s}`}
+                                  >
                                     {STATUS_CONFIG[s].label}
                                   </button>
                                 ))}
+                                <div className="my-1 h-px bg-border" />
+                                <button
+                                  className="w-full text-left px-3 py-1.5 text-sm rounded hover-elevate flex items-center gap-2 text-red-500"
+                                  onClick={() => { setDeleteConfirm({ type: "invoice", id: inv.id }); setInvoiceMenu(null); }}
+                                  data-testid={`option-delete-invoice-${inv.id}`}
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" /> Delete
+                                </button>
                               </div>
                             )}
                           </div>
-                          <Button size="icon" variant="ghost" onClick={() => { setEditInvoice(inv); setShowInvoiceModal(true); }} data-testid={`button-edit-invoice-${inv.id}`}>
-                            <Pencil className="w-4 h-4" />
-                          </Button>
-                          <Button size="icon" variant="ghost" onClick={() => setDeleteConfirm({ type: "invoice", id: inv.id })} data-testid={`button-delete-invoice-${inv.id}`}>
-                            <Trash2 className="w-4 h-4 text-red-400" />
-                          </Button>
                         </div>
                       ))}
                     </CardContent>
