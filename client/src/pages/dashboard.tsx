@@ -978,9 +978,6 @@ export default function Dashboard() {
         <div className="flex-1 overflow-y-auto px-6 py-4">
           <div className="max-w-2xl">
 
-          {/* Invoice analytics */}
-          <InvoiceAnalytics onNavigate={navigate} />
-
           {/* App grid divider */}
           <div className="flex items-center gap-3 mb-3">
             <div className="flex-1 h-px bg-black/5" />
