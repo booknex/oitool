@@ -792,7 +792,7 @@ export default function Invoicing() {
                             onClick={e => { e.stopPropagation(); setClientMenu(clientMenu === client.id ? null : client.id); }}
                             data-testid={`button-menu-client-${client.id}`}
                           >
-                            <MoreHorizontal className="w-4 h-4" />
+                            <MoreVertical className="w-4 h-4" />
                           </Button>
                           {clientMenu === client.id && (
                             <div className="absolute right-0 top-9 z-50 w-36 bg-popover border rounded-md shadow-md p-1" data-testid={`dropdown-client-${client.id}`}>
