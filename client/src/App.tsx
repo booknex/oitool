@@ -21,7 +21,7 @@ function Router() {
       <Route path="/reviews" component={Reviews} />
       <Route path="/calendar" component={CalendarPage} />
       <Route path="/invoicing" component={Invoicing} />
-      <Route path="/invoicing/:rest*" component={Invoicing} />
+      <Route path="/invoicing/customers/:id" component={Invoicing} />
       <Route path="/saas" component={SaasAdmin} />
       <Route path="/portal" component={AffiliateLogin} />
       <Route path="/portal/dashboard" component={AffiliateDashboard} />

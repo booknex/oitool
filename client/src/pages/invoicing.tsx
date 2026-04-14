@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useLocation, useRoute } from "wouter";
+import { useLocation } from "wouter";
 import { CustomerDetailPane } from "./customer-detail";
 import {
   Plus, Trash2, Pencil, Receipt, Users, Check,
@@ -485,8 +485,10 @@ const NAV_ITEMS: NavItem[] = [
 ];
 
 export default function Invoicing() {
-  const [, navigate] = useLocation();
-  const [matchCustomer, customerParams] = useRoute<{ id: string }>("/invoicing/customers/:id");
+  const [location, navigate] = useLocation();
+  const customerMatch = location.match(/^\/invoicing\/customers\/(\d+)$/);
+  const matchCustomer = !!customerMatch;
+  const customerParams = customerMatch ? { id: customerMatch[1] } : null;
   const { toast } = useToast();
   const [tab, setTab] = useState<Tab>("invoices");
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
