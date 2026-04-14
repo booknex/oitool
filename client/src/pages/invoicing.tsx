@@ -402,7 +402,7 @@ export default function Invoicing() {
 
       {/* ── Left Sidebar (iOS style) ─────────────────────────────── */}
       <aside
-        className="w-96 flex-shrink-0 flex flex-col bg-[#F2F2F7] dark:bg-[#1C1C1E] border-r border-black/[0.08] dark:border-white/[0.08]"
+        className="w-96 flex-shrink-0 flex flex-col bg-[#E1F0FA] dark:bg-[#0D1F2D] border-r border-black/[0.08] dark:border-white/[0.08]"
         data-testid="invoicing-sidebar"
       >
         <div className="px-5 pt-6 pb-3">
