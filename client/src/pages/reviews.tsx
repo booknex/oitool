@@ -459,7 +459,15 @@ export default function Reviews() {
                     }}
                     onClick={() => {
                       if (editMode) return;
-                      if (prop.airbnbUrl) window.open(prop.airbnbUrl, "_blank", "noopener,noreferrer");
+                      if (prop.airbnbUrl) {
+                        const a = document.createElement("a");
+                        a.href = prop.airbnbUrl;
+                        a.target = "_blank";
+                        a.rel = "noopener noreferrer";
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                      }
                     }}
                     disabled={editMode}
                     data-testid={`button-open-property-${prop.id}`}
