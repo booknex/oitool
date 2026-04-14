@@ -716,35 +716,53 @@ export default function Invoicing() {
                 <EmptyState icon={Users} title="No customers yet" subtitle="Add your first customer to start billing." />
               )}
               {!clientLoading && clientList.length > 0 && (
-                <div className="max-w-2xl w-full mx-auto">
-                  <Card>
-                    <CardContent className="pt-0 divide-y">
-                      {clientList.map(client => {
-                        const clientInvoices = invoiceList.filter(i => i.clientId === client.id);
-                        const clientTotal = clientInvoices.filter(i => i.status === "paid").reduce((s, i) => s + i.total, 0);
-                        return (
-                          <div key={client.id} className="py-3 flex items-center gap-3" data-testid={`row-client-${client.id}`}>
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium text-sm" data-testid={`text-client-name-${client.id}`}>{client.name}</p>
-                              <p className="text-xs text-muted-foreground truncate">
-                                {[client.email, client.phone].filter(Boolean).join(" · ") || "No contact info"}
-                              </p>
-                              <p className="text-xs text-muted-foreground mt-0.5">
-                                {clientInvoices.length} invoice{clientInvoices.length !== 1 ? "s" : ""}
-                                {clientTotal > 0 ? ` · ${fmt(clientTotal)} paid` : ""}
-                              </p>
-                            </div>
-                            <Button size="icon" variant="ghost" onClick={() => { setEditClient(client); setShowClientModal(true); }} data-testid={`button-edit-client-${client.id}`}>
-                              <Pencil className="w-4 h-4" />
-                            </Button>
-                            <Button size="icon" variant="ghost" onClick={() => setDeleteConfirm({ type: "client", id: client.id })} data-testid={`button-delete-client-${client.id}`}>
-                              <Trash2 className="w-4 h-4 text-red-400" />
-                            </Button>
-                          </div>
-                        );
-                      })}
-                    </CardContent>
-                  </Card>
+                <div className="w-[calc(100%+3rem)] -mx-6 -mt-6">
+                  {/* Table header */}
+                  <div className="grid grid-cols-[32px_1fr_1fr_1fr_1fr_120px_120px_80px] items-center border-b border-border px-3 py-2 gap-3">
+                    <div />
+                    <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Name</span>
+                    <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Company Name</span>
+                    <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Email</span>
+                    <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Work Phone</span>
+                    <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground text-right">Receivables</span>
+                    <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground text-right">Credits</span>
+                    <div />
+                  </div>
+                  {/* Table rows */}
+                  {clientList.map(client => {
+                    const unpaid = invoiceList
+                      .filter(i => i.clientId === client.id && (i.status === "sent" || i.status === "overdue"))
+                      .reduce((s, i) => s + i.total, 0);
+                    return (
+                      <div
+                        key={client.id}
+                        className="group grid grid-cols-[32px_1fr_1fr_1fr_1fr_120px_120px_80px] items-center border-b border-border px-3 py-2.5 gap-3 hover-elevate"
+                        data-testid={`row-client-${client.id}`}
+                      >
+                        <input type="checkbox" className="rounded border-border accent-blue-500" data-testid={`check-client-${client.id}`} />
+                        <button
+                          className="text-sm text-[#1677ff] hover:underline text-left truncate font-medium"
+                          onClick={() => { setEditClient(client); setShowClientModal(true); }}
+                          data-testid={`text-client-name-${client.id}`}
+                        >
+                          {client.name}
+                        </button>
+                        <span className="text-sm text-foreground truncate">{client.companyName ?? "—"}</span>
+                        <span className="text-sm text-foreground truncate">{client.email ?? "—"}</span>
+                        <span className="text-sm text-foreground truncate">{client.phone ?? "—"}</span>
+                        <span className="text-sm text-foreground text-right tabular-nums">{fmt(unpaid)}</span>
+                        <span className="text-sm text-foreground text-right tabular-nums">$0.00</span>
+                        <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button size="icon" variant="ghost" onClick={() => { setEditClient(client); setShowClientModal(true); }} data-testid={`button-edit-client-${client.id}`}>
+                            <Pencil className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button size="icon" variant="ghost" onClick={() => setDeleteConfirm({ type: "client", id: client.id })} data-testid={`button-delete-client-${client.id}`}>
+                            <Trash2 className="w-3.5 h-3.5 text-red-400" />
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </>
