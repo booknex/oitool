@@ -624,13 +624,13 @@ function InvoiceDashboard({
                             </div>
                             {/* Total invoiced bar (blue) */}
                             <div className={`rounded-t-sm transition-all duration-500 ${isCurrent ? "opacity-100" : "opacity-85"} bg-blue-500`}
-                              style={{ width: "22%", height: `${h(total)}px` }} />
+                              style={{ width: "15%", height: `${h(total)}px` }} />
                             {/* Paid bar (green) */}
                             <div className={`rounded-t-sm transition-all duration-500 ${isCurrent ? "opacity-100" : "opacity-85"} bg-emerald-500`}
-                              style={{ width: "22%", height: `${h(paid)}px` }} />
+                              style={{ width: "15%", height: `${h(paid)}px` }} />
                             {/* Unpaid bar (orange) */}
                             <div className={`rounded-t-sm transition-all duration-500 ${isCurrent ? "opacity-100" : "opacity-85"} bg-orange-400`}
-                              style={{ width: "22%", height: `${h(unpaid)}px` }} />
+                              style={{ width: "15%", height: `${h(unpaid)}px` }} />
                           </div>
                         );
                       })}
