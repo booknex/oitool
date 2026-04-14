@@ -532,9 +532,22 @@ export default function Invoicing() {
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/invoices"] }); setStatusDropdown(null); },
   });
 
-  const totalOutstanding = invoiceList.filter(i => i.status === "sent" || i.status === "overdue").reduce((s, i) => s + i.total, 0);
-  const totalPaid = invoiceList.filter(i => i.status === "paid").reduce((s, i) => s + i.total, 0);
-  const overdueCount = invoiceList.filter(i => i.status === "overdue").length;
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const endOfToday   = new Date(startOfToday.getTime() + 86400000 - 1);
+  const in30Days     = new Date(startOfToday.getTime() + 30 * 86400000);
+
+  const unpaidInvoices    = invoiceList.filter(i => i.status === "sent" || i.status === "overdue");
+  const totalOutstanding  = unpaidInvoices.reduce((s, i) => s + i.total, 0);
+  const totalPaid         = invoiceList.filter(i => i.status === "paid").reduce((s, i) => s + i.total, 0);
+  const overdueCount      = invoiceList.filter(i => i.status === "overdue").length;
+  const dueToday          = unpaidInvoices.filter(i => i.dueDate && new Date(i.dueDate) >= startOfToday && new Date(i.dueDate) <= endOfToday).reduce((s, i) => s + i.total, 0);
+  const dueWithin30       = unpaidInvoices.filter(i => i.dueDate && new Date(i.dueDate) > endOfToday && new Date(i.dueDate) <= in30Days).reduce((s, i) => s + i.total, 0);
+  const overdueTotal      = invoiceList.filter(i => i.status === "overdue").reduce((s, i) => s + i.total, 0);
+  const paidWithDates     = invoiceList.filter(i => i.status === "paid" && i.paidAt && i.issueDate);
+  const avgDaysPaid       = paidWithDates.length > 0
+    ? Math.round(paidWithDates.reduce((s, i) => s + (new Date(i.paidAt!).getTime() - new Date(i.issueDate!).getTime()) / 86400000, 0) / paidWithDates.length)
+    : null;
 
   function handleNavClick(id: Tab | "home") {
     if (id === "home") { navigate("/"); return; }
@@ -644,113 +657,189 @@ export default function Invoicing() {
         ) : (
         <><header className="flex items-center justify-between gap-3 px-6 py-3 border-b border-border bg-background flex-shrink-0 flex-wrap">
           <div>
-            <h1 className="text-base font-semibold text-foreground capitalize">
-              {tab === "customers" ? "Customers" : tab === "items" ? "Items" : "Invoices"}
-            </h1>
+            {tab === "invoices" ? (
+              <button className="flex items-center gap-1 text-base font-semibold text-foreground hover:opacity-70 transition-opacity" data-testid="button-all-invoices-title">
+                All Invoices <ChevronDown className="w-4 h-4 mt-0.5" />
+              </button>
+            ) : (
+              <h1 className="text-base font-semibold text-foreground capitalize">
+                {tab === "customers" ? "Customers" : "Items"}
+              </h1>
+            )}
             <p className="text-xs text-muted-foreground">
               {tab === "invoices" && `${invoiceList.length} invoice${invoiceList.length !== 1 ? "s" : ""}`}
               {tab === "customers" && `${clientList.length} client${clientList.length !== 1 ? "s" : ""}`}
               {tab === "items" && `${catalogList.length} item${catalogList.length !== 1 ? "s" : ""}`}
             </p>
           </div>
-          <Button
-            size="sm"
-            onClick={handleNewButton}
-            disabled={tab === "invoices" && clientList.length === 0}
-            data-testid="button-new"
-          >
-            <Plus className="w-4 h-4 mr-1" />{newButtonLabel}
-          </Button>
+          <div className="flex items-center">
+            <Button
+              size="sm"
+              onClick={handleNewButton}
+              disabled={tab === "invoices" && clientList.length === 0}
+              className={tab === "invoices" ? "rounded-r-none" : ""}
+              data-testid="button-new"
+            >
+              <Plus className="w-4 h-4 mr-1" />{newButtonLabel}
+            </Button>
+            {tab === "invoices" && (
+              <Button size="sm" className="rounded-l-none border-l border-primary-foreground/30 px-2" data-testid="button-new-dropdown">
+                <ChevronDown className="w-3.5 h-3.5" />
+              </Button>
+            )}
+          </div>
         </header>
         <main className="flex-1 overflow-y-auto p-6 flex flex-col">
 
           {/* Invoices */}
           {tab === "invoices" && (
-            <>
+            <div className="w-[calc(100%+3rem)] -mx-6 -mt-6 flex flex-col flex-1">
+
+              {/* Payment Summary */}
+              <div className="px-5 py-3 border-b border-border bg-background flex-shrink-0">
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Payment Summary</p>
+                <div className="flex items-start gap-6 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center flex-shrink-0 text-[10px] font-bold text-amber-700 dark:text-amber-300">
+                      {(clientList[0]?.name?.[0] ?? "C").toUpperCase()}
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-muted-foreground">Total Outstanding Receivables</p>
+                      <p className="text-[14px] font-bold text-foreground tabular-nums">{fmt(totalOutstanding)}</p>
+                    </div>
+                  </div>
+                  <div className="w-px self-stretch bg-border" />
+                  <div>
+                    <p className="text-[10px] text-muted-foreground">Due Today</p>
+                    <p className={`text-[14px] font-bold tabular-nums ${dueToday > 0 ? "text-orange-500" : "text-foreground"}`}>{fmt(dueToday)}</p>
+                  </div>
+                  <div className="w-px self-stretch bg-border" />
+                  <div>
+                    <p className="text-[10px] text-muted-foreground">Due Within 30 Days</p>
+                    <p className="text-[14px] font-bold text-foreground tabular-nums">{fmt(dueWithin30)}</p>
+                  </div>
+                  <div className="w-px self-stretch bg-border" />
+                  <div>
+                    <p className="text-[10px] text-muted-foreground">Overdue Invoice</p>
+                    <p className={`text-[14px] font-bold tabular-nums ${overdueTotal > 0 ? "text-red-500" : "text-foreground"}`}>{fmt(overdueTotal)}</p>
+                  </div>
+                  <div className="w-px self-stretch bg-border" />
+                  <div>
+                    <p className="text-[10px] text-muted-foreground">Avg. Days for Getting Paid</p>
+                    <p className="text-[14px] font-bold text-foreground">
+                      {avgDaysPaid !== null ? `${avgDaysPaid} Days` : "—"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Loading / Empty */}
               {invLoading && (
                 <div className="flex-1 flex items-center justify-center">
                   <p className="text-muted-foreground">Loading invoices…</p>
                 </div>
               )}
               {!invLoading && invoiceList.length === 0 && (
-                <EmptyState
-                  icon={Receipt}
-                  title="No invoices yet"
-                  subtitle={clientList.length === 0
-                    ? "Add a customer first, then create your first invoice."
-                    : "Click \"New Invoice\" to bill your first client."}
-                />
-              )}
-              {!invLoading && invoiceList.length > 0 && (
-                <div className="max-w-2xl w-full mx-auto">
-                  <Card>
-                    <CardContent className="pt-0 divide-y">
-                      {invoiceList.map(inv => (
-                        <div key={inv.id} className="py-3 flex items-center gap-3" data-testid={`row-invoice-${inv.id}`}>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <button
-                                className="font-mono text-sm font-semibold text-[#1677ff] hover:underline text-left"
-                                onClick={() => navigate(`/invoicing/invoices/${inv.id}`)}
-                                data-testid={`text-invoice-number-${inv.id}`}
-                              >{inv.invoiceNumber}</button>
-                              <StatusBadge status={inv.status} />
-                            </div>
-                            <p className="text-sm text-muted-foreground truncate mt-0.5" data-testid={`text-invoice-client-${inv.id}`}>{inv.client?.name ?? "—"}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {fmtDate(inv.issueDate?.toString())}
-                              {inv.dueDate ? ` · Due ${fmtDate(inv.dueDate.toString())}` : ""}
-                            </p>
-                          </div>
-                          <p className="font-semibold text-sm shrink-0" data-testid={`text-invoice-total-${inv.id}`}>{fmt(inv.total)}</p>
-                          <div className="relative">
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              onClick={e => { e.stopPropagation(); setInvoiceMenu(invoiceMenu === inv.id ? null : inv.id); }}
-                              data-testid={`button-menu-invoice-${inv.id}`}
-                            >
-                              <MoreVertical className="w-4 h-4" />
-                            </Button>
-                            {invoiceMenu === inv.id && (
-                              <div className="absolute right-0 top-9 z-50 w-44 bg-popover border rounded-md shadow-md p-1" data-testid={`dropdown-invoice-${inv.id}`}>
-                                <button
-                                  className="w-full text-left px-3 py-1.5 text-sm rounded hover-elevate flex items-center gap-2"
-                                  onClick={() => { setEditInvoice(inv); setShowInvoiceModal(true); setInvoiceMenu(null); }}
-                                  data-testid={`option-edit-invoice-${inv.id}`}
-                                >
-                                  <Pencil className="w-3.5 h-3.5" /> Edit
-                                </button>
-                                <div className="my-1 h-px bg-border" />
-                                <p className="px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Change Status</p>
-                                {(["draft", "sent", "paid", "overdue"] as InvoiceStatus[]).map(s => (
-                                  <button
-                                    key={s}
-                                    className="w-full text-left px-3 py-1.5 text-sm rounded hover-elevate"
-                                    onClick={() => { updateStatusMut.mutate({ id: inv.id, status: s }); setInvoiceMenu(null); }}
-                                    data-testid={`option-status-${s}`}
-                                  >
-                                    {STATUS_CONFIG[s].label}
-                                  </button>
-                                ))}
-                                <div className="my-1 h-px bg-border" />
-                                <button
-                                  className="w-full text-left px-3 py-1.5 text-sm rounded hover-elevate flex items-center gap-2 text-red-500"
-                                  onClick={() => { setDeleteConfirm({ type: "invoice", id: inv.id }); setInvoiceMenu(null); }}
-                                  data-testid={`option-delete-invoice-${inv.id}`}
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" /> Delete
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </CardContent>
-                  </Card>
+                <div className="flex-1 flex items-center justify-center">
+                  <EmptyState
+                    icon={Receipt}
+                    title="No invoices yet"
+                    subtitle={clientList.length === 0
+                      ? "Add a customer first, then create your first invoice."
+                      : "Click \"New Invoice\" to bill your first client."}
+                  />
                 </div>
               )}
-            </>
+
+              {/* Full-width table */}
+              {!invLoading && invoiceList.length > 0 && (
+                <div className="flex-1 overflow-y-auto">
+                  {/* Table header */}
+                  <div className="grid grid-cols-[32px_110px_150px_130px_1fr_100px_110px_110px_110px_44px] items-center border-b border-border px-4 py-2 gap-3 bg-muted/30 sticky top-0 z-10">
+                    <input type="checkbox" className="rounded border-border accent-blue-500" />
+                    <button className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground hover:text-foreground text-left">
+                      Date <ChevronDown className="w-3 h-3" />
+                    </button>
+                    <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Invoice #</span>
+                    <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Order Number</span>
+                    <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Customer Name</span>
+                    <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Status</span>
+                    <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Due Date</span>
+                    <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground text-right">Amount</span>
+                    <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground text-right">Balance Due</span>
+                    <div />
+                  </div>
+
+                  {/* Rows */}
+                  {invoiceList.map(inv => {
+                    const balance = (inv.status === "sent" || inv.status === "overdue") ? inv.total : 0;
+                    const statusColor =
+                      inv.status === "paid"    ? "text-green-600 dark:text-green-400" :
+                      inv.status === "overdue" ? "text-red-500" :
+                      inv.status === "sent"    ? "text-blue-500" :
+                                                 "text-muted-foreground";
+                    return (
+                      <div
+                        key={inv.id}
+                        className="group grid grid-cols-[32px_110px_150px_130px_1fr_100px_110px_110px_110px_44px] items-center border-b border-border px-4 py-2.5 gap-3 hover-elevate"
+                        data-testid={`row-invoice-${inv.id}`}
+                      >
+                        <input type="checkbox" className="rounded border-border accent-blue-500" />
+                        <span className="text-sm text-foreground">{fmtDate(inv.issueDate?.toString())}</span>
+                        <button
+                          className="text-sm text-[#1677ff] font-medium hover:underline text-left flex items-center gap-1"
+                          onClick={() => navigate(`/invoicing/invoices/${inv.id}`)}
+                          data-testid={`text-invoice-number-${inv.id}`}
+                        >
+                          {inv.invoiceNumber}
+                        </button>
+                        <span className="text-sm text-muted-foreground">—</span>
+                        <span className="text-sm text-foreground truncate" data-testid={`text-invoice-client-${inv.id}`}>{inv.client?.name ?? "—"}</span>
+                        <span className={`text-sm font-semibold ${statusColor}`}>{STATUS_CONFIG[inv.status as InvoiceStatus]?.label ?? inv.status}</span>
+                        <span className="text-sm text-foreground">{fmtDate(inv.dueDate?.toString())}</span>
+                        <span className="text-sm text-foreground text-right tabular-nums" data-testid={`text-invoice-total-${inv.id}`}>{fmt(inv.total)}</span>
+                        <span className="text-sm text-foreground text-right tabular-nums">{fmt(balance)}</span>
+
+                        {/* ⋮ menu */}
+                        <div className="relative flex items-center justify-end">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={e => { e.stopPropagation(); setInvoiceMenu(invoiceMenu === inv.id ? null : inv.id); }}
+                            data-testid={`button-menu-invoice-${inv.id}`}
+                          >
+                            <MoreVertical className="w-4 h-4" />
+                          </Button>
+                          {invoiceMenu === inv.id && (
+                            <div className="absolute right-0 top-9 z-50 w-44 bg-popover border rounded-md shadow-md p-1" data-testid={`dropdown-invoice-${inv.id}`}>
+                              <button className="w-full text-left px-3 py-1.5 text-sm rounded hover-elevate flex items-center gap-2"
+                                onClick={() => { setEditInvoice(inv); setShowInvoiceModal(true); setInvoiceMenu(null); }}
+                                data-testid={`option-edit-invoice-${inv.id}`}
+                              ><Pencil className="w-3.5 h-3.5" /> Edit</button>
+                              <div className="my-1 h-px bg-border" />
+                              <p className="px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Change Status</p>
+                              {(["draft", "sent", "paid", "overdue"] as InvoiceStatus[]).map(s => (
+                                <button key={s}
+                                  className="w-full text-left px-3 py-1.5 text-sm rounded hover-elevate"
+                                  onClick={() => { updateStatusMut.mutate({ id: inv.id, status: s }); setInvoiceMenu(null); }}
+                                  data-testid={`option-status-${s}`}
+                                >{STATUS_CONFIG[s].label}</button>
+                              ))}
+                              <div className="my-1 h-px bg-border" />
+                              <button className="w-full text-left px-3 py-1.5 text-sm rounded hover-elevate flex items-center gap-2 text-red-500"
+                                onClick={() => { setDeleteConfirm({ type: "invoice", id: inv.id }); setInvoiceMenu(null); }}
+                                data-testid={`option-delete-invoice-${inv.id}`}
+                              ><Trash2 className="w-3.5 h-3.5" /> Delete</button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           )}
 
           {/* Customers */}
