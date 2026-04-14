@@ -617,6 +617,118 @@ function InvoiceDashboard({
         );
       })()}
 
+      {/* Monthly Revenue Chart */}
+      {!isLoading && (() => {
+        const currentYear = new Date().getFullYear();
+        const currentMonth = new Date().getMonth();
+        const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        const CHART_H = 96;
+
+        // Build per-month buckets: paid, outstanding, overdue
+        const monthly = MONTHS.map((_, idx) => {
+          const inMonth = invoiceList.filter(inv => {
+            const d = inv.issueDate ? new Date(inv.issueDate) : null;
+            return d && d.getFullYear() === currentYear && d.getMonth() === idx;
+          });
+          return {
+            paid:        inMonth.filter(i => i.status === "paid").reduce((s, i) => s + i.total, 0),
+            outstanding: inMonth.filter(i => i.status === "sent" || i.status === "draft").reduce((s, i) => s + i.total, 0),
+            overdue:     inMonth.filter(i => i.status === "overdue").reduce((s, i) => s + i.total, 0),
+            total:       inMonth.reduce((s, i) => s + i.total, 0),
+          };
+        });
+
+        const maxVal = Math.max(...monthly.map(m => m.total), 1);
+        const yearTotal = monthly.reduce((s, m) => s + m.total, 0);
+
+        return (
+          <div className="mb-5 rounded-xl border border-border bg-card p-5">
+            {/* Header */}
+            <div className="flex items-baseline justify-between mb-1">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Monthly Revenue</p>
+              <span className="text-xs text-muted-foreground">{currentYear} · {fmt(yearTotal)} total</span>
+            </div>
+
+            {/* Legend */}
+            <div className="flex items-center gap-4 mb-4">
+              {[
+                { label: "Paid",        dot: "bg-emerald-500" },
+                { label: "Outstanding", dot: "bg-amber-400" },
+                { label: "Overdue",     dot: "bg-rose-500" },
+              ].map(({ label, dot }) => (
+                <div key={label} className="flex items-center gap-1.5">
+                  <span className={`w-2 h-2 rounded-full ${dot}`} />
+                  <span className="text-[11px] text-muted-foreground">{label}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Chart */}
+            <div className="relative" style={{ height: `${CHART_H}px` }}>
+              {/* Gridlines */}
+              {[0.25, 0.5, 0.75, 1].map(g => (
+                <div key={g} className="absolute left-0 right-0 border-t border-dashed border-border"
+                  style={{ bottom: `${g * CHART_H}px` }} />
+              ))}
+              <div className="absolute left-0 right-0 bottom-0 border-t border-border" />
+
+              {/* Stacked bars */}
+              <div className="absolute inset-0 flex items-end gap-1">
+                {monthly.map((m, idx) => {
+                  const totalH = Math.max((m.total / maxVal) * CHART_H, m.total > 0 ? 4 : 0);
+                  const paidH        = totalH > 0 ? (m.paid        / m.total) * totalH : 0;
+                  const outstandingH = totalH > 0 ? (m.outstanding / m.total) * totalH : 0;
+                  const overdueH     = totalH > 0 ? (m.overdue     / m.total) * totalH : 0;
+                  const isCurrent = idx === currentMonth;
+                  return (
+                    <div
+                      key={idx}
+                      className="flex-1 flex flex-col justify-end items-center group relative"
+                      style={{ height: `${CHART_H}px` }}
+                    >
+                      {/* Tooltip on hover */}
+                      {m.total > 0 && (
+                        <div className="absolute bottom-full mb-1.5 left-1/2 -translate-x-1/2 z-20 invisible group-hover:visible bg-popover border border-border rounded-md shadow-md px-2.5 py-1.5 text-[11px] whitespace-nowrap pointer-events-none">
+                          <p className="font-semibold text-foreground mb-1">{MONTHS[idx]} {currentYear}</p>
+                          {m.paid > 0        && <p className="text-emerald-600 dark:text-emerald-400">Paid: {fmt(m.paid)}</p>}
+                          {m.outstanding > 0 && <p className="text-amber-500">Outstanding: {fmt(m.outstanding)}</p>}
+                          {m.overdue > 0     && <p className="text-rose-500">Overdue: {fmt(m.overdue)}</p>}
+                          <p className="text-muted-foreground mt-0.5 border-t border-border pt-0.5">Total: {fmt(m.total)}</p>
+                        </div>
+                      )}
+                      {/* Stacked bar segments */}
+                      <div
+                        className={`w-full flex flex-col justify-end overflow-hidden transition-all duration-500 ${isCurrent ? "opacity-100" : "opacity-80"}`}
+                        style={{ height: `${totalH}px`, borderRadius: "3px 3px 0 0" }}
+                      >
+                        {overdueH     > 0 && <div className="bg-rose-500   w-full flex-shrink-0" style={{ height: `${overdueH}px` }} />}
+                        {outstandingH > 0 && <div className="bg-amber-400  w-full flex-shrink-0" style={{ height: `${outstandingH}px` }} />}
+                        {paidH        > 0 && <div className="bg-emerald-500 w-full flex-shrink-0" style={{ height: `${paidH}px` }} />}
+                      </div>
+                      {/* Empty bar ghost */}
+                      {m.total === 0 && (
+                        <div className="w-full rounded-t-sm bg-muted/40" style={{ height: "3px" }} />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* X-axis month labels */}
+            <div className="flex gap-1 mt-2">
+              {MONTHS.map((m, idx) => (
+                <div key={m} className="flex-1 text-center">
+                  <span className={`text-[9px] font-medium ${idx === currentMonth ? "text-blue-500" : "text-muted-foreground"}`}>
+                    {m}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Recent invoices */}
       <div className="rounded-xl border border-border bg-card overflow-hidden">
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
