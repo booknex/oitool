@@ -7,6 +7,7 @@ import {
   Plus, Trash2, Pencil, Receipt, Users, Check,
   ChevronDown, Send, Clock, AlertCircle, X, Home,
   Package, Tag, ChevronRight, MoreHorizontal, MoreVertical,
+  CircleDollarSign,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -741,7 +742,7 @@ function InvoiceDashboard({
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
-type Tab = "dashboard" | "invoices" | "customers" | "items";
+type Tab = "dashboard" | "invoices" | "customers" | "items" | "payments";
 
 interface NavItem {
   id: Tab;
@@ -752,10 +753,11 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { id: "dashboard", label: "Home",      icon: Home,    iconBg: "bg-gray-500",   iconColor: "text-white" },
-  { id: "customers", label: "Customers", icon: Users,   iconBg: "bg-blue-500",   iconColor: "text-white" },
-  { id: "items",     label: "Items",     icon: Package, iconBg: "bg-orange-500", iconColor: "text-white" },
-  { id: "invoices",  label: "Invoices",  icon: Receipt, iconBg: "bg-violet-500", iconColor: "text-white" },
+  { id: "dashboard", label: "Home",               icon: Home,              iconBg: "bg-gray-500",   iconColor: "text-white" },
+  { id: "customers", label: "Customers",          icon: Users,             iconBg: "bg-blue-500",   iconColor: "text-white" },
+  { id: "items",     label: "Items",              icon: Package,           iconBg: "bg-orange-500", iconColor: "text-white" },
+  { id: "invoices",  label: "Invoices",           icon: Receipt,           iconBg: "bg-violet-500", iconColor: "text-white" },
+  { id: "payments",  label: "Payments Received",  icon: CircleDollarSign,  iconBg: "bg-emerald-500", iconColor: "text-white" },
 ];
 
 export default function Invoicing() {
@@ -938,15 +940,17 @@ export default function Invoicing() {
               </button>
             ) : (
               <h1 className="text-base font-semibold text-foreground capitalize">
-                {tab === "customers" ? "Customers" : "Items"}
+                {tab === "customers" ? "Customers" : tab === "items" ? "Items" : "Payments Received"}
               </h1>
             )}
             <p className="text-xs text-muted-foreground">
               {tab === "invoices" && `${invoiceList.length} invoice${invoiceList.length !== 1 ? "s" : ""}`}
               {tab === "customers" && `${clientList.length} client${clientList.length !== 1 ? "s" : ""}`}
               {tab === "items" && `${catalogList.length} item${catalogList.length !== 1 ? "s" : ""}`}
+              {tab === "payments" && `${invoiceList.filter(i => i.status === "paid").length} payment${invoiceList.filter(i => i.status === "paid").length !== 1 ? "s" : ""}`}
             </p>
           </div>
+          {tab !== "payments" && (
           <div className="flex items-center">
             <Button
               size="sm"
@@ -963,6 +967,7 @@ export default function Invoicing() {
               </Button>
             )}
           </div>
+          )}
         </header>
         <main className="flex-1 overflow-y-auto p-6 flex flex-col">
 
@@ -1240,6 +1245,63 @@ export default function Invoicing() {
               )}
             </>
           )}
+
+          {/* Payments Received */}
+          {tab === "payments" && (() => {
+            const paidInvoices = invoiceList.filter(i => i.status === "paid").sort((a, b) => {
+              const da = a.paidAt ? new Date(a.paidAt).getTime() : 0;
+              const db = b.paidAt ? new Date(b.paidAt).getTime() : 0;
+              return db - da;
+            });
+            const totalPaidAmt = paidInvoices.reduce((s, i) => s + i.total, 0);
+            if (invLoading) return (
+              <div className="flex-1 flex items-center justify-center">
+                <p className="text-muted-foreground">Loading…</p>
+              </div>
+            );
+            if (paidInvoices.length === 0) return (
+              <EmptyState icon={CircleDollarSign} title="No payments yet" subtitle="Paid invoices will appear here." />
+            );
+            return (
+              <div className="w-[calc(100%+3rem)] -mx-6 -mt-6 flex flex-col flex-1">
+                {/* Summary bar */}
+                <div className="px-5 py-3 border-b border-border bg-background flex-shrink-0">
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-1">Total Collected</p>
+                  <p className="text-[22px] font-bold text-emerald-500 tabular-nums">{fmt(totalPaidAmt)}</p>
+                </div>
+                {/* Table header */}
+                <div className="grid grid-cols-[1fr_1fr_1fr_140px_120px] items-center border-b border-border px-5 py-2 gap-4">
+                  <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Date Paid</span>
+                  <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Invoice #</span>
+                  <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Customer</span>
+                  <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Invoice Date</span>
+                  <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground text-right">Amount</span>
+                </div>
+                {/* Table rows */}
+                {paidInvoices.map(inv => {
+                  const client = clientList.find(c => c.id === inv.clientId);
+                  return (
+                    <div
+                      key={inv.id}
+                      className="grid grid-cols-[1fr_1fr_1fr_140px_120px] items-center border-b border-border px-5 py-3 gap-4 hover-elevate cursor-pointer"
+                      onClick={() => navigate(`/invoicing/invoices/${inv.id}`)}
+                      data-testid={`row-payment-${inv.id}`}
+                    >
+                      <span className="text-sm text-foreground tabular-nums">
+                        {inv.paidAt ? new Date(inv.paidAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—"}
+                      </span>
+                      <span className="text-sm text-[#1677ff] font-medium">{inv.invoiceNumber}</span>
+                      <span className="text-sm text-foreground truncate">{client?.name ?? "—"}</span>
+                      <span className="text-sm text-muted-foreground tabular-nums">
+                        {inv.issueDate ? new Date(inv.issueDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—"}
+                      </span>
+                      <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 text-right tabular-nums">{fmt(inv.total)}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
 
         </main>
           </>
