@@ -96,12 +96,20 @@ const LANGUAGES = ["English", "Spanish", "French", "Portuguese", "German"];
 
 function FormRow({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
   return (
-    <div className="grid grid-cols-[180px_1fr] items-start gap-4 py-2.5 border-b border-gray-100 dark:border-gray-800 last:border-0">
-      <span className="text-sm text-gray-600 dark:text-gray-400 pt-2 leading-tight">
+    <div className="space-y-1">
+      <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
         {label}{required && <span className="text-red-500 ml-0.5">*</span>}
       </span>
       <div>{children}</div>
     </div>
+  );
+}
+
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 pb-2 pt-1">
+      {children}
+    </p>
   );
 }
 
@@ -151,7 +159,7 @@ function ClientModal({ open, onClose, initial }: {
 
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col p-0">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col p-0">
         {/* Header */}
         <div className="px-6 pt-6 pb-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
           <DialogTitle className="text-xl font-semibold text-gray-900 dark:text-gray-100">
@@ -159,128 +167,128 @@ function ClientModal({ open, onClose, initial }: {
           </DialogTitle>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-0">
-          {/* Customer Type */}
-          <FormRow label="Customer Type">
-            <div className="flex items-center gap-6 pt-1.5">
-              {["business", "individual"].map(type => (
-                <label key={type} className="flex items-center gap-2 cursor-pointer">
-                  <div
-                    className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                      form.customerType === type
-                        ? "border-blue-500"
-                        : "border-gray-300 dark:border-gray-600"
-                    }`}
-                    onClick={() => set("customerType", type)}
-                    data-testid={`radio-${type}`}
-                  >
-                    {form.customerType === type && <div className="w-2 h-2 rounded-full bg-blue-500" />}
-                  </div>
-                  <span className="text-sm capitalize">{type}</span>
-                </label>
-              ))}
-            </div>
-          </FormRow>
+        <div className="flex-1 overflow-y-auto px-6 py-5">
+          {/* Two-column layout */}
+          <div className="grid grid-cols-2 gap-x-8 gap-y-0">
 
-          {/* Primary Contact */}
-          <FormRow label="Primary Contact">
-            <div className="flex gap-2">
-              <Select value={form.salutation} onValueChange={v => set("salutation", v)}>
-                <SelectTrigger className="w-28" data-testid="select-salutation">
-                  <SelectValue placeholder="Salutation" />
-                </SelectTrigger>
-                <SelectContent>
-                  {SALUTATIONS.map(s => (
-                    <SelectItem key={s || "none"} value={s || "none"}>{s || "—"}</SelectItem>
+            {/* ── LEFT: Contact Info ── */}
+            <div className="space-y-3">
+              <SectionTitle>Contact Info</SectionTitle>
+
+              {/* Customer Type */}
+              <FormRow label="Customer Type">
+                <div className="flex items-center gap-5 h-9">
+                  {["business", "individual"].map(type => (
+                    <label key={type} className="flex items-center gap-1.5 cursor-pointer" onClick={() => set("customerType", type)} data-testid={`radio-${type}`}>
+                      <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${form.customerType === type ? "border-blue-500" : "border-gray-300 dark:border-gray-600"}`}>
+                        {form.customerType === type && <div className="w-2 h-2 rounded-full bg-blue-500" />}
+                      </div>
+                      <span className="text-sm capitalize">{type}</span>
+                    </label>
                   ))}
-                </SelectContent>
-              </Select>
-              <Input value={form.firstName} onChange={e => set("firstName", e.target.value)} placeholder="First Name" className="flex-1" data-testid="input-first-name" />
-              <Input value={form.lastName} onChange={e => set("lastName", e.target.value)} placeholder="Last Name" className="flex-1" data-testid="input-last-name" />
+                </div>
+              </FormRow>
+
+              {/* Primary Contact */}
+              <FormRow label="Primary Contact">
+                <div className="flex gap-1.5">
+                  <Select value={form.salutation} onValueChange={v => set("salutation", v)}>
+                    <SelectTrigger className="w-24" data-testid="select-salutation"><SelectValue placeholder="—" /></SelectTrigger>
+                    <SelectContent>
+                      {SALUTATIONS.map(s => <SelectItem key={s || "none"} value={s || "none"}>{s || "—"}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <Input value={form.firstName} onChange={e => set("firstName", e.target.value)} placeholder="First" className="flex-1" data-testid="input-first-name" />
+                  <Input value={form.lastName} onChange={e => set("lastName", e.target.value)} placeholder="Last" className="flex-1" data-testid="input-last-name" />
+                </div>
+              </FormRow>
+
+              <FormRow label="Company Name">
+                <Input value={form.companyName} onChange={e => set("companyName", e.target.value)} placeholder="Company name" data-testid="input-company-name" />
+              </FormRow>
+
+              <FormRow label="Display Name" required>
+                <Input value={form.name} onChange={e => set("name", e.target.value)} placeholder="How this appears on invoices" data-testid="input-client-name" />
+              </FormRow>
+
+              <FormRow label="Currency">
+                <Select value={form.currency} onValueChange={v => set("currency", v)}>
+                  <SelectTrigger data-testid="select-currency"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {CURRENCIES.map(c => <SelectItem key={c} value={c}>{c === "USD" ? "USD – United States Dollar" : c}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </FormRow>
+
+              <FormRow label="Email Address">
+                <Input type="email" value={form.email} onChange={e => set("email", e.target.value)} placeholder="email@example.com" data-testid="input-client-email" />
+              </FormRow>
+
+              <FormRow label="Phone">
+                <Input value={form.phone} onChange={e => set("phone", e.target.value)} placeholder="Work phone" data-testid="input-client-phone" />
+              </FormRow>
+
+              <FormRow label="Language">
+                <Select value={form.customerLanguage} onValueChange={v => set("customerLanguage", v)}>
+                  <SelectTrigger data-testid="select-language"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {LANGUAGES.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </FormRow>
+
+              {/* Remarks */}
+              <div className="pt-1">
+                <SectionTitle>Remarks</SectionTitle>
+                <Textarea
+                  value={form.notes}
+                  onChange={e => set("notes", e.target.value)}
+                  placeholder="Notes or remarks…"
+                  rows={3}
+                  data-testid="input-client-notes"
+                />
+              </div>
             </div>
-          </FormRow>
 
-          {/* Company Name */}
-          <FormRow label="Company Name">
-            <Input value={form.companyName} onChange={e => set("companyName", e.target.value)} placeholder="Company name" data-testid="input-company-name" />
-          </FormRow>
+            {/* ── RIGHT: Billing Address ── */}
+            <div className="space-y-3">
+              <SectionTitle>Billing Address</SectionTitle>
 
-          {/* Display Name */}
-          <FormRow label="Display Name" required>
-            <Input value={form.name} onChange={e => set("name", e.target.value)} placeholder="Select or type to add" data-testid="input-client-name" />
-          </FormRow>
-
-          {/* Currency */}
-          <FormRow label="Currency">
-            <Select value={form.currency} onValueChange={v => set("currency", v)}>
-              <SelectTrigger data-testid="select-currency"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {CURRENCIES.map(c => <SelectItem key={c} value={c}>{c === "USD" ? "USD – United States Dollar" : c}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </FormRow>
-
-          {/* Email */}
-          <FormRow label="Email Address">
-            <Input type="email" value={form.email} onChange={e => set("email", e.target.value)} placeholder="email@example.com" data-testid="input-client-email" />
-          </FormRow>
-
-          {/* Phone */}
-          <FormRow label="Phone">
-            <Input value={form.phone} onChange={e => set("phone", e.target.value)} placeholder="Work Phone" data-testid="input-client-phone" />
-          </FormRow>
-
-          {/* Customer Language */}
-          <FormRow label="Customer Language">
-            <Select value={form.customerLanguage} onValueChange={v => set("customerLanguage", v)}>
-              <SelectTrigger data-testid="select-language"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {LANGUAGES.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </FormRow>
-
-          {/* Billing Address — always visible */}
-          <div className="pt-4">
-            <p className="text-sm font-semibold text-gray-800 dark:text-gray-200 pb-1 pt-2">Billing Address</p>
-            <div className="border-t border-gray-100 dark:border-gray-800">
               <FormRow label="Attention">
                 <Input value={form.attention} onChange={e => set("attention", e.target.value)} data-testid="input-attention" />
               </FormRow>
-              <FormRow label="Country/Region">
+
+              <FormRow label="Country / Region">
                 <Input value={form.country} onChange={e => set("country", e.target.value)} placeholder="Country or region" data-testid="input-country" />
               </FormRow>
-              <FormRow label="Address">
-                <div className="space-y-2">
-                  <Textarea value={form.street1} onChange={e => set("street1", e.target.value)} placeholder="Street 1" rows={2} data-testid="input-street1" />
-                  <Textarea value={form.street2} onChange={e => set("street2", e.target.value)} placeholder="Street 2" rows={2} data-testid="input-street2" />
-                </div>
-              </FormRow>
-              <FormRow label="City">
-                <Input value={form.city} onChange={e => set("city", e.target.value)} data-testid="input-city" />
-              </FormRow>
-              <FormRow label="State">
-                <Input value={form.state} onChange={e => set("state", e.target.value)} data-testid="input-state" />
-              </FormRow>
-              <FormRow label="ZIP Code">
-                <Input value={form.zipCode} onChange={e => set("zipCode", e.target.value)} data-testid="input-zip" />
-              </FormRow>
-              <FormRow label="Fax Number">
-                <Input value={form.fax} onChange={e => set("fax", e.target.value)} data-testid="input-fax" />
-              </FormRow>
-            </div>
-          </div>
 
-          {/* Remarks — always visible */}
-          <div className="pt-4 pb-2">
-            <p className="text-sm font-semibold text-gray-800 dark:text-gray-200 pb-3">Remarks</p>
-            <Textarea
-              value={form.notes}
-              onChange={e => set("notes", e.target.value)}
-              placeholder="Add any notes or remarks about this customer…"
-              rows={3}
-              data-testid="input-client-notes"
-            />
+              <FormRow label="Street 1">
+                <Input value={form.street1} onChange={e => set("street1", e.target.value)} placeholder="Street 1" data-testid="input-street1" />
+              </FormRow>
+
+              <FormRow label="Street 2">
+                <Input value={form.street2} onChange={e => set("street2", e.target.value)} placeholder="Street 2" data-testid="input-street2" />
+              </FormRow>
+
+              <div className="grid grid-cols-2 gap-2">
+                <FormRow label="City">
+                  <Input value={form.city} onChange={e => set("city", e.target.value)} data-testid="input-city" />
+                </FormRow>
+                <FormRow label="State">
+                  <Input value={form.state} onChange={e => set("state", e.target.value)} data-testid="input-state" />
+                </FormRow>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <FormRow label="ZIP Code">
+                  <Input value={form.zipCode} onChange={e => set("zipCode", e.target.value)} data-testid="input-zip" />
+                </FormRow>
+                <FormRow label="Fax">
+                  <Input value={form.fax} onChange={e => set("fax", e.target.value)} data-testid="input-fax" />
+                </FormRow>
+              </div>
+            </div>
+
           </div>
         </div>
 
