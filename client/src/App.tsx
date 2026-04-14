@@ -15,11 +15,20 @@ import NotFound from "@/pages/not-found";
 import { ArrowLeft } from "lucide-react";
 
 function BackButton() {
-  const [location] = useLocation();
+  const [location, navigate] = useLocation();
   if (location === "/") return null;
+
+  function getBackPath(loc: string): string {
+    if (/^\/invoicing\/invoices\/\d+/.test(loc)) return "/invoicing";
+    if (/^\/invoicing\/customers\/\d+/.test(loc)) return "/invoicing";
+    if (/^\/invoicing/.test(loc)) return "/";
+    if (/^\/portal\/dashboard/.test(loc)) return "/portal";
+    return "/";
+  }
+
   return (
     <button
-      onClick={() => window.history.back()}
+      onClick={() => navigate(getBackPath(location))}
       data-testid="button-back"
       className="fixed top-4 left-4 z-50 flex items-center justify-center w-9 h-9 rounded-xl border border-black/10 bg-white/80 text-muted-foreground shadow-sm backdrop-blur-sm hover:bg-white hover:border-black/20 transition-all"
       title="Go back"
