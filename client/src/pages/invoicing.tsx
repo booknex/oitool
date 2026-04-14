@@ -3,8 +3,8 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import {
   Plus, Trash2, Pencil, Receipt, Users, Check,
-  ChevronDown, Send, DollarSign, Clock, AlertCircle, X, Home,
-  Package, Tag,
+  ChevronDown, Send, Clock, AlertCircle, X, Home,
+  Package, Tag, ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -378,11 +378,19 @@ function CatalogItemModal({ open, onClose, initial }: {
 
 type Tab = "invoices" | "customers" | "items";
 
-const NAV_ITEMS: { id: Tab | "home"; label: string; icon: React.ElementType }[] = [
-  { id: "home",      label: "Home",      icon: Home },
-  { id: "customers", label: "Customers", icon: Users },
-  { id: "items",     label: "Items",     icon: Package },
-  { id: "invoices",  label: "Invoices",  icon: Receipt },
+interface NavItem {
+  id: Tab | "home";
+  label: string;
+  icon: React.ElementType;
+  iconBg: string;
+  iconColor: string;
+}
+
+const NAV_ITEMS: NavItem[] = [
+  { id: "home",      label: "Home",      icon: Home,    iconBg: "bg-gray-500",   iconColor: "text-white" },
+  { id: "customers", label: "Customers", icon: Users,   iconBg: "bg-blue-500",   iconColor: "text-white" },
+  { id: "items",     label: "Items",     icon: Package, iconBg: "bg-orange-500", iconColor: "text-white" },
+  { id: "invoices",  label: "Invoices",  icon: Receipt, iconBg: "bg-violet-500", iconColor: "text-white" },
 ];
 
 export default function Invoicing() {
@@ -479,51 +487,86 @@ export default function Invoicing() {
   return (
     <div className="flex h-screen bg-background overflow-hidden">
 
-      {/* ── Left Sidebar ──────────────────────────────────────────── */}
-      <aside className="w-52 flex-shrink-0 bg-card border-r border-border flex flex-col" data-testid="invoicing-sidebar">
-        <div className="p-4 border-b border-border">
-          <div className="flex items-center gap-2">
-            <Receipt className="w-5 h-5 text-violet-600" />
-            <span className="font-semibold text-foreground">Invoicing</span>
-          </div>
+      {/* ── Left Sidebar (iOS style) ─────────────────────────────── */}
+      <aside
+        className="w-56 flex-shrink-0 flex flex-col bg-[#F2F2F7] dark:bg-[#1C1C1E] border-r border-black/[0.08] dark:border-white/[0.08]"
+        data-testid="invoicing-sidebar"
+      >
+        {/* App header */}
+        <div className="px-5 pt-6 pb-3">
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-[#8E8E93] dark:text-[#636366] select-none">
+            Invoicing
+          </p>
         </div>
-        <nav className="flex-1 p-2 space-y-0.5">
-          {NAV_ITEMS.map(({ id, label, icon: Icon }) => {
-            const isActive = id !== "home" && tab === id;
-            return (
-              <button
-                key={id}
-                onClick={() => handleNavClick(id)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors text-left hover-elevate ${
-                  isActive
-                    ? "bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-                data-testid={`nav-${id}`}
-              >
-                <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? "text-violet-600 dark:text-violet-400" : ""}`} />
-                {label}
-              </button>
-            );
-          })}
+
+        {/* Nav group */}
+        <nav className="px-4 flex-1">
+          <div className="rounded-2xl overflow-hidden bg-white dark:bg-[#2C2C2E] shadow-sm">
+            {NAV_ITEMS.map(({ id, label, icon: Icon, iconBg, iconColor }, idx) => {
+              const isActive = id !== "home" && tab === id;
+              const isLast = idx === NAV_ITEMS.length - 1;
+              return (
+                <div key={id}>
+                  <button
+                    onClick={() => handleNavClick(id)}
+                    className={`w-full flex items-center gap-3 px-3 py-[11px] transition-colors text-left active:bg-black/5 dark:active:bg-white/5 ${
+                      isActive ? "bg-[#007AFF]/[0.08] dark:bg-[#0A84FF]/[0.12]" : ""
+                    }`}
+                    data-testid={`nav-${id}`}
+                  >
+                    {/* iOS-style icon badge */}
+                    <span className={`w-[30px] h-[30px] rounded-[8px] flex items-center justify-center flex-shrink-0 ${iconBg}`}>
+                      <Icon className={`w-[15px] h-[15px] ${iconColor}`} />
+                    </span>
+
+                    <span className={`flex-1 text-[15px] font-normal ${
+                      isActive
+                        ? "text-[#007AFF] dark:text-[#0A84FF] font-medium"
+                        : "text-[#1C1C1E] dark:text-[#F2F2F7]"
+                    }`}>
+                      {label}
+                    </span>
+
+                    <ChevronRight className={`w-[14px] h-[14px] ${
+                      isActive ? "text-[#007AFF] dark:text-[#0A84FF]" : "text-[#C7C7CC] dark:text-[#48484A]"
+                    }`} />
+                  </button>
+
+                  {/* inset separator */}
+                  {!isLast && (
+                    <div className="ml-[54px] h-px bg-black/[0.06] dark:bg-white/[0.06]" />
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </nav>
 
-        {/* Summary in sidebar footer */}
-        <div className="p-3 border-t border-border space-y-2">
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-muted-foreground">Outstanding</span>
-            <span className="font-semibold text-blue-600 dark:text-blue-400">{fmt(totalOutstanding)}</span>
-          </div>
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-muted-foreground">Collected</span>
-            <span className="font-semibold text-green-600 dark:text-green-400">{fmt(totalPaid)}</span>
-          </div>
-          {overdueCount > 0 && (
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-muted-foreground">Overdue</span>
-              <span className="font-semibold text-red-500">{overdueCount}</span>
+        {/* Summary group */}
+        <div className="px-4 pb-6 pt-4">
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-[#8E8E93] dark:text-[#636366] mb-2 px-1 select-none">
+            Summary
+          </p>
+          <div className="rounded-2xl overflow-hidden bg-white dark:bg-[#2C2C2E] shadow-sm">
+            <div className="px-4 py-3 flex items-center justify-between">
+              <span className="text-[14px] text-[#1C1C1E] dark:text-[#F2F2F7]">Outstanding</span>
+              <span className="text-[14px] font-semibold text-[#007AFF] dark:text-[#0A84FF]">{fmt(totalOutstanding)}</span>
             </div>
-          )}
+            <div className="ml-4 h-px bg-black/[0.06] dark:bg-white/[0.06]" />
+            <div className="px-4 py-3 flex items-center justify-between">
+              <span className="text-[14px] text-[#1C1C1E] dark:text-[#F2F2F7]">Collected</span>
+              <span className="text-[14px] font-semibold text-[#34C759] dark:text-[#32D74B]">{fmt(totalPaid)}</span>
+            </div>
+            {overdueCount > 0 && (
+              <>
+                <div className="ml-4 h-px bg-black/[0.06] dark:bg-white/[0.06]" />
+                <div className="px-4 py-3 flex items-center justify-between">
+                  <span className="text-[14px] text-[#1C1C1E] dark:text-[#F2F2F7]">Overdue</span>
+                  <span className="text-[14px] font-semibold text-[#FF3B30] dark:text-[#FF453A]">{overdueCount}</span>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </aside>
 
