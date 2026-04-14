@@ -623,8 +623,8 @@ function InvoiceDashboard({
                       )}
                       {/* Stacked bar segments */}
                       <div
-                        className={`w-full flex flex-col justify-end overflow-hidden transition-all duration-500 ${isCurrent ? "opacity-100" : "opacity-80"}`}
-                        style={{ height: `${totalH}px`, borderRadius: "3px 3px 0 0" }}
+                        className={`flex flex-col justify-end overflow-hidden transition-all duration-500 ${isCurrent ? "opacity-100" : "opacity-80"}`}
+                        style={{ width: "40%", height: `${totalH}px`, borderRadius: "3px 3px 0 0" }}
                       >
                         {overdueH     > 0 && <div className="bg-rose-500   w-full flex-shrink-0" style={{ height: `${overdueH}px` }} />}
                         {outstandingH > 0 && <div className="bg-amber-400  w-full flex-shrink-0" style={{ height: `${outstandingH}px` }} />}
@@ -632,7 +632,7 @@ function InvoiceDashboard({
                       </div>
                       {/* Empty bar ghost */}
                       {m.total === 0 && (
-                        <div className="w-full rounded-t-sm bg-muted/40" style={{ height: "3px" }} />
+                        <div className="rounded-t-sm bg-muted/40" style={{ width: "40%", height: "3px" }} />
                       )}
                     </div>
                   );
