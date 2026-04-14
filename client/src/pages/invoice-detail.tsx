@@ -87,7 +87,7 @@ export function InvoiceDetailView({
     <div className="flex h-full overflow-hidden" onClick={() => setStatusMenu(false)}>
 
       {/* ── Left: invoice list for this client ── */}
-      <div className="w-56 flex-shrink-0 border-r border-border flex flex-col overflow-hidden bg-background">
+      <div className="w-80 flex-shrink-0 border-r border-border flex flex-col overflow-hidden bg-background">
         <div className="flex items-center justify-between px-3 py-3 border-b border-border">
           <button
             className="flex items-center gap-1.5 text-sm font-semibold text-foreground hover:opacity-70 transition-opacity"
