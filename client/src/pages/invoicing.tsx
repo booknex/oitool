@@ -90,8 +90,6 @@ function LineItemRow({ item, onChange, onRemove, canRemove }: {
 
 // ─── Client Modal ─────────────────────────────────────────────────────────────
 
-type ClientTab = "details" | "address" | "remarks";
-
 const SALUTATIONS = ["", "Mr.", "Ms.", "Mrs.", "Miss", "Dr.", "Prof."];
 const CURRENCIES = ["USD", "EUR", "GBP", "CAD", "AUD", "MXN"];
 const LANGUAGES = ["English", "Spanish", "French", "Portuguese", "German"];
@@ -112,7 +110,6 @@ function ClientModal({ open, onClose, initial }: {
 }) {
   const { toast } = useToast();
   const isEdit = !!initial;
-  const [activeTab, setActiveTab] = useState<ClientTab>("details");
   const [form, setForm] = useState({
     customerType: initial?.customerType ?? "business",
     salutation: initial?.salutation ?? "",
@@ -151,12 +148,6 @@ function ClientModal({ open, onClose, initial }: {
     },
     onError: () => toast({ title: "Error", description: "Could not save customer", variant: "destructive" }),
   });
-
-  const tabs: { id: ClientTab; label: string }[] = [
-    { id: "details", label: "Other Details" },
-    { id: "address", label: "Address" },
-    { id: "remarks", label: "Remarks" },
-  ];
 
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
@@ -249,77 +240,47 @@ function ClientModal({ open, onClose, initial }: {
             </Select>
           </FormRow>
 
-          {/* Tabs */}
+          {/* Billing Address — always visible */}
           <div className="pt-4">
-            <div className="flex border-b border-gray-200 dark:border-gray-700 gap-6">
-              {tabs.map(t => (
-                <button
-                  key={t.id}
-                  onClick={() => setActiveTab(t.id)}
-                  className={`pb-2.5 text-sm font-medium transition-colors ${
-                    activeTab === t.id
-                      ? "border-b-2 border-blue-500 text-blue-600 dark:text-blue-400 -mb-px"
-                      : "text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-                  }`}
-                  data-testid={`tab-${t.id}`}
-                >
-                  {t.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Address tab */}
-            {activeTab === "address" && (
-              <div className="pt-2">
-                <p className="text-sm font-semibold text-gray-800 dark:text-gray-200 py-3">Billing Address</p>
-                <div className="space-y-0">
-                  <FormRow label="Attention">
-                    <Input value={form.attention} onChange={e => set("attention", e.target.value)} data-testid="input-attention" />
-                  </FormRow>
-                  <FormRow label="Country/Region">
-                    <Input value={form.country} onChange={e => set("country", e.target.value)} placeholder="Select or type to add" data-testid="input-country" />
-                  </FormRow>
-                  <FormRow label="Address">
-                    <div className="space-y-2">
-                      <Textarea value={form.street1} onChange={e => set("street1", e.target.value)} placeholder="Street 1" rows={2} data-testid="input-street1" />
-                      <Textarea value={form.street2} onChange={e => set("street2", e.target.value)} placeholder="Street 2" rows={2} data-testid="input-street2" />
-                    </div>
-                  </FormRow>
-                  <FormRow label="City">
-                    <Input value={form.city} onChange={e => set("city", e.target.value)} data-testid="input-city" />
-                  </FormRow>
-                  <FormRow label="State">
-                    <Input value={form.state} onChange={e => set("state", e.target.value)} data-testid="input-state" />
-                  </FormRow>
-                  <FormRow label="ZIP Code">
-                    <Input value={form.zipCode} onChange={e => set("zipCode", e.target.value)} data-testid="input-zip" />
-                  </FormRow>
-                  <FormRow label="Fax Number">
-                    <Input value={form.fax} onChange={e => set("fax", e.target.value)} data-testid="input-fax" />
-                  </FormRow>
+            <p className="text-sm font-semibold text-gray-800 dark:text-gray-200 pb-1 pt-2">Billing Address</p>
+            <div className="border-t border-gray-100 dark:border-gray-800">
+              <FormRow label="Attention">
+                <Input value={form.attention} onChange={e => set("attention", e.target.value)} data-testid="input-attention" />
+              </FormRow>
+              <FormRow label="Country/Region">
+                <Input value={form.country} onChange={e => set("country", e.target.value)} placeholder="Country or region" data-testid="input-country" />
+              </FormRow>
+              <FormRow label="Address">
+                <div className="space-y-2">
+                  <Textarea value={form.street1} onChange={e => set("street1", e.target.value)} placeholder="Street 1" rows={2} data-testid="input-street1" />
+                  <Textarea value={form.street2} onChange={e => set("street2", e.target.value)} placeholder="Street 2" rows={2} data-testid="input-street2" />
                 </div>
-              </div>
-            )}
+              </FormRow>
+              <FormRow label="City">
+                <Input value={form.city} onChange={e => set("city", e.target.value)} data-testid="input-city" />
+              </FormRow>
+              <FormRow label="State">
+                <Input value={form.state} onChange={e => set("state", e.target.value)} data-testid="input-state" />
+              </FormRow>
+              <FormRow label="ZIP Code">
+                <Input value={form.zipCode} onChange={e => set("zipCode", e.target.value)} data-testid="input-zip" />
+              </FormRow>
+              <FormRow label="Fax Number">
+                <Input value={form.fax} onChange={e => set("fax", e.target.value)} data-testid="input-fax" />
+              </FormRow>
+            </div>
+          </div>
 
-            {/* Other Details tab */}
-            {activeTab === "details" && (
-              <div className="py-6 text-sm text-gray-400 dark:text-gray-600 text-center">
-                Additional details can be added here.
-              </div>
-            )}
-
-            {/* Remarks tab */}
-            {activeTab === "remarks" && (
-              <div className="pt-4">
-                <Textarea
-                  value={form.notes}
-                  onChange={e => set("notes", e.target.value)}
-                  placeholder="Add any notes or remarks about this customer…"
-                  rows={5}
-                  data-testid="input-client-notes"
-                />
-              </div>
-            )}
+          {/* Remarks — always visible */}
+          <div className="pt-4 pb-2">
+            <p className="text-sm font-semibold text-gray-800 dark:text-gray-200 pb-3">Remarks</p>
+            <Textarea
+              value={form.notes}
+              onChange={e => set("notes", e.target.value)}
+              placeholder="Add any notes or remarks about this customer…"
+              rows={3}
+              data-testid="input-client-notes"
+            />
           </div>
         </div>
 
