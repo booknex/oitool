@@ -12,6 +12,7 @@ import SaasAdmin from "@/pages/saas";
 import { AffiliateLogin, AffiliateDashboard } from "@/pages/affiliate-portal";
 import Analytics from "@/pages/analytics";
 import Support from "@/pages/support";
+import Messenger from "@/pages/messenger";
 import NotFound from "@/pages/not-found";
 import { ArrowLeft } from "lucide-react";
 
@@ -54,6 +55,7 @@ function Router() {
       <Route path="/portal/dashboard" component={AffiliateDashboard} />
       <Route path="/analytics" component={Analytics} />
       <Route path="/support" component={Support} />
+      <Route path="/messenger" component={Messenger} />
       <Route component={NotFound} />
     </Switch>
   );
