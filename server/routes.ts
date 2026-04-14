@@ -328,6 +328,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/clients/:id", async (req, res) => {
+    try {
+      const client = await storage.getClient(Number(req.params.id));
+      if (!client) return res.status(404).json({ error: "Client not found" });
+      res.json(client);
+    } catch {
+      res.status(500).json({ error: "Failed to fetch client" });
+    }
+  });
+
   app.post("/api/clients", async (req, res) => {
     try {
       const parsed = createClientSchema.safeParse(req.body);

@@ -743,7 +743,7 @@ export default function Invoicing() {
                         <input type="checkbox" className="rounded border-border accent-blue-500" data-testid={`check-client-${client.id}`} />
                         <button
                           className="text-sm text-[#1677ff] hover:underline text-left truncate font-medium"
-                          onClick={() => { setEditClient(client); setShowClientModal(true); }}
+                          onClick={() => navigate(`/invoicing/customers/${client.id}`)}
                           data-testid={`text-client-name-${client.id}`}
                         >
                           {client.name}
