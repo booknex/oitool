@@ -466,12 +466,190 @@ function EmptyState({ icon: Icon, title, subtitle }: { icon: React.ElementType; 
   );
 }
 
+// ─── Invoice Dashboard Tab ────────────────────────────────────────────────────
+
+function InvoiceDashboard({
+  invoiceList,
+  clientList,
+  isLoading,
+  onViewInvoice,
+  onNewInvoice,
+  onGoToInvoices,
+}: {
+  invoiceList: InvoiceWithDetails[];
+  clientList: Client[];
+  isLoading: boolean;
+  onViewInvoice: (id: number) => void;
+  onNewInvoice: () => void;
+  onGoToInvoices: () => void;
+}) {
+  const totalInvoiced   = invoiceList.reduce((s, i) => s + i.total, 0);
+  const totalPaid       = invoiceList.filter(i => i.status === "paid").reduce((s, i) => s + i.total, 0);
+  const totalOverdue    = invoiceList.filter(i => i.status === "overdue").reduce((s, i) => s + i.total, 0);
+  const totalOutstanding = invoiceList.filter(i => i.status === "sent" || i.status === "draft").reduce((s, i) => s + i.total, 0);
+
+  const countPaid       = invoiceList.filter(i => i.status === "paid").length;
+  const countOverdue    = invoiceList.filter(i => i.status === "overdue").length;
+  const countOutstanding = invoiceList.filter(i => i.status === "sent" || i.status === "draft").length;
+
+  const paidPct        = totalInvoiced > 0 ? (totalPaid / totalInvoiced) * 100 : 0;
+  const outPct         = totalInvoiced > 0 ? (totalOutstanding / totalInvoiced) * 100 : 0;
+  const overduePct     = totalInvoiced > 0 ? (totalOverdue / totalInvoiced) * 100 : 0;
+
+  const recentInvoices = [...invoiceList]
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, 8);
+
+  const statCards = [
+    { label: "Total Invoiced", value: totalInvoiced, count: invoiceList.length, color: "text-blue-600 dark:text-blue-400",   bg: "bg-blue-50 dark:bg-blue-900/20",    icon: Receipt },
+    { label: "Paid",           value: totalPaid,       count: countPaid,          color: "text-green-600 dark:text-green-400", bg: "bg-green-50 dark:bg-green-900/20",  icon: Check },
+    { label: "Outstanding",    value: totalOutstanding, count: countOutstanding,   color: "text-orange-500",                    bg: "bg-orange-50 dark:bg-orange-900/20", icon: Clock },
+    { label: "Overdue",        value: totalOverdue,     count: countOverdue,       color: "text-red-500",                       bg: "bg-red-50 dark:bg-red-900/20",      icon: AlertCircle },
+  ];
+
+  return (
+    <div className="flex-1 overflow-y-auto p-6">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+        <div>
+          <h1 className="text-xl font-semibold text-foreground">Invoice Dashboard</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {clientList.length} client{clientList.length !== 1 ? "s" : ""} · {invoiceList.length} invoice{invoiceList.length !== 1 ? "s" : ""}
+          </p>
+        </div>
+        <Button onClick={onNewInvoice} disabled={clientList.length === 0} data-testid="button-dashboard-new-invoice">
+          <Plus className="w-4 h-4 mr-1" /> New Invoice
+        </Button>
+      </div>
+
+      {/* Stat cards */}
+      <div className="grid grid-cols-2 gap-3 mb-5">
+        {statCards.map(card => {
+          const Icon = card.icon;
+          return (
+            <div key={card.label} className="rounded-xl border border-border bg-card p-4" data-testid={`dash-stat-${card.label.toLowerCase().replace(/\s+/g, "-")}`}>
+              <div className="flex items-center gap-2 mb-2">
+                <span className={`w-7 h-7 rounded-md flex items-center justify-center ${card.bg}`}>
+                  <Icon className={`w-3.5 h-3.5 ${card.color}`} />
+                </span>
+                <span className="text-xs text-muted-foreground">{card.label}</span>
+              </div>
+              {isLoading ? (
+                <div className="h-6 w-24 rounded bg-muted animate-pulse" />
+              ) : (
+                <p className={`text-2xl font-bold tabular-nums ${card.color}`}>{fmt(card.value)}</p>
+              )}
+              {!isLoading && (
+                <p className="text-xs text-muted-foreground mt-0.5">{card.count} invoice{card.count !== 1 ? "s" : ""}</p>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Breakdown bar */}
+      {!isLoading && invoiceList.length > 0 && (
+        <div className="mb-5 rounded-xl border border-border bg-card p-4">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Revenue Breakdown</p>
+          <div className="flex rounded-full overflow-hidden h-3 bg-muted mb-3">
+            <div className="h-full bg-green-500 transition-all" style={{ width: `${paidPct}%` }} />
+            <div className="h-full bg-orange-400 transition-all" style={{ width: `${outPct}%` }} />
+            <div className="h-full bg-red-500 transition-all" style={{ width: `${overduePct}%` }} />
+          </div>
+          <div className="flex gap-5 flex-wrap">
+            {[
+              { label: "Paid", color: "bg-green-500", value: totalPaid, pct: paidPct },
+              { label: "Outstanding", color: "bg-orange-400", value: totalOutstanding, pct: outPct },
+              { label: "Overdue", color: "bg-red-500", value: totalOverdue, pct: overduePct },
+            ].map(({ label, color, value, pct }) => (
+              <div key={label} className="flex items-center gap-2">
+                <span className={`w-2.5 h-2.5 rounded-full ${color} flex-shrink-0`} />
+                <div>
+                  <span className="text-xs text-muted-foreground">{label}</span>
+                  <span className="text-xs text-foreground font-semibold ml-1.5">{fmt(value)}</span>
+                  <span className="text-xs text-muted-foreground ml-1">({pct.toFixed(0)}%)</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Recent invoices */}
+      <div className="rounded-xl border border-border bg-card overflow-hidden">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+          <p className="text-sm font-semibold text-foreground">Recent Invoices</p>
+          <button
+            onClick={onGoToInvoices}
+            className="text-xs text-blue-500 hover:text-blue-600 flex items-center gap-1 transition-colors"
+            data-testid="button-dash-view-all"
+          >
+            View All <ChevronRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
+        {isLoading && (
+          <div className="divide-y divide-border">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="px-4 py-3 flex items-center gap-3">
+                <div className="h-4 flex-1 rounded bg-muted animate-pulse" />
+                <div className="h-4 w-16 rounded bg-muted animate-pulse" />
+              </div>
+            ))}
+          </div>
+        )}
+
+        {!isLoading && recentInvoices.length === 0 && (
+          <div className="px-4 py-8 text-center">
+            <Receipt className="w-8 h-8 mx-auto mb-2 text-muted-foreground/30" />
+            <p className="text-sm text-muted-foreground">No invoices yet.</p>
+            {clientList.length === 0 && (
+              <p className="text-xs text-muted-foreground mt-1">Add a customer first to get started.</p>
+            )}
+          </div>
+        )}
+
+        {!isLoading && recentInvoices.length > 0 && (
+          <div className="divide-y divide-border">
+            {recentInvoices.map(inv => {
+              const cfg = STATUS_CONFIG[inv.status as InvoiceStatus] ?? STATUS_CONFIG.draft;
+              const Icon = cfg.icon;
+              return (
+                <button
+                  key={inv.id}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-left hover-elevate transition-colors"
+                  onClick={() => onViewInvoice(inv.id)}
+                  data-testid={`dash-invoice-row-${inv.id}`}
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-foreground truncate">{inv.client?.name ?? "Unknown"}</span>
+                      <Badge className={`gap-1 text-[10px] font-medium flex-shrink-0 ${cfg.className}`}>
+                        <Icon className="w-2.5 h-2.5" />{cfg.label}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {inv.invoiceNumber} · Due {inv.dueDate ? fmtDate(inv.dueDate.toString()) : "—"}
+                    </p>
+                  </div>
+                  <span className="text-sm font-semibold text-foreground tabular-nums flex-shrink-0">{fmt(inv.total)}</span>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground/40 flex-shrink-0" />
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
-type Tab = "invoices" | "customers" | "items";
+type Tab = "dashboard" | "invoices" | "customers" | "items";
 
 interface NavItem {
-  id: Tab | "home";
+  id: Tab;
   label: string;
   icon: React.ElementType;
   iconBg: string;
@@ -479,7 +657,7 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { id: "home",      label: "Home",      icon: Home,    iconBg: "bg-gray-500",   iconColor: "text-white" },
+  { id: "dashboard", label: "Home",      icon: Home,    iconBg: "bg-gray-500",   iconColor: "text-white" },
   { id: "customers", label: "Customers", icon: Users,   iconBg: "bg-blue-500",   iconColor: "text-white" },
   { id: "items",     label: "Items",     icon: Package, iconBg: "bg-orange-500", iconColor: "text-white" },
   { id: "invoices",  label: "Invoices",  icon: Receipt, iconBg: "bg-violet-500", iconColor: "text-white" },
@@ -495,7 +673,7 @@ export default function Invoicing() {
   const matchInvoiceDetail = !!invoiceMatch;
   const invoiceDetailId = invoiceMatch ? Number(invoiceMatch[1]) : null;
   const { toast } = useToast();
-  const [tab, setTab] = useState<Tab>("invoices");
+  const [tab, setTab] = useState<Tab>("dashboard");
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [showClientModal, setShowClientModal] = useState(false);
   const [showCatalogModal, setShowCatalogModal] = useState(false);
@@ -549,21 +727,20 @@ export default function Invoicing() {
     ? Math.round(paidWithDates.reduce((s, i) => s + (new Date(i.paidAt!).getTime() - new Date(i.issueDate!).getTime()) / 86400000, 0) / paidWithDates.length)
     : null;
 
-  function handleNavClick(id: Tab | "home") {
-    if (id === "home") { navigate("/"); return; }
+  function handleNavClick(id: Tab) {
     setTab(id);
     setStatusDropdown(null);
   }
 
   function handleNewButton() {
-    if (tab === "invoices") { setEditInvoice(undefined); setShowInvoiceModal(true); }
+    if (tab === "invoices" || tab === "dashboard") { setEditInvoice(undefined); setShowInvoiceModal(true); }
     else if (tab === "customers") { setEditClient(undefined); setShowClientModal(true); }
     else if (tab === "items") { setEditCatalogItem(undefined); setShowCatalogModal(true); }
   }
 
   const newButtonLabel =
-    tab === "invoices" ? "New Invoice" :
-    tab === "customers" ? "New Customer" : "New Item";
+    tab === "customers" ? "New Customer" :
+    tab === "items" ? "New Item" : "New Invoice";
 
   return (
     <div className="flex h-screen bg-background overflow-hidden">
@@ -582,7 +759,7 @@ export default function Invoicing() {
         <nav className="px-4 flex-1">
           <div className="rounded-2xl overflow-hidden bg-white dark:bg-[#2C2C2E] shadow-sm">
             {NAV_ITEMS.map(({ id, label, icon: Icon, iconBg, iconColor }, idx) => {
-              const isActive = id !== "home" && tab === id;
+              const isActive = tab === id;
               const isLast = idx === NAV_ITEMS.length - 1;
               return (
                 <div key={id}>
@@ -653,6 +830,15 @@ export default function Invoicing() {
             clientId={Number(customerParams.id)}
             onBack={() => { navigate("/invoicing"); setTab("customers"); }}
             onEdit={inv => { setEditInvoice(inv); setShowInvoiceModal(true); }}
+          />
+        ) : tab === "dashboard" ? (
+          <InvoiceDashboard
+            invoiceList={invoiceList}
+            clientList={clientList}
+            isLoading={invLoading}
+            onViewInvoice={id => navigate(`/invoicing/invoices/${id}`)}
+            onNewInvoice={() => { setEditInvoice(undefined); setShowInvoiceModal(true); }}
+            onGoToInvoices={() => setTab("invoices")}
           />
         ) : (
         <><header className="flex items-center justify-between gap-3 px-6 py-3 border-b border-border bg-background flex-shrink-0 flex-wrap">

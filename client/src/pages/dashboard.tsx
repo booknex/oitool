@@ -8,7 +8,7 @@ import {
   Home, Calendar, CalendarDays, Receipt, Building2, Truck, ShoppingCart, Bell, FileText,
   Phone, Zap, DollarSign, Globe, Wrench, Droplet, Archive,
   Lock, Coffee, AlertCircle, BookOpen, Camera, ShoppingBag,
-  ArrowRight, Eye, EyeOff,
+  ArrowRight, Eye, EyeOff, TrendingUp, AlertTriangle, CircleDollarSign,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import type { DashboardApp, InventoryItem } from "@shared/schema";
+import type { DashboardApp, InventoryItem, InvoiceWithDetails } from "@shared/schema";
 import { itemImages } from "@/lib/itemData";
 
 // ─── Icon registry ────────────────────────────────────────────────────────────
@@ -544,6 +544,242 @@ function AppFormModal({
   );
 }
 
+// ─── Invoice Analytics ────────────────────────────────────────────────────────
+
+const fmt = (n: number) =>
+  n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+
+const fmtShort = (d: Date | string | null | undefined) =>
+  d ? new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "—";
+
+type InvoiceStatus = "draft" | "sent" | "paid" | "overdue";
+
+const STATUS_CFG: Record<InvoiceStatus, { label: string; bg: string; text: string; border: string }> = {
+  draft:   { label: "Draft",   bg: "rgba(148,163,184,0.10)", text: "#64748B", border: "rgba(148,163,184,0.25)" },
+  sent:    { label: "Sent",    bg: "rgba(59,130,246,0.10)",  text: "#2563EB", border: "rgba(59,130,246,0.25)" },
+  paid:    { label: "Paid",    bg: "rgba(34,197,94,0.10)",   text: "#16A34A", border: "rgba(34,197,94,0.25)" },
+  overdue: { label: "Overdue", bg: "rgba(239,68,68,0.10)",   text: "#DC2626", border: "rgba(239,68,68,0.25)" },
+};
+
+function InvoiceAnalytics({ onNavigate }: { onNavigate: (path: string) => void }) {
+  const { data: invoices = [], isLoading } = useQuery<InvoiceWithDetails[]>({
+    queryKey: ["/api/invoices"],
+  });
+  const { data: clients = [] } = useQuery<{ id: number }[]>({
+    queryKey: ["/api/clients"],
+  });
+
+  const totalInvoiced = invoices.reduce((s, inv) => s + (inv.total ?? 0), 0);
+  const totalPaid = invoices.filter(i => i.status === "paid").reduce((s, i) => s + (i.total ?? 0), 0);
+  const totalOverdue = invoices.filter(i => i.status === "overdue").reduce((s, i) => s + (i.total ?? 0), 0);
+  const totalOutstanding = invoices.filter(i => i.status === "sent" || i.status === "draft").reduce((s, i) => s + (i.total ?? 0), 0);
+
+  const countPaid = invoices.filter(i => i.status === "paid").length;
+  const countOverdue = invoices.filter(i => i.status === "overdue").length;
+  const countOutstanding = invoices.filter(i => i.status === "sent" || i.status === "draft").length;
+
+  const paidPct = totalInvoiced > 0 ? (totalPaid / totalInvoiced) * 100 : 0;
+  const outstandingPct = totalInvoiced > 0 ? (totalOutstanding / totalInvoiced) * 100 : 0;
+  const overduePct = totalInvoiced > 0 ? (totalOverdue / totalInvoiced) * 100 : 0;
+
+  const recentInvoices = [...invoices]
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, 6);
+
+  const statCards = [
+    {
+      label: "Total Invoiced",
+      value: totalInvoiced,
+      count: invoices.length,
+      icon: CircleDollarSign,
+      iconBg: "rgba(59,130,246,0.10)",
+      iconColor: "#2563EB",
+      testId: "stat-total-invoiced",
+    },
+    {
+      label: "Paid",
+      value: totalPaid,
+      count: countPaid,
+      icon: Check,
+      iconBg: "rgba(34,197,94,0.10)",
+      iconColor: "#16A34A",
+      testId: "stat-paid",
+    },
+    {
+      label: "Outstanding",
+      value: totalOutstanding,
+      count: countOutstanding,
+      icon: TrendingUp,
+      iconBg: "rgba(249,115,22,0.10)",
+      iconColor: "#EA580C",
+      testId: "stat-outstanding",
+    },
+    {
+      label: "Overdue",
+      value: totalOverdue,
+      count: countOverdue,
+      icon: AlertTriangle,
+      iconBg: "rgba(239,68,68,0.10)",
+      iconColor: "#DC2626",
+      testId: "stat-overdue",
+    },
+  ];
+
+  return (
+    <div className="mb-5">
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <p className="text-[11px] uppercase tracking-[0.10em] font-semibold text-muted-foreground mb-0.5">
+            Invoice Overview
+          </p>
+          <h2 className="text-base font-semibold text-foreground">Financial Summary</h2>
+          <p className="text-[10px] text-muted-foreground mt-0.5">
+            {clients.length} client{clients.length !== 1 ? "s" : ""} · {invoices.length} invoice{invoices.length !== 1 ? "s" : ""}
+          </p>
+        </div>
+        <button
+          onClick={() => onNavigate("/invoicing")}
+          data-testid="button-go-to-invoicing"
+          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+        >
+          View All <ChevronRight className="w-3.5 h-3.5" />
+        </button>
+      </div>
+
+      {/* Stat cards */}
+      <div className="grid grid-cols-2 gap-2 mb-3">
+        {statCards.map((card) => {
+          const Icon = card.icon;
+          return (
+            <div
+              key={card.label}
+              className="flex items-center gap-3 p-3 rounded-xl bg-[#FAFAFA] border border-black/5"
+              data-testid={card.testId}
+            >
+              <div
+                className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
+                style={{ background: card.iconBg }}
+              >
+                <Icon className="w-4 h-4" style={{ color: card.iconColor }} />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[11px] text-muted-foreground truncate">{card.label}</p>
+                {isLoading ? (
+                  <div className="h-4 w-16 rounded bg-black/8 animate-pulse mt-0.5" />
+                ) : (
+                  <p className="text-sm font-semibold text-foreground tabular-nums">
+                    {fmt(card.value)}
+                  </p>
+                )}
+                {!isLoading && (
+                  <p className="text-[10px] text-muted-foreground tabular-nums">
+                    {card.count} invoice{card.count !== 1 ? "s" : ""}
+                  </p>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Status breakdown bar */}
+      {!isLoading && invoices.length > 0 && (
+        <div className="mb-3">
+          <div className="flex rounded-full overflow-hidden h-2 bg-black/5">
+            <div
+              className="h-full bg-green-500 transition-all"
+              style={{ width: `${paidPct}%` }}
+              title={`Paid: ${paidPct.toFixed(0)}%`}
+            />
+            <div
+              className="h-full bg-orange-400 transition-all"
+              style={{ width: `${outstandingPct}%` }}
+              title={`Outstanding: ${outstandingPct.toFixed(0)}%`}
+            />
+            <div
+              className="h-full bg-red-500 transition-all"
+              style={{ width: `${overduePct}%` }}
+              title={`Overdue: ${overduePct.toFixed(0)}%`}
+            />
+          </div>
+          <div className="flex gap-4 mt-1.5">
+            {[
+              { label: "Paid", color: "bg-green-500", pct: paidPct },
+              { label: "Outstanding", color: "bg-orange-400", pct: outstandingPct },
+              { label: "Overdue", color: "bg-red-500", pct: overduePct },
+            ].map(({ label, color, pct }) => (
+              <div key={label} className="flex items-center gap-1">
+                <span className={`w-2 h-2 rounded-full ${color} flex-shrink-0`} />
+                <span className="text-[10px] text-muted-foreground">{label} {pct.toFixed(0)}%</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Recent invoices */}
+      {(isLoading || recentInvoices.length > 0) && (
+        <div>
+          <p className="text-[11px] uppercase tracking-[0.10em] font-semibold text-muted-foreground mb-2">
+            Recent Invoices
+          </p>
+          <div className="flex flex-col gap-1.5">
+            {isLoading
+              ? Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="h-12 rounded-xl bg-black/5 animate-pulse" />
+                ))
+              : recentInvoices.map((inv) => {
+                  const cfg = STATUS_CFG[inv.status as InvoiceStatus] ?? STATUS_CFG.draft;
+                  return (
+                    <div
+                      key={inv.id}
+                      className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-[#FAFAFA] border border-black/5 hover-elevate cursor-pointer"
+                      onClick={() => onNavigate(`/invoicing/invoices/${inv.id}`)}
+                      data-testid={`recent-invoice-${inv.id}`}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="text-xs font-semibold text-foreground truncate">
+                            {inv.client?.name ?? "Unknown"}
+                          </p>
+                          <span
+                            className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide flex-shrink-0"
+                            style={{ background: cfg.bg, border: `1px solid ${cfg.border}`, color: cfg.text }}
+                          >
+                            {cfg.label}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">
+                          {inv.invoiceNumber} · Due {fmtShort(inv.dueDate)}
+                        </p>
+                      </div>
+                      <p className="text-sm font-semibold text-foreground tabular-nums flex-shrink-0">
+                        {fmt(inv.total ?? 0)}
+                      </p>
+                    </div>
+                  );
+                })}
+          </div>
+        </div>
+      )}
+
+      {!isLoading && invoices.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-6 text-center">
+          <Receipt className="w-8 h-8 text-muted-foreground/30 mb-2" />
+          <p className="text-sm text-muted-foreground">No invoices yet</p>
+          <button
+            onClick={() => onNavigate("/invoicing")}
+            className="text-xs text-blue-500 hover:text-blue-600 mt-1"
+            data-testid="button-create-first-invoice"
+          >
+            Create your first invoice
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Dashboard ──────────────────────────────────────────────────────────────────
 
 export default function Dashboard() {
@@ -740,7 +976,21 @@ export default function Dashboard() {
 
         {/* App list */}
         <div className="flex-1 overflow-y-auto px-6 py-4">
-          <div className="flex flex-col gap-2 max-w-2xl">
+          <div className="max-w-2xl">
+
+          {/* Invoice analytics */}
+          <InvoiceAnalytics onNavigate={navigate} />
+
+          {/* App grid divider */}
+          <div className="flex items-center gap-3 mb-3">
+            <div className="flex-1 h-px bg-black/5" />
+            <p className="text-[11px] uppercase tracking-[0.10em] font-semibold text-muted-foreground">
+              Quick Access
+            </p>
+            <div className="flex-1 h-px bg-black/5" />
+          </div>
+
+          <div className="flex flex-col gap-2">
             {isLoading ? (
               Array.from({ length: 5 }).map((_, i) => (
                 <div key={i} className="h-[68px] rounded-xl bg-black/5 animate-pulse" />
@@ -848,6 +1098,7 @@ export default function Dashboard() {
                 </p>
               </div>
             )}
+          </div>
           </div>
         </div>
 

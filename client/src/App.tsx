@@ -1,4 +1,4 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -12,6 +12,22 @@ import SaasAdmin from "@/pages/saas";
 import { AffiliateLogin, AffiliateDashboard } from "@/pages/affiliate-portal";
 import Analytics from "@/pages/analytics";
 import NotFound from "@/pages/not-found";
+import { ArrowLeft } from "lucide-react";
+
+function BackButton() {
+  const [location] = useLocation();
+  if (location === "/") return null;
+  return (
+    <button
+      onClick={() => window.history.back()}
+      data-testid="button-back"
+      className="fixed top-4 left-4 z-50 flex items-center justify-center w-9 h-9 rounded-xl border border-black/10 bg-white/80 text-muted-foreground shadow-sm backdrop-blur-sm hover:bg-white hover:border-black/20 transition-all"
+      title="Go back"
+    >
+      <ArrowLeft className="w-4 h-4" />
+    </button>
+  );
+}
 
 function Router() {
   return (
@@ -37,6 +53,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
+        <BackButton />
         <Router />
       </TooltipProvider>
     </QueryClientProvider>
