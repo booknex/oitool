@@ -169,10 +169,10 @@ function ClientModal({ open, onClose, initial }: {
 
         <div className="flex-1 overflow-y-auto px-6 py-5">
           {/* Two-column layout */}
-          <div className="grid grid-cols-2 gap-x-8 gap-y-0">
+          <div className="grid grid-cols-2 gap-y-0 divide-x divide-gray-200 dark:divide-gray-700">
 
             {/* ── LEFT: Contact Info ── */}
-            <div className="space-y-3">
+            <div className="space-y-3 pr-8">
               <SectionTitle>Contact Info</SectionTitle>
 
               {/* Customer Type */}
@@ -251,7 +251,7 @@ function ClientModal({ open, onClose, initial }: {
             </div>
 
             {/* ── RIGHT: Billing Address ── */}
-            <div className="space-y-3">
+            <div className="space-y-3 pl-8">
               <SectionTitle>Billing Address</SectionTitle>
 
               <FormRow label="Attention">
