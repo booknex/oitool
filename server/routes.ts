@@ -2,7 +2,7 @@ import type { Express } from "express";
 import express from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { checkoutSchema, restockSchema, createItemSchema, updateItemSchema, createDashboardAppSchema, updateDashboardAppSchema, createPropertySchema, updatePropertySchema, createClientSchema, updateClientSchema, createInvoiceSchema, updateInvoiceSchema, createSaasAffiliateSchema, updateSaasAffiliateSchema, createSaasCompanySchema, updateSaasCompanySchema, type AnalyticsRange } from "@shared/schema";
+import { checkoutSchema, restockSchema, createItemSchema, updateItemSchema, createDashboardAppSchema, updateDashboardAppSchema, createPropertySchema, updatePropertySchema, createClientSchema, updateClientSchema, createInvoiceSchema, updateInvoiceSchema, createSaasAffiliateSchema, updateSaasAffiliateSchema, createSaasCompanySchema, updateSaasCompanySchema, createCatalogItemSchema, updateCatalogItemSchema, type AnalyticsRange } from "@shared/schema";
 import fs from "fs";
 import path from "path";
 
@@ -417,6 +417,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch {
       res.status(500).json({ error: "Failed to delete invoice" });
     }
+  });
+
+  // ─── Catalog Items ────────────────────────────────────────────────────────
+
+  app.get("/api/catalog-items", async (_req, res) => {
+    try {
+      res.json(await storage.getCatalogItems());
+    } catch { res.status(500).json({ error: "Failed to fetch catalog items" }); }
+  });
+
+  app.post("/api/catalog-items", async (req, res) => {
+    try {
+      const result = createCatalogItemSchema.safeParse(req.body);
+      if (!result.success) return res.status(400).json({ error: "Invalid data", details: result.error.issues });
+      res.json(await storage.createCatalogItem(result.data));
+    } catch { res.status(500).json({ error: "Failed to create catalog item" }); }
+  });
+
+  app.patch("/api/catalog-items/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid id" });
+      const result = updateCatalogItemSchema.safeParse({ ...req.body, id });
+      if (!result.success) return res.status(400).json({ error: "Invalid data", details: result.error.issues });
+      res.json(await storage.updateCatalogItem(result.data));
+    } catch (e) {
+      if (e instanceof Error && e.message.includes("not found")) return res.status(404).json({ error: e.message });
+      res.status(500).json({ error: "Failed to update catalog item" });
+    }
+  });
+
+  app.delete("/api/catalog-items/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid id" });
+      await storage.deleteCatalogItem(id);
+      res.json({ success: true });
+    } catch { res.status(500).json({ error: "Failed to delete catalog item" }); }
   });
 
   // ─── Affiliate Portal Auth ────────────────────────────────────────────────

@@ -340,6 +340,35 @@ export const updateInvoiceSchema = z.object({
 export type CreateInvoicePayload = z.infer<typeof createInvoiceSchema>;
 export type UpdateInvoicePayload = z.infer<typeof updateInvoiceSchema>;
 
+// ─── Invoice Catalog Items ────────────────────────────────────────────────────
+
+export const catalogItems = pgTable("catalog_items", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description").notNull().default(""),
+  unitPrice: numeric("unit_price", { precision: 10, scale: 2 }).notNull().default("0"),
+});
+
+export const insertCatalogItemSchema = createInsertSchema(catalogItems).omit({ id: true });
+export type InsertCatalogItem = z.infer<typeof insertCatalogItemSchema>;
+export type CatalogItem = typeof catalogItems.$inferSelect;
+
+export const createCatalogItemSchema = z.object({
+  name: z.string().min(1),
+  description: z.string().default(""),
+  unitPrice: z.string().default("0"),
+});
+
+export const updateCatalogItemSchema = z.object({
+  id: z.number(),
+  name: z.string().min(1).optional(),
+  description: z.string().optional(),
+  unitPrice: z.string().optional(),
+});
+
+export type CreateCatalogItemPayload = z.infer<typeof createCatalogItemSchema>;
+export type UpdateCatalogItemPayload = z.infer<typeof updateCatalogItemSchema>;
+
 // ─── Dashboard Apps ───────────────────────────────────────────────────────────
 
 export const dashboardApps = pgTable("dashboard_apps", {

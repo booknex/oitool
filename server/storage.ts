@@ -39,6 +39,10 @@ import {
   type UpdateSaasAffiliatePayload,
   type CreateSaasCompanyPayload,
   type UpdateSaasCompanyPayload,
+  catalogItems,
+  type CatalogItem,
+  type CreateCatalogItemPayload,
+  type UpdateCatalogItemPayload,
 } from "@shared/schema";
 
 // ─── SSRF protection ─────────────────────────────────────────────────────────
@@ -131,6 +135,11 @@ export interface IStorage {
   createItem(data: CreateItemPayload): Promise<InventoryItem>;
   updateItem(data: UpdateItemPayload): Promise<InventoryItem>;
   deleteItem(id: number): Promise<void>;
+  // Catalog items
+  getCatalogItems(): Promise<CatalogItem[]>;
+  createCatalogItem(data: CreateCatalogItemPayload): Promise<CatalogItem>;
+  updateCatalogItem(data: UpdateCatalogItemPayload): Promise<CatalogItem>;
+  deleteCatalogItem(id: number): Promise<void>;
   // Analytics
   getAnalytics(range: AnalyticsRange): Promise<AnalyticsResponse>;
   // Dashboard apps
@@ -306,6 +315,35 @@ export class DatabaseStorage implements IStorage {
     const item = await this.getItem(id);
     if (!item) throw new Error(`Item with id ${id} not found`);
     await db.delete(inventoryItems).where(eq(inventoryItems.id, id));
+  }
+
+  // ─── Catalog Items ───────────────────────────────────────────────────────────
+
+  async getCatalogItems(): Promise<CatalogItem[]> {
+    return await db.select().from(catalogItems).orderBy(catalogItems.name);
+  }
+
+  async createCatalogItem(data: CreateCatalogItemPayload): Promise<CatalogItem> {
+    const [item] = await db.insert(catalogItems).values({
+      name: data.name,
+      description: data.description ?? "",
+      unitPrice: data.unitPrice ?? "0",
+    }).returning();
+    return item;
+  }
+
+  async updateCatalogItem(data: UpdateCatalogItemPayload): Promise<CatalogItem> {
+    const updates: Partial<typeof catalogItems.$inferInsert> = {};
+    if (data.name !== undefined) updates.name = data.name;
+    if (data.description !== undefined) updates.description = data.description;
+    if (data.unitPrice !== undefined) updates.unitPrice = data.unitPrice;
+    const [updated] = await db.update(catalogItems).set(updates).where(eq(catalogItems.id, data.id)).returning();
+    if (!updated) throw new Error(`Catalog item ${data.id} not found`);
+    return updated;
+  }
+
+  async deleteCatalogItem(id: number): Promise<void> {
+    await db.delete(catalogItems).where(eq(catalogItems.id, id));
   }
 
   // ─── Analytics ──────────────────────────────────────────────────────────────

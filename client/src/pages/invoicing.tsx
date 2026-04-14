@@ -2,11 +2,12 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import {
-  ArrowLeft, Plus, Trash2, Pencil, Receipt, Users, Check,
-  ChevronDown, Send, DollarSign, Clock, AlertCircle, X,
+  Plus, Trash2, Pencil, Receipt, Users, Check,
+  ChevronDown, Send, DollarSign, Clock, AlertCircle, X, Home,
+  Package, Tag,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,7 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import type { Client, InvoiceWithDetails } from "@shared/schema";
+import type { Client, InvoiceWithDetails, CatalogItem } from "@shared/schema";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -295,9 +296,94 @@ function InvoiceModal({ open, onClose, clients, initial }: {
   );
 }
 
+// ─── Catalog Item Modal ───────────────────────────────────────────────────────
+
+function CatalogItemModal({ open, onClose, initial }: {
+  open: boolean;
+  onClose: () => void;
+  initial?: CatalogItem;
+}) {
+  const { toast } = useToast();
+  const isEdit = !!initial;
+  const [form, setForm] = useState({
+    name: initial?.name ?? "",
+    description: initial?.description ?? "",
+    unitPrice: initial?.unitPrice ?? "0",
+  });
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      const res = isEdit
+        ? await apiRequest("PATCH", `/api/catalog-items/${initial!.id}`, form)
+        : await apiRequest("POST", "/api/catalog-items", form);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/catalog-items"] });
+      toast({ title: isEdit ? "Item updated" : "Item added" });
+      onClose();
+    },
+    onError: () => toast({ title: "Error", description: "Could not save item", variant: "destructive" }),
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>{isEdit ? "Edit Item" : "New Item"}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <Label>Name *</Label>
+            <Input
+              value={form.name}
+              onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+              placeholder="e.g. Deep Clean Service"
+              data-testid="input-catalog-name"
+            />
+          </div>
+          <div>
+            <Label>Description</Label>
+            <Input
+              value={form.description}
+              onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+              placeholder="Optional description"
+              data-testid="input-catalog-description"
+            />
+          </div>
+          <div>
+            <Label>Default Price ($)</Label>
+            <Input
+              type="number"
+              min="0"
+              step="0.01"
+              value={form.unitPrice}
+              onChange={e => setForm(f => ({ ...f, unitPrice: e.target.value }))}
+              data-testid="input-catalog-price"
+            />
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={onClose}>Cancel</Button>
+            <Button onClick={() => mutation.mutate()} disabled={!form.name.trim() || mutation.isPending} data-testid="button-save-catalog-item">
+              {mutation.isPending ? "Saving…" : "Save"}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
-type Tab = "invoices" | "clients";
+type Tab = "invoices" | "customers" | "items";
+
+const NAV_ITEMS: { id: Tab | "home"; label: string; icon: React.ElementType }[] = [
+  { id: "home",      label: "Home",      icon: Home },
+  { id: "customers", label: "Customers", icon: Users },
+  { id: "items",     label: "Items",     icon: Package },
+  { id: "invoices",  label: "Invoices",  icon: Receipt },
+];
 
 export default function Invoicing() {
   const [, navigate] = useLocation();
@@ -305,9 +391,11 @@ export default function Invoicing() {
   const [tab, setTab] = useState<Tab>("invoices");
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [showClientModal, setShowClientModal] = useState(false);
+  const [showCatalogModal, setShowCatalogModal] = useState(false);
   const [editInvoice, setEditInvoice] = useState<InvoiceWithDetails | undefined>();
   const [editClient, setEditClient] = useState<Client | undefined>();
-  const [deleteConfirm, setDeleteConfirm] = useState<{ type: "invoice" | "client"; id: number } | null>(null);
+  const [editCatalogItem, setEditCatalogItem] = useState<CatalogItem | undefined>();
+  const [deleteConfirm, setDeleteConfirm] = useState<{ type: "invoice" | "client" | "catalog"; id: number } | null>(null);
   const [statusDropdown, setStatusDropdown] = useState<number | null>(null);
 
   const { data: invoiceList = [], isLoading: invLoading } = useQuery<InvoiceWithDetails[]>({
@@ -318,10 +406,12 @@ export default function Invoicing() {
     queryKey: ["/api/clients"],
   });
 
+  const { data: catalogList = [], isLoading: catalogLoading } = useQuery<CatalogItem[]>({
+    queryKey: ["/api/catalog-items"],
+  });
+
   const deleteInvoiceMut = useMutation({
-    mutationFn: async (id: number) => {
-      await apiRequest("DELETE", `/api/invoices/${id}`);
-    },
+    mutationFn: async (id: number) => { await apiRequest("DELETE", `/api/invoices/${id}`); },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
       setDeleteConfirm(null);
@@ -330,15 +420,22 @@ export default function Invoicing() {
   });
 
   const deleteClientMut = useMutation({
-    mutationFn: async (id: number) => {
-      await apiRequest("DELETE", `/api/clients/${id}`);
-    },
+    mutationFn: async (id: number) => { await apiRequest("DELETE", `/api/clients/${id}`); },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
       setDeleteConfirm(null);
       toast({ title: "Client deleted" });
     },
     onError: () => toast({ title: "Cannot delete", description: "Client has existing invoices", variant: "destructive" }),
+  });
+
+  const deleteCatalogMut = useMutation({
+    mutationFn: async (id: number) => { await apiRequest("DELETE", `/api/catalog-items/${id}`); },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/catalog-items"] });
+      setDeleteConfirm(null);
+      toast({ title: "Item deleted" });
+    },
   });
 
   const updateStatusMut = useMutation({
@@ -352,7 +449,6 @@ export default function Invoicing() {
     },
   });
 
-  // Summary stats
   const totalOutstanding = invoiceList
     .filter(i => i.status === "sent" || i.status === "overdue")
     .reduce((s, i) => s + i.total, 0);
@@ -361,228 +457,295 @@ export default function Invoicing() {
     .reduce((s, i) => s + i.total, 0);
   const overdueCount = invoiceList.filter(i => i.status === "overdue").length;
 
+  function handleNavClick(id: Tab | "home") {
+    if (id === "home") { navigate("/"); return; }
+    setTab(id);
+    setStatusDropdown(null);
+  }
+
+  function handleNewButton() {
+    if (tab === "invoices") { setEditInvoice(undefined); setShowInvoiceModal(true); }
+    else if (tab === "customers") { setEditClient(undefined); setShowClientModal(true); }
+    else if (tab === "items") { setEditCatalogItem(undefined); setShowCatalogModal(true); }
+  }
+
+  const newButtonLabel =
+    tab === "invoices" ? "New Invoice" :
+    tab === "customers" ? "New Customer" :
+    "New Item";
+
+  const newButtonDisabled = tab === "invoices" && clientList.length === 0;
+
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-background border-b px-4 py-3 flex items-center gap-3">
-        <Button size="icon" variant="ghost" onClick={() => navigate("/")} data-testid="button-back-home">
-          <ArrowLeft className="w-4 h-4" />
-        </Button>
-        <div className="flex items-center gap-2 flex-1">
-          <Receipt className="w-5 h-5 text-violet-600" />
-          <h1 className="text-lg font-semibold">Invoicing</h1>
-        </div>
-        <Button
-          size="sm"
-          onClick={() => {
-            if (tab === "invoices") {
-              setEditInvoice(undefined);
-              setShowInvoiceModal(true);
-            } else {
-              setEditClient(undefined);
-              setShowClientModal(true);
-            }
-          }}
-          disabled={tab === "invoices" && clientList.length === 0}
-          data-testid="button-new"
-        >
-          <Plus className="w-4 h-4 mr-1" />
-          {tab === "invoices" ? "New Invoice" : "New Client"}
-        </Button>
-      </header>
+    <div className="flex h-screen bg-background overflow-hidden">
 
-      <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
-        {/* Summary cards */}
-        <div className="grid grid-cols-3 gap-3">
-          <Card data-testid="card-outstanding">
-            <CardContent className="pt-4 pb-3 text-center">
-              <div className="flex items-center justify-center mb-1 text-blue-500">
-                <Send className="w-4 h-4" />
-              </div>
-              <p className="text-xl font-bold">{fmt(totalOutstanding)}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Outstanding</p>
-            </CardContent>
-          </Card>
-          <Card data-testid="card-paid">
-            <CardContent className="pt-4 pb-3 text-center">
-              <div className="flex items-center justify-center mb-1 text-green-500">
-                <Check className="w-4 h-4" />
-              </div>
-              <p className="text-xl font-bold">{fmt(totalPaid)}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Collected</p>
-            </CardContent>
-          </Card>
-          <Card data-testid="card-overdue">
-            <CardContent className="pt-4 pb-3 text-center">
-              <div className="flex items-center justify-center mb-1 text-red-500">
-                <AlertCircle className="w-4 h-4" />
-              </div>
-              <p className="text-xl font-bold">{overdueCount}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Overdue</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Tabs */}
-        <div className="flex gap-1 border-b">
-          {(["invoices", "clients"] as Tab[]).map(t => (
-            <button
-              key={t}
-              className={`px-4 py-2 text-sm font-medium capitalize border-b-2 transition-colors ${
-                tab === t
-                  ? "border-violet-600 text-violet-700 dark:text-violet-400"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
-              }`}
-              onClick={() => setTab(t)}
-              data-testid={`tab-${t}`}
-            >
-              {t === "invoices" ? (
-                <span className="flex items-center gap-1.5"><Receipt className="w-3.5 h-3.5" />Invoices</span>
-              ) : (
-                <span className="flex items-center gap-1.5"><Users className="w-3.5 h-3.5" />Clients</span>
-              )}
-            </button>
-          ))}
-        </div>
-
-        {/* ── Invoices tab ── */}
-        {tab === "invoices" && (
-          <div>
-            {invLoading && <p className="text-center text-muted-foreground py-8">Loading invoices…</p>}
-            {!invLoading && invoiceList.length === 0 && (
-              <Card>
-                <CardContent className="py-12 text-center text-muted-foreground">
-                  <Receipt className="w-8 h-8 mx-auto mb-3 opacity-40" />
-                  <p className="font-medium">No invoices yet</p>
-                  <p className="text-sm mt-1">
-                    {clientList.length === 0
-                      ? "Add a client first, then create your first invoice."
-                      : "Click \"New Invoice\" to bill your first client."}
-                  </p>
-                </CardContent>
-              </Card>
-            )}
-            {!invLoading && invoiceList.length > 0 && (
-              <Card>
-                <CardContent className="pt-0 divide-y">
-                  {invoiceList.map(inv => (
-                    <div key={inv.id} className="py-3 flex items-center gap-3" data-testid={`row-invoice-${inv.id}`}>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-mono text-sm font-semibold" data-testid={`text-invoice-number-${inv.id}`}>{inv.invoiceNumber}</span>
-                          <StatusBadge status={inv.status} />
-                        </div>
-                        <p className="text-sm text-muted-foreground truncate mt-0.5" data-testid={`text-invoice-client-${inv.id}`}>{inv.client?.name ?? "—"}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {fmtDate(inv.issueDate?.toString())}
-                          {inv.dueDate ? ` · Due ${fmtDate(inv.dueDate.toString())}` : ""}
-                        </p>
-                      </div>
-                      <p className="font-semibold text-sm shrink-0" data-testid={`text-invoice-total-${inv.id}`}>{fmt(inv.total)}</p>
-                      {/* Status changer */}
-                      <div className="relative">
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          onClick={() => setStatusDropdown(statusDropdown === inv.id ? null : inv.id)}
-                          data-testid={`button-status-${inv.id}`}
-                        >
-                          <ChevronDown className="w-4 h-4" />
-                        </Button>
-                        {statusDropdown === inv.id && (
-                          <div className="absolute right-0 top-9 z-50 w-36 bg-popover border rounded-md shadow-md p-1" data-testid={`dropdown-status-${inv.id}`}>
-                            {(["draft", "sent", "paid", "overdue"] as InvoiceStatus[]).map(s => (
-                              <button
-                                key={s}
-                                className="w-full text-left px-2 py-1.5 text-sm rounded hover-elevate"
-                                onClick={() => updateStatusMut.mutate({ id: inv.id, status: s })}
-                                data-testid={`option-status-${s}`}
-                              >
-                                {STATUS_CONFIG[s].label}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => { setEditInvoice(inv); setShowInvoiceModal(true); }}
-                        data-testid={`button-edit-invoice-${inv.id}`}
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => setDeleteConfirm({ type: "invoice", id: inv.id })}
-                        data-testid={`button-delete-invoice-${inv.id}`}
-                      >
-                        <Trash2 className="w-4 h-4 text-red-400" />
-                      </Button>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            )}
+      {/* ── Left Sidebar ──────────────────────────────────────────── */}
+      <aside className="w-52 flex-shrink-0 bg-card border-r border-border flex flex-col" data-testid="invoicing-sidebar">
+        <div className="p-4 border-b border-border">
+          <div className="flex items-center gap-2">
+            <Receipt className="w-5 h-5 text-violet-600" />
+            <span className="font-semibold text-foreground">Invoicing</span>
           </div>
-        )}
+        </div>
+        <nav className="flex-1 p-2 space-y-0.5">
+          {NAV_ITEMS.map(({ id, label, icon: Icon }) => {
+            const isActive = id !== "home" && tab === id;
+            return (
+              <button
+                key={id}
+                onClick={() => handleNavClick(id)}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors text-left hover-elevate ${
+                  isActive
+                    ? "bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+                data-testid={`nav-${id}`}
+              >
+                <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? "text-violet-600 dark:text-violet-400" : ""}`} />
+                {label}
+              </button>
+            );
+          })}
+        </nav>
 
-        {/* ── Clients tab ── */}
-        {tab === "clients" && (
+        {/* Summary in sidebar footer */}
+        <div className="p-3 border-t border-border space-y-2">
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-muted-foreground">Outstanding</span>
+            <span className="font-semibold text-blue-600 dark:text-blue-400">{fmt(totalOutstanding)}</span>
+          </div>
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-muted-foreground">Collected</span>
+            <span className="font-semibold text-green-600 dark:text-green-400">{fmt(totalPaid)}</span>
+          </div>
+          {overdueCount > 0 && (
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-muted-foreground">Overdue</span>
+              <span className="font-semibold text-red-500">{overdueCount}</span>
+            </div>
+          )}
+        </div>
+      </aside>
+
+      {/* ── Main Content ──────────────────────────────────────────── */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <header className="flex items-center justify-between gap-3 px-6 py-3 border-b border-border bg-background flex-shrink-0">
           <div>
-            {clientLoading && <p className="text-center text-muted-foreground py-8">Loading clients…</p>}
-            {!clientLoading && clientList.length === 0 && (
-              <Card>
-                <CardContent className="py-12 text-center text-muted-foreground">
-                  <Users className="w-8 h-8 mx-auto mb-3 opacity-40" />
-                  <p className="font-medium">No clients yet</p>
-                  <p className="text-sm mt-1">Add your first client to start billing.</p>
-                </CardContent>
-              </Card>
-            )}
-            {!clientLoading && clientList.length > 0 && (
-              <Card>
-                <CardContent className="pt-0 divide-y">
-                  {clientList.map(client => {
-                    const clientInvoices = invoiceList.filter(i => i.clientId === client.id);
-                    const clientTotal = clientInvoices.filter(i => i.status === "paid").reduce((s, i) => s + i.total, 0);
-                    return (
-                      <div key={client.id} className="py-3 flex items-center gap-3" data-testid={`row-client-${client.id}`}>
+            <h1 className="text-base font-semibold text-foreground capitalize">
+              {tab === "customers" ? "Customers" : tab === "items" ? "Items" : "Invoices"}
+            </h1>
+            <p className="text-xs text-muted-foreground">
+              {tab === "invoices" && `${invoiceList.length} invoice${invoiceList.length !== 1 ? "s" : ""}`}
+              {tab === "customers" && `${clientList.length} client${clientList.length !== 1 ? "s" : ""}`}
+              {tab === "items" && `${catalogList.length} item${catalogList.length !== 1 ? "s" : ""}`}
+            </p>
+          </div>
+          <Button
+            size="sm"
+            onClick={handleNewButton}
+            disabled={newButtonDisabled}
+            data-testid="button-new"
+          >
+            <Plus className="w-4 h-4 mr-1" />
+            {newButtonLabel}
+          </Button>
+        </header>
+
+        <main className="flex-1 overflow-y-auto p-6">
+
+          {/* ── Invoices tab ── */}
+          {tab === "invoices" && (
+            <div className="max-w-2xl">
+              {invLoading && <p className="text-center text-muted-foreground py-8">Loading invoices…</p>}
+              {!invLoading && invoiceList.length === 0 && (
+                <Card>
+                  <CardContent className="py-12 text-center text-muted-foreground">
+                    <Receipt className="w-8 h-8 mx-auto mb-3 opacity-40" />
+                    <p className="font-medium">No invoices yet</p>
+                    <p className="text-sm mt-1">
+                      {clientList.length === 0
+                        ? "Add a customer first, then create your first invoice."
+                        : "Click \"New Invoice\" to bill your first client."}
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+              {!invLoading && invoiceList.length > 0 && (
+                <Card>
+                  <CardContent className="pt-0 divide-y">
+                    {invoiceList.map(inv => (
+                      <div key={inv.id} className="py-3 flex items-center gap-3" data-testid={`row-invoice-${inv.id}`}>
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm" data-testid={`text-client-name-${client.id}`}>{client.name}</p>
-                          <p className="text-xs text-muted-foreground truncate">
-                            {[client.email, client.phone].filter(Boolean).join(" · ") || "No contact info"}
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-mono text-sm font-semibold" data-testid={`text-invoice-number-${inv.id}`}>{inv.invoiceNumber}</span>
+                            <StatusBadge status={inv.status} />
+                          </div>
+                          <p className="text-sm text-muted-foreground truncate mt-0.5" data-testid={`text-invoice-client-${inv.id}`}>{inv.client?.name ?? "—"}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {fmtDate(inv.issueDate?.toString())}
+                            {inv.dueDate ? ` · Due ${fmtDate(inv.dueDate.toString())}` : ""}
                           </p>
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            {clientInvoices.length} invoice{clientInvoices.length !== 1 ? "s" : ""}
-                            {clientTotal > 0 ? ` · ${fmt(clientTotal)} paid` : ""}
-                          </p>
+                        </div>
+                        <p className="font-semibold text-sm shrink-0" data-testid={`text-invoice-total-${inv.id}`}>{fmt(inv.total)}</p>
+                        <div className="relative">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => setStatusDropdown(statusDropdown === inv.id ? null : inv.id)}
+                            data-testid={`button-status-${inv.id}`}
+                          >
+                            <ChevronDown className="w-4 h-4" />
+                          </Button>
+                          {statusDropdown === inv.id && (
+                            <div className="absolute right-0 top-9 z-50 w-36 bg-popover border rounded-md shadow-md p-1" data-testid={`dropdown-status-${inv.id}`}>
+                              {(["draft", "sent", "paid", "overdue"] as InvoiceStatus[]).map(s => (
+                                <button
+                                  key={s}
+                                  className="w-full text-left px-2 py-1.5 text-sm rounded hover-elevate"
+                                  onClick={() => updateStatusMut.mutate({ id: inv.id, status: s })}
+                                  data-testid={`option-status-${s}`}
+                                >
+                                  {STATUS_CONFIG[s].label}
+                                </button>
+                              ))}
+                            </div>
+                          )}
                         </div>
                         <Button
                           size="icon"
                           variant="ghost"
-                          onClick={() => { setEditClient(client); setShowClientModal(true); }}
-                          data-testid={`button-edit-client-${client.id}`}
+                          onClick={() => { setEditInvoice(inv); setShowInvoiceModal(true); }}
+                          data-testid={`button-edit-invoice-${inv.id}`}
                         >
                           <Pencil className="w-4 h-4" />
                         </Button>
                         <Button
                           size="icon"
                           variant="ghost"
-                          onClick={() => setDeleteConfirm({ type: "client", id: client.id })}
-                          data-testid={`button-delete-client-${client.id}`}
+                          onClick={() => setDeleteConfirm({ type: "invoice", id: inv.id })}
+                          data-testid={`button-delete-invoice-${inv.id}`}
                         >
                           <Trash2 className="w-4 h-4 text-red-400" />
                         </Button>
                       </div>
-                    );
-                  })}
-                </CardContent>
-              </Card>
-            )}
-          </div>
-        )}
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          )}
+
+          {/* ── Customers tab ── */}
+          {tab === "customers" && (
+            <div className="max-w-2xl">
+              {clientLoading && <p className="text-center text-muted-foreground py-8">Loading customers…</p>}
+              {!clientLoading && clientList.length === 0 && (
+                <Card>
+                  <CardContent className="py-12 text-center text-muted-foreground">
+                    <Users className="w-8 h-8 mx-auto mb-3 opacity-40" />
+                    <p className="font-medium">No customers yet</p>
+                    <p className="text-sm mt-1">Add your first customer to start billing.</p>
+                  </CardContent>
+                </Card>
+              )}
+              {!clientLoading && clientList.length > 0 && (
+                <Card>
+                  <CardContent className="pt-0 divide-y">
+                    {clientList.map(client => {
+                      const clientInvoices = invoiceList.filter(i => i.clientId === client.id);
+                      const clientTotal = clientInvoices.filter(i => i.status === "paid").reduce((s, i) => s + i.total, 0);
+                      return (
+                        <div key={client.id} className="py-3 flex items-center gap-3" data-testid={`row-client-${client.id}`}>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm" data-testid={`text-client-name-${client.id}`}>{client.name}</p>
+                            <p className="text-xs text-muted-foreground truncate">
+                              {[client.email, client.phone].filter(Boolean).join(" · ") || "No contact info"}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {clientInvoices.length} invoice{clientInvoices.length !== 1 ? "s" : ""}
+                              {clientTotal > 0 ? ` · ${fmt(clientTotal)} paid` : ""}
+                            </p>
+                          </div>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => { setEditClient(client); setShowClientModal(true); }}
+                            data-testid={`button-edit-client-${client.id}`}
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => setDeleteConfirm({ type: "client", id: client.id })}
+                            data-testid={`button-delete-client-${client.id}`}
+                          >
+                            <Trash2 className="w-4 h-4 text-red-400" />
+                          </Button>
+                        </div>
+                      );
+                    })}
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          )}
+
+          {/* ── Items tab ── */}
+          {tab === "items" && (
+            <div className="max-w-2xl">
+              {catalogLoading && <p className="text-center text-muted-foreground py-8">Loading items…</p>}
+              {!catalogLoading && catalogList.length === 0 && (
+                <Card>
+                  <CardContent className="py-12 text-center text-muted-foreground">
+                    <Package className="w-8 h-8 mx-auto mb-3 opacity-40" />
+                    <p className="font-medium">No items yet</p>
+                    <p className="text-sm mt-1">Add services or products to reuse them on invoices.</p>
+                  </CardContent>
+                </Card>
+              )}
+              {!catalogLoading && catalogList.length > 0 && (
+                <Card>
+                  <CardContent className="pt-0 divide-y">
+                    {catalogList.map(item => (
+                      <div key={item.id} className="py-3 flex items-center gap-3" data-testid={`row-catalog-${item.id}`}>
+                        <div className="w-8 h-8 rounded-md bg-violet-50 dark:bg-violet-950/40 flex items-center justify-center flex-shrink-0">
+                          <Tag className="w-4 h-4 text-violet-600 dark:text-violet-400" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm" data-testid={`text-catalog-name-${item.id}`}>{item.name}</p>
+                          {item.description && (
+                            <p className="text-xs text-muted-foreground truncate">{item.description}</p>
+                          )}
+                        </div>
+                        <p className="font-semibold text-sm shrink-0 text-foreground" data-testid={`text-catalog-price-${item.id}`}>
+                          {fmt(Number(item.unitPrice))}
+                        </p>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => { setEditCatalogItem(item); setShowCatalogModal(true); }}
+                          data-testid={`button-edit-catalog-${item.id}`}
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => setDeleteConfirm({ type: "catalog", id: item.id })}
+                          data-testid={`button-delete-catalog-${item.id}`}
+                        >
+                          <Trash2 className="w-4 h-4 text-red-400" />
+                        </Button>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          )}
+
+        </main>
       </div>
 
       {/* Modals */}
@@ -603,7 +766,14 @@ export default function Invoicing() {
         />
       )}
 
-      {/* Delete confirmation */}
+      {showCatalogModal && (
+        <CatalogItemModal
+          open={showCatalogModal}
+          onClose={() => { setShowCatalogModal(false); setEditCatalogItem(undefined); }}
+          initial={editCatalogItem}
+        />
+      )}
+
       {deleteConfirm && (
         <Dialog open onOpenChange={() => setDeleteConfirm(null)}>
           <DialogContent className="max-w-sm">
@@ -613,7 +783,9 @@ export default function Invoicing() {
             <p className="text-sm text-muted-foreground">
               {deleteConfirm.type === "invoice"
                 ? "This invoice will be permanently deleted."
-                : "This client and all their invoices will be deleted."}
+                : deleteConfirm.type === "client"
+                ? "This customer and all their invoices will be deleted."
+                : "This item will be permanently deleted."}
             </p>
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="outline" onClick={() => setDeleteConfirm(null)}>Cancel</Button>
@@ -621,7 +793,8 @@ export default function Invoicing() {
                 variant="destructive"
                 onClick={() => {
                   if (deleteConfirm.type === "invoice") deleteInvoiceMut.mutate(deleteConfirm.id);
-                  else deleteClientMut.mutate(deleteConfirm.id);
+                  else if (deleteConfirm.type === "client") deleteClientMut.mutate(deleteConfirm.id);
+                  else deleteCatalogMut.mutate(deleteConfirm.id);
                 }}
                 data-testid="button-confirm-delete"
               >
