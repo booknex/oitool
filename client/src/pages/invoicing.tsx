@@ -510,16 +510,11 @@ function InvoiceDashboard({
   return (
     <div className="flex-1 overflow-y-auto p-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Invoice Dashboard</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            {clientList.length} client{clientList.length !== 1 ? "s" : ""} · {invoiceList.length} invoice{invoiceList.length !== 1 ? "s" : ""}
-          </p>
-        </div>
-        <Button onClick={onNewInvoice} disabled={clientList.length === 0} data-testid="button-dashboard-new-invoice">
-          <Plus className="w-4 h-4 mr-1" /> New Invoice
-        </Button>
+      <div className="mb-6">
+        <h1 className="text-xl font-semibold text-foreground">Invoice Dashboard</h1>
+        <p className="text-sm text-muted-foreground mt-0.5">
+          {clientList.length} client{clientList.length !== 1 ? "s" : ""} · {invoiceList.length} invoice{invoiceList.length !== 1 ? "s" : ""}
+        </p>
       </div>
 
       {/* Stat cards */}
