@@ -547,38 +547,69 @@ function InvoiceDashboard({
         })}
       </div>
 
-      {/* Revenue Breakdown — vertical bar chart */}
+      {/* Revenue Breakdown — bar chart */}
       {!isLoading && invoiceList.length > 0 && (() => {
+        const CHART_H = 120;
         const bars = [
-          { label: "Paid",        value: totalPaid,        pct: paidPct,    barColor: "bg-green-500",  textColor: "text-green-600 dark:text-green-400" },
-          { label: "Outstanding", value: totalOutstanding, pct: outPct,     barColor: "bg-orange-400", textColor: "text-orange-500" },
-          { label: "Overdue",     value: totalOverdue,     pct: overduePct, barColor: "bg-red-500",    textColor: "text-red-500" },
+          { label: "Paid",        value: totalPaid,        pct: paidPct,    bar: "bg-emerald-500", dot: "bg-emerald-500", text: "text-emerald-600 dark:text-emerald-400" },
+          { label: "Outstanding", value: totalOutstanding, pct: outPct,     bar: "bg-amber-400",   dot: "bg-amber-400",   text: "text-amber-500" },
+          { label: "Overdue",     value: totalOverdue,     pct: overduePct, bar: "bg-rose-500",    dot: "bg-rose-500",    text: "text-rose-500" },
         ];
         const maxVal = Math.max(...bars.map(b => b.value), 1);
+        // 4 gridlines at 25 / 50 / 75 / 100 %
+        const gridLines = [0.25, 0.5, 0.75, 1];
         return (
-          <div className="mb-5 rounded-xl border border-border bg-card p-4">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-4">Revenue Breakdown</p>
-            <div className="flex items-end gap-4 h-36">
-              {bars.map(({ label, value, pct, barColor, textColor }) => (
-                <div key={label} className="flex-1 flex flex-col items-center gap-1.5">
-                  {/* Amount label above bar */}
-                  <span className={`text-[11px] font-bold tabular-nums ${textColor}`}>{fmt(value)}</span>
-                  {/* Bar */}
-                  <div className="w-full flex items-end bg-muted rounded-t-sm" style={{ height: "88px" }}>
-                    <div
-                      className={`w-full rounded-t-sm transition-all duration-500 ${barColor}`}
-                      style={{ height: `${Math.max((value / maxVal) * 88, value > 0 ? 4 : 0)}px` }}
-                    />
-                  </div>
-                </div>
+          <div className="mb-5 rounded-xl border border-border bg-card p-5">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-5">Revenue Breakdown</p>
+
+            {/* Chart area */}
+            <div className="relative" style={{ height: `${CHART_H}px` }}>
+              {/* Horizontal gridlines */}
+              {gridLines.map(g => (
+                <div
+                  key={g}
+                  className="absolute left-0 right-0 border-t border-dashed border-border"
+                  style={{ bottom: `${g * CHART_H}px` }}
+                />
               ))}
+              {/* Baseline */}
+              <div className="absolute left-0 right-0 bottom-0 border-t border-border" />
+
+              {/* Value labels — always at fixed top row */}
+              <div className="absolute top-0 left-0 right-0 flex justify-around px-6">
+                {bars.map(({ label, value, text }) => (
+                  <div key={label} className="flex justify-center" style={{ width: "28%" }}>
+                    <span className={`text-[11px] font-bold tabular-nums leading-none ${text}`}>{fmt(value)}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Bars — sit on the baseline */}
+              <div className="absolute inset-0 flex items-end justify-around px-6 pt-5">
+                {bars.map(({ label, value, bar }) => {
+                  const available = CHART_H - 20; // minus label row height
+                  const barH = Math.max((value / maxVal) * available, value > 0 ? 6 : 0);
+                  return (
+                    <div key={label} className="flex items-end justify-center" style={{ width: "28%", height: `${available}px` }}>
+                      <div
+                        className={`rounded-t-md transition-all duration-500 ${bar}`}
+                        style={{ width: "70%", height: `${barH}px`, opacity: value === 0 ? 0.15 : 1 }}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
             </div>
+
             {/* X-axis labels */}
-            <div className="flex gap-4 mt-2">
-              {bars.map(({ label, pct }) => (
-                <div key={label} className="flex-1 text-center">
-                  <p className="text-[11px] text-foreground font-medium">{label}</p>
-                  <p className="text-[10px] text-muted-foreground">{pct.toFixed(0)}%</p>
+            <div className="flex justify-around px-6 mt-3">
+              {bars.map(({ label, pct, dot }) => (
+                <div key={label} className="flex flex-col items-center gap-1" style={{ width: "28%" }}>
+                  <p className="text-[12px] font-medium text-foreground">{label}</p>
+                  <div className="flex items-center gap-1">
+                    <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${dot}`} />
+                    <span className="text-[11px] text-muted-foreground">{pct.toFixed(0)}%</span>
+                  </div>
                 </div>
               ))}
             </div>
