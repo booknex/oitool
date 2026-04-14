@@ -493,3 +493,21 @@ export type AnalyticsResponse = {
   categoryTotals: AnalyticsCategoryRow[];
   monthlyTrend?: AnalyticsMonthRow[];
 };
+
+// ── Company Settings ──────────────────────────────────────────────────────────
+export const companySettings = pgTable("company_settings", {
+  id: serial("id").primaryKey(),
+  companyName: text("company_name").notNull().default("CLEANEX EXPRESS INC."),
+  address1: text("address1").notNull().default("6322 RIDGE RD"),
+  address2: text("address2").notNull().default("PORT RICHEY, Florida 34668"),
+  country: text("country").notNull().default("U.S.A"),
+  phone: text("phone"),
+  email: text("email"),
+  website: text("website"),
+  logoData: text("logo_data"),
+  invoiceNotes: text("invoice_notes"),
+});
+
+export type CompanySettings = typeof companySettings.$inferSelect;
+export const updateCompanySettingsSchema = createInsertSchema(companySettings).omit({ id: true }).partial();
+export type UpdateCompanySettingsPayload = z.infer<typeof updateCompanySettingsSchema>;

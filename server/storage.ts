@@ -43,6 +43,9 @@ import {
   type CatalogItem,
   type CreateCatalogItemPayload,
   type UpdateCatalogItemPayload,
+  companySettings,
+  type CompanySettings,
+  type UpdateCompanySettingsPayload,
 } from "@shared/schema";
 
 // ─── SSRF protection ─────────────────────────────────────────────────────────
@@ -179,6 +182,9 @@ export interface IStorage {
   createSaasCompany(data: CreateSaasCompanyPayload): Promise<SaasCompanyWithAffiliate>;
   updateSaasCompany(data: UpdateSaasCompanyPayload): Promise<SaasCompanyWithAffiliate>;
   deleteSaasCompany(id: number): Promise<void>;
+  // Company Settings
+  getCompanySettings(): Promise<CompanySettings>;
+  updateCompanySettings(data: UpdateCompanySettingsPayload): Promise<CompanySettings>;
 }
 
 const DEFAULT_DASHBOARD_APPS: Omit<CreateDashboardAppPayload, "sortOrder">[] = [
@@ -780,6 +786,23 @@ export class DatabaseStorage implements IStorage {
 
   async deleteSaasCompany(id: number): Promise<void> {
     await db.delete(saasCompanies).where(eq(saasCompanies.id, id));
+  }
+
+  async getCompanySettings(): Promise<CompanySettings> {
+    const rows = await db.select().from(companySettings).limit(1);
+    if (rows.length > 0) return rows[0];
+    const [created] = await db.insert(companySettings).values({}).returning();
+    return created;
+  }
+
+  async updateCompanySettings(data: UpdateCompanySettingsPayload): Promise<CompanySettings> {
+    const existing = await this.getCompanySettings();
+    const [updated] = await db
+      .update(companySettings)
+      .set(data)
+      .where(eq(companySettings.id, existing.id))
+      .returning();
+    return updated;
   }
 }
 

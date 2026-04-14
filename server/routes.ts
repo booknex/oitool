@@ -590,6 +590,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch { res.status(500).json({ error: "Failed to delete company" }); }
   });
 
+  // ── Company Settings ────────────────────────────────────────────────────────
+  app.get("/api/settings", async (_req, res) => {
+    try {
+      const settings = await storage.getCompanySettings();
+      res.json(settings);
+    } catch { res.status(500).json({ error: "Failed to load settings" }); }
+  });
+
+  app.patch("/api/settings", async (req, res) => {
+    try {
+      const updated = await storage.updateCompanySettings(req.body);
+      res.json(updated);
+    } catch { res.status(500).json({ error: "Failed to update settings" }); }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
