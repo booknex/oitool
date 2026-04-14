@@ -3,6 +3,9 @@ import session from "express-session";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { storage } from "./storage";
+import { isStripeConfigured, getStripeSync } from "./stripeClient";
+import { WebhookHandlers } from "./webhookHandlers";
+import { runMigrations } from "stripe-replit-sync";
 
 declare module "express-session" {
   interface SessionData {
@@ -10,8 +13,56 @@ declare module "express-session" {
   }
 }
 
+async function initStripe() {
+  const databaseUrl = process.env.DATABASE_URL;
+  if (!databaseUrl || !isStripeConfigured()) {
+    log("[stripe] Stripe not configured — skipping initialization");
+    return;
+  }
+  try {
+    log("[stripe] Initializing Stripe schema...");
+    await runMigrations({ databaseUrl, schema: "stripe" });
+    log("[stripe] Schema ready");
+
+    const stripeSync = await getStripeSync();
+
+    const webhookBaseUrl = `https://${process.env.REPLIT_DOMAINS?.split(",")[0]}`;
+    if (process.env.REPLIT_DOMAINS) {
+      await stripeSync.findOrCreateManagedWebhook(`${webhookBaseUrl}/api/stripe/webhook`);
+      log("[stripe] Webhook configured");
+    }
+
+    stripeSync.syncBackfill()
+      .then(() => log("[stripe] Backfill sync complete"))
+      .catch((err: any) => log(`[stripe] Backfill error: ${err.message}`));
+  } catch (err: any) {
+    log(`[stripe] Initialization failed (non-fatal): ${err.message}`);
+  }
+}
+
 const app = express();
 app.set("etag", false);
+
+// ── Stripe webhook — MUST be before express.json() ──────────────────────────
+app.post(
+  "/api/stripe/webhook",
+  express.raw({ type: "application/json" }),
+  async (req, res) => {
+    const signature = req.headers["stripe-signature"];
+    if (!signature) {
+      return res.status(400).json({ error: "Missing stripe-signature header" });
+    }
+    const sig = Array.isArray(signature) ? signature[0] : signature;
+    try {
+      await WebhookHandlers.processWebhook(req.body as Buffer, sig);
+      res.status(200).json({ received: true });
+    } catch (err: any) {
+      log(`[stripe] Webhook error: ${err.message}`);
+      res.status(400).json({ error: "Webhook processing error" });
+    }
+  }
+);
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(session({
@@ -60,6 +111,7 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  await initStripe();
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

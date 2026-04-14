@@ -165,6 +165,7 @@ export interface IStorage {
   getClient(id: number): Promise<Client | undefined>;
   createClient(data: CreateClientPayload): Promise<Client>;
   updateClient(data: UpdateClientPayload): Promise<Client>;
+  updateClientStripeCustomerId(id: number, stripeCustomerId: string): Promise<void>;
   deleteClient(id: number): Promise<void>;
   // Invoices
   getInvoices(): Promise<InvoiceWithDetails[]>;
@@ -612,6 +613,10 @@ export class DatabaseStorage implements IStorage {
     return client;
   }
 
+  async updateClientStripeCustomerId(id: number, stripeCustomerId: string): Promise<void> {
+    await db.update(clients).set({ stripeCustomerId }).where(eq(clients.id, id));
+  }
+
   async deleteClient(id: number): Promise<void> {
     await db.delete(clients).where(eq(clients.id, id));
   }
@@ -684,6 +689,9 @@ export class DatabaseStorage implements IStorage {
     if (rest.status !== undefined) updates.status = rest.status;
     if ("dueDate" in rest) updates.dueDate = rest.dueDate ? new Date(rest.dueDate) : null;
     if (rest.status === "paid") updates.paidAt = new Date();
+    if ("stripePaymentIntentId" in rest) updates.stripePaymentIntentId = rest.stripePaymentIntentId ?? null;
+    if ("stripeCheckoutUrl" in rest) updates.stripeCheckoutUrl = rest.stripeCheckoutUrl ?? null;
+    if ("paidAt" in rest && rest.paidAt !== undefined) updates.paidAt = rest.paidAt ? new Date(rest.paidAt) : null;
 
     if (Object.keys(updates).length > 0) {
       await db.update(invoices).set(updates).where(eq(invoices.id, id));

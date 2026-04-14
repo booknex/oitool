@@ -2,6 +2,7 @@ import type { Express } from "express";
 import express from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { isStripeConfigured, getUncachableStripeClient } from "./stripeClient";
 import { checkoutSchema, restockSchema, createItemSchema, updateItemSchema, createDashboardAppSchema, updateDashboardAppSchema, createPropertySchema, updatePropertySchema, createClientSchema, updateClientSchema, createInvoiceSchema, updateInvoiceSchema, createSaasAffiliateSchema, updateSaasAffiliateSchema, createSaasCompanySchema, updateSaasCompanySchema, createCatalogItemSchema, updateCatalogItemSchema, type AnalyticsRange } from "@shared/schema";
 import fs from "fs";
 import path from "path";
@@ -426,6 +427,85 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true });
     } catch {
       res.status(500).json({ error: "Failed to delete invoice" });
+    }
+  });
+
+  // ─── Stripe: Generate payment link for an invoice ─────────────────────────
+  app.post("/api/invoices/:id/payment-link", async (req, res) => {
+    if (!isStripeConfigured()) {
+      return res.status(503).json({ error: "Stripe is not connected. Please add your Stripe API key to enable payments." });
+    }
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid id" });
+
+      const invoice = await storage.getInvoice(id);
+      if (!invoice) return res.status(404).json({ error: "Invoice not found" });
+
+      if (invoice.status === "paid") {
+        return res.status(400).json({ error: "Invoice is already paid" });
+      }
+
+      const total = Number(invoice.total);
+      if (total <= 0) {
+        return res.status(400).json({ error: "Invoice total must be greater than zero" });
+      }
+
+      const stripe = await getUncachableStripeClient();
+      const client = invoice.client;
+
+      // Find or create Stripe customer for this client
+      let stripeCustomerId: string | null = null;
+      if (client) {
+        const rawClient = await storage.getClient(client.id);
+        stripeCustomerId = rawClient?.stripeCustomerId ?? null;
+
+        if (!stripeCustomerId) {
+          const customer = await stripe.customers.create({
+            name: client.name,
+            email: client.email || undefined,
+            metadata: { clientId: String(client.id) },
+          });
+          stripeCustomerId = customer.id;
+          await storage.updateClientStripeCustomerId(client.id, stripeCustomerId);
+        }
+      }
+
+      // Create a Stripe Checkout Session (one-time payment)
+      const baseUrl = req.headers.origin || `${req.protocol}://${req.get("host")}`;
+      const session = await stripe.checkout.sessions.create({
+        mode: "payment",
+        customer: stripeCustomerId ?? undefined,
+        payment_method_types: ["card"],
+        line_items: [
+          {
+            price_data: {
+              currency: "usd",
+              unit_amount: Math.round(total * 100),
+              product_data: {
+                name: `Invoice ${invoice.invoiceNumber}`,
+                description: invoice.notes || `Payment for ${invoice.client?.name ?? "client"}`,
+              },
+            },
+            quantity: 1,
+          },
+        ],
+        success_url: `${baseUrl}/invoicing/invoices/${id}?paid=1`,
+        cancel_url: `${baseUrl}/invoicing/invoices/${id}`,
+        metadata: { invoiceId: String(id), invoiceNumber: invoice.invoiceNumber },
+      });
+
+      // Save checkout session info on invoice
+      await storage.updateInvoice({
+        id,
+        stripePaymentIntentId: session.payment_intent as string | null,
+        stripeCheckoutUrl: session.url,
+      });
+
+      res.json({ url: session.url, sessionId: session.id });
+    } catch (err: any) {
+      const msg = err.message || "Failed to create payment link";
+      res.status(500).json({ error: msg });
     }
   });
 

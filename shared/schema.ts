@@ -270,6 +270,7 @@ export const clients = pgTable("clients", {
   zipCode: text("zip_code").notNull().default(""),
   fax: text("fax").notNull().default(""),
   notes: text("notes").notNull().default(""),
+  stripeCustomerId: text("stripe_customer_id"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -338,6 +339,7 @@ export const invoices = pgTable("invoices", {
   dueDate: timestamp("due_date"),
   notes: text("notes").notNull().default(""),
   stripePaymentIntentId: text("stripe_payment_intent_id"),
+  stripeCheckoutUrl: text("stripe_checkout_url"),
   paidAt: timestamp("paid_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
@@ -379,6 +381,9 @@ export const updateInvoiceSchema = z.object({
   dueDate: z.string().nullable().optional(),
   notes: z.string().optional(),
   status: z.enum(["draft", "sent", "paid", "overdue"]).optional(),
+  stripePaymentIntentId: z.string().nullable().optional(),
+  stripeCheckoutUrl: z.string().nullable().optional(),
+  paidAt: z.string().nullable().optional(),
   items: z.array(z.object({
     description: z.string().min(1),
     quantity: z.number().min(0.01),

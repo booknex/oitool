@@ -3,10 +3,11 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import {
   ArrowLeft, Pencil, Send, Share2, Printer, MoreHorizontal,
-  Check, Clock, AlertCircle, Upload, X, Settings,
+  Check, Clock, AlertCircle, Upload, X, Settings, Link, CreditCard, Copy, ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { InvoiceWithDetails } from "@shared/schema";
 
@@ -184,6 +185,7 @@ export function InvoiceDetailView({
   onEdit: (inv: InvoiceWithDetails) => void;
 }) {
   const [, navigate] = useLocation();
+  const { toast } = useToast();
   const { data: allInvoices = [], isLoading } = useQuery<InvoiceWithDetails[]>({ queryKey: ["/api/invoices"] });
   const { data: settings } = useQuery<CompanySettings>({ queryKey: ["/api/settings"] });
 
@@ -201,6 +203,23 @@ export function InvoiceDetailView({
     mutationFn: ({ id, status }: { id: number; status: InvoiceStatus }) =>
       apiRequest("PATCH", `/api/invoices/${id}`, { status }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/invoices"] }),
+  });
+
+  const paymentLinkMut = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await apiRequest("POST", `/api/invoices/${id}/payment-link`);
+      return await res.json() as { url: string; sessionId: string };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
+      window.open(data.url, "_blank");
+      navigator.clipboard.writeText(data.url).catch(() => {});
+      toast({ title: "Payment link created", description: "Opened in new tab and copied to clipboard." });
+    },
+    onError: (err: any) => {
+      const msg = err.message || "Failed to create payment link";
+      toast({ title: "Payment link failed", description: msg, variant: "destructive" });
+    },
   });
 
   if (isLoading) {
@@ -283,6 +302,34 @@ export function InvoiceDetailView({
             <Button size="sm" variant="ghost" onClick={() => window.print()} data-testid="button-print-invoice">
               <Printer className="w-3.5 h-3.5 mr-1" /> PDF / Print
             </Button>
+            {!isPaid && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="text-indigo-600 dark:text-indigo-400"
+                onClick={() => paymentLinkMut.mutate(invoice.id)}
+                disabled={paymentLinkMut.isPending}
+                data-testid="button-payment-link"
+              >
+                <CreditCard className="w-3.5 h-3.5 mr-1" />
+                {paymentLinkMut.isPending ? "Generating…" : "Payment Link"}
+              </Button>
+            )}
+            {!isPaid && invoice.stripeCheckoutUrl && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="text-indigo-500 dark:text-indigo-400"
+                onClick={() => {
+                  navigator.clipboard.writeText(invoice.stripeCheckoutUrl!).catch(() => {});
+                  window.open(invoice.stripeCheckoutUrl!, "_blank");
+                }}
+                title={invoice.stripeCheckoutUrl}
+                data-testid="button-copy-payment-link"
+              >
+                <Copy className="w-3.5 h-3.5 mr-1" /> Copy Link
+              </Button>
+            )}
             <div className="relative">
               <Button size="icon" variant="ghost" onClick={e => { e.stopPropagation(); setStatusMenu(v => !v); }} data-testid="button-more-actions">
                 <MoreHorizontal className="w-4 h-4" />
@@ -464,12 +511,30 @@ export function InvoiceDetailView({
                   <p className="text-[12px] text-muted-foreground italic mt-2">{co.invoiceNotes}</p>
                 )}
 
-                {/* Status badge */}
-                <div className="flex items-center gap-2 mt-6">
+                {/* Status badge + Stripe badge */}
+                <div className="flex items-center gap-2 mt-6 flex-wrap">
                   <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full ${statusCfg.color}`}>
                     <statusCfg.icon className="w-3 h-3" />
                     {statusCfg.label}
                   </span>
+                  {isPaid && invoice.stripePaymentIntentId && (
+                    <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300">
+                      <CreditCard className="w-3 h-3" />
+                      Paid via Stripe
+                    </span>
+                  )}
+                  {!isPaid && invoice.stripeCheckoutUrl && (
+                    <a
+                      href={invoice.stripeCheckoutUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300 hover:opacity-80 transition-opacity"
+                      data-testid="link-stripe-checkout"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                      Pay Online
+                    </a>
+                  )}
                 </div>
               </div>
             </div>

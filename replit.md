@@ -42,14 +42,15 @@ A self-service inventory kiosk application for cleaning service operations. Maid
 
 ### Invoicing
 - **Route** `/invoicing` — accessible from the "Invoicing" tile on the dashboard
-- **Clients** — manage customers: name, email, phone, address, notes; stored in `clients` DB table
+- **Clients** — manage customers: name, email, phone, address, notes; stored in `clients` DB table; `stripe_customer_id` column links to Stripe
 - **Invoices** — create invoices with line items (description, qty, unit price); stored in `invoices` + `invoice_items` tables
 - **Auto-numbering** — invoice numbers auto-generated: INV-0001, INV-0002, …
 - **Status tracking** — draft / sent / paid / overdue; status can be changed inline via dropdown per invoice
 - **Payment tracking** — `paid_at` timestamp set automatically when status → paid
-- **Stripe-ready** — `stripe_payment_intent_id` column reserved for future Stripe integration
+- **Stripe payments** — "Payment Link" button on invoice detail creates a Stripe Checkout Session; link opens in new tab + copies to clipboard; `stripe_checkout_url` and `stripe_payment_intent_id` stored on invoice; "Paid via Stripe" badge shown after payment; requires `STRIPE_SECRET_KEY` env var or Replit Stripe integration
+- **Stripe setup** — `server/stripeClient.ts`, `server/webhookHandlers.ts`; webhook registered BEFORE `express.json()` in index.ts; `initStripe()` runs on startup (graceful skip if not configured)
 - **Summary stats** — header cards show Outstanding balance, Collected (paid) total, Overdue count
-- **API** — `GET/POST /api/clients`, `PATCH/DELETE /api/clients/:id`, `GET/POST /api/invoices`, `GET/PATCH/DELETE /api/invoices/:id`
+- **API** — `GET/POST /api/clients`, `PATCH/DELETE /api/clients/:id`, `GET/POST /api/invoices`, `GET/PATCH/DELETE /api/invoices/:id`, `POST /api/invoices/:id/payment-link`, `POST /api/stripe/webhook`
 
 ### Calendar
 - **Route** `/calendar` — accessible from the "Calendar" tile on the dashboard
