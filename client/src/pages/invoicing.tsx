@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { CustomerDetailPane } from "./customer-detail";
+import { InvoiceDetailView } from "./invoice-detail";
 import {
   Plus, Trash2, Pencil, Receipt, Users, Check,
   ChevronDown, Send, Clock, AlertCircle, X, Home,
@@ -489,6 +490,10 @@ export default function Invoicing() {
   const customerMatch = location.match(/^\/invoicing\/customers\/(\d+)$/);
   const matchCustomer = !!customerMatch;
   const customerParams = customerMatch ? { id: customerMatch[1] } : null;
+
+  const invoiceMatch = location.match(/^\/invoicing\/invoices\/(\d+)$/);
+  const matchInvoiceDetail = !!invoiceMatch;
+  const invoiceDetailId = invoiceMatch ? Number(invoiceMatch[1]) : null;
   const { toast } = useToast();
   const [tab, setTab] = useState<Tab>("invoices");
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
@@ -623,8 +628,14 @@ export default function Invoicing() {
 
       {/* ── Main Content ──────────────────────────────────────────── */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Customer detail pane — replaces tabs when drilling into a customer */}
-        {matchCustomer && customerParams ? (
+        {/* Invoice detail view */}
+        {matchInvoiceDetail && invoiceDetailId ? (
+          <InvoiceDetailView
+            invoiceId={invoiceDetailId}
+            onBack={() => window.history.back()}
+            onEdit={inv => { setEditInvoice(inv); setShowInvoiceModal(true); }}
+          />
+        ) : matchCustomer && customerParams ? (
           <CustomerDetailPane
             clientId={Number(customerParams.id)}
             onBack={() => { navigate("/invoicing"); setTab("customers"); }}
@@ -678,7 +689,11 @@ export default function Invoicing() {
                         <div key={inv.id} className="py-3 flex items-center gap-3" data-testid={`row-invoice-${inv.id}`}>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-mono text-sm font-semibold" data-testid={`text-invoice-number-${inv.id}`}>{inv.invoiceNumber}</span>
+                              <button
+                                className="font-mono text-sm font-semibold text-[#1677ff] hover:underline text-left"
+                                onClick={() => navigate(`/invoicing/invoices/${inv.id}`)}
+                                data-testid={`text-invoice-number-${inv.id}`}
+                              >{inv.invoiceNumber}</button>
                               <StatusBadge status={inv.status} />
                             </div>
                             <p className="text-sm text-muted-foreground truncate mt-0.5" data-testid={`text-invoice-client-${inv.id}`}>{inv.client?.name ?? "—"}</p>

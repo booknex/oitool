@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import {
   ArrowLeft, ChevronDown,
   ArrowDownLeft, MoreVertical, Pencil, Trash2,
@@ -44,6 +45,7 @@ export function CustomerDetailPane({
   onBack: () => void;
   onEdit: (inv: InvoiceWithDetails) => void;
 }) {
+  const [, navigate] = useLocation();
   const { data: client } = useQuery<Client>({ queryKey: ["/api/clients", clientId] });
   const { data: allInvoices = [], isLoading } = useQuery<InvoiceWithDetails[]>({ queryKey: ["/api/invoices"] });
 
@@ -162,7 +164,13 @@ export function CustomerDetailPane({
                 >
                   <input type="checkbox" className="rounded border-border accent-blue-500" />
                   <span className="text-sm text-foreground">{fmtDate(inv.issueDate?.toString())}</span>
-                  <span className="text-sm text-[#1677ff] font-medium">{inv.invoiceNumber}</span>
+                  <button
+                    className="text-sm text-[#1677ff] font-medium hover:underline text-left"
+                    onClick={() => navigate(`/invoicing/invoices/${inv.id}`)}
+                    data-testid={`link-invoice-${inv.id}`}
+                  >
+                    {inv.invoiceNumber}
+                  </button>
                   <span className="text-sm text-muted-foreground">—</span>
                   <span className="text-sm text-foreground truncate">{inv.client?.name ?? client?.name ?? "—"}</span>
                   <div><StatusPill status={inv.status} /></div>
