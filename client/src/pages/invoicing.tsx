@@ -130,7 +130,7 @@ function ClientModal({ open, onClose, initial }: {
     phone: initial?.phone ?? "",
     customerLanguage: initial?.customerLanguage ?? "English",
     attention: initial?.attention ?? "",
-    country: initial?.country ?? "",
+    country: initial?.country ?? "United States",
     street1: initial?.street1 ?? "",
     street2: initial?.street2 ?? "",
     city: initial?.city ?? "",
@@ -253,10 +253,6 @@ function ClientModal({ open, onClose, initial }: {
             {/* ── RIGHT: Billing Address ── */}
             <div className="space-y-3 pl-8">
               <SectionTitle>Billing Address</SectionTitle>
-
-              <FormRow label="Attention">
-                <Input value={form.attention} onChange={e => set("attention", e.target.value)} data-testid="input-attention" />
-              </FormRow>
 
               <FormRow label="Country / Region">
                 <Input value={form.country} onChange={e => set("country", e.target.value)} placeholder="Country or region" data-testid="input-country" />
