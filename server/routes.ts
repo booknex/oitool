@@ -861,6 +861,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const parsed = pingLocationSchema.safeParse(req.body);
       if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message });
+      // Validate that the staff member exists and is active
+      const staffList = await storage.getStaff();
+      const member = staffList.find(s => s.id === parsed.data.staffId);
+      if (!member) return res.status(404).json({ error: "Staff member not found" });
+      if (member.status !== "active") return res.status(400).json({ error: "Staff member is not active" });
       await storage.pingLocation(parsed.data);
       res.json({ success: true });
     } catch (e) {

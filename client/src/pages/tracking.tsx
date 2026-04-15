@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MapPin, Users, Clock, Navigation, Radio, AlertCircle, RefreshCw, LogOut } from "lucide-react";
@@ -47,6 +47,7 @@ function AdminMap() {
   const mapInstance = useRef<import("leaflet").Map | null>(null);
   const markersRef = useRef<import("leaflet").Marker[]>([]);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+  const [mapReady, setMapReady] = useState(false);
 
   const { data: locations = [], refetch, isFetching } = useQuery<ActiveLocation[]>({
     queryKey: ["/api/location/active"],
@@ -56,9 +57,8 @@ function AdminMap() {
   // Init map
   useEffect(() => {
     if (!mapRef.current || mapInstance.current) return;
-    let L: typeof import("leaflet");
     import("leaflet").then(mod => {
-      L = mod.default ?? mod;
+      const L = mod.default ?? mod;
       const map = L.map(mapRef.current!, {
         center: [28.27, -82.72],
         zoom: 11,
@@ -69,16 +69,18 @@ function AdminMap() {
         maxZoom: 19,
       }).addTo(map);
       mapInstance.current = map;
+      setMapReady(true);
     });
     return () => {
       mapInstance.current?.remove();
       mapInstance.current = null;
+      setMapReady(false);
     };
   }, []);
 
-  // Update markers when locations change
+  // Update markers when locations change OR map becomes ready
   useEffect(() => {
-    if (!mapInstance.current) return;
+    if (!mapInstance.current || !mapReady) return;
     import("leaflet").then(mod => {
       const L = mod.default ?? mod;
       // Clear old markers
@@ -112,7 +114,7 @@ function AdminMap() {
       }
     });
     setLastRefresh(new Date());
-  }, [locations]);
+  }, [locations, mapReady]);
 
   const handleRefresh = () => {
     refetch();
@@ -383,12 +385,20 @@ function EmployeeView() {
 
 export default function TrackingPage() {
   const [location] = useLocation();
-  const isEmployeeView = location === "/tracking/employee";
-  const [view, setView] = useState<"admin" | "employee">(isEmployeeView ? "employee" : "admin");
+  const searchStr = useSearch();
+
+  function resolveView(): "admin" | "employee" {
+    const params = new URLSearchParams(searchStr);
+    if (params.get("mode") === "employee") return "employee";
+    if (location === "/tracking/employee") return "employee";
+    return "admin";
+  }
+
+  const [view, setView] = useState<"admin" | "employee">(resolveView);
 
   useEffect(() => {
-    setView(location === "/tracking/employee" ? "employee" : "admin");
-  }, [location]);
+    setView(resolveView());
+  }, [location, searchStr]);
 
   return (
     <div className="flex flex-col h-full">
