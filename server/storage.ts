@@ -193,6 +193,7 @@ const DEFAULT_DASHBOARD_APPS: Omit<CreateDashboardAppPayload, "sortOrder">[] = [
   { name: "Reviews",      description: "View Airbnb guest feedback",           icon: "Star",         color: "#FFF8E1", iconColor: "#F59E0B", route: "/reviews",    available: true  },
   { name: "Calendar",     description: "Property bookings & iCal sync",        icon: "CalendarDays", color: "#E8F5E9", iconColor: "#22C55E", route: "/calendar",   available: true  },
   { name: "Invoicing",    description: "Bill clients & track payments",         icon: "Receipt",      color: "#EDE9FE", iconColor: "#7C3AED", route: "/invoicing",  available: true  },
+  { name: "Admin",        description: "Subscriptions & billing management",   icon: "ShieldCheck",  color: "#FFF1F2", iconColor: "#E11D48", route: "/admin",      available: true  },
   { name: "SaaS Admin",   description: "Manage accounts & affiliates",          icon: "Building2",    color: "#FFF1F2", iconColor: "#E11D48", route: "/saas",       available: true  },
   { name: "Analytics",    description: "Usage trends & cost tracking",          icon: "BarChart3",    color: "#F3E5F5", iconColor: "#9C27B0", route: "/analytics",  available: true  },
   { name: "Task Board",   description: "Cleaning checklists & assignments",     icon: "ClipboardList",color: "#FFF3E0", iconColor: "#4CAF50", route: "/tasks",      available: false },
@@ -204,6 +205,7 @@ const REQUIRED_APPS = [
   { route: "/reviews",    name: "Reviews",      description: "View Airbnb guest feedback",           icon: "Star",         color: "#FFF8E1", iconColor: "#F59E0B", available: true },
   { route: "/calendar",   name: "Calendar",     description: "Property bookings & iCal sync",        icon: "CalendarDays", color: "#E8F5E9", iconColor: "#22C55E", available: true },
   { route: "/invoicing",  name: "Invoicing",    description: "Bill clients & track payments",        icon: "Receipt",      color: "#EDE9FE", iconColor: "#7C3AED", available: true },
+  { route: "/admin",      name: "Admin",        description: "Subscriptions & billing management",   icon: "ShieldCheck",  color: "#FFF1F2", iconColor: "#E11D48", available: true },
   { route: "/saas",       name: "SaaS Admin",   description: "Manage accounts & affiliates",        icon: "Building2",    color: "#FFF1F2", iconColor: "#E11D48", available: true },
   { route: "/analytics",  name: "Analytics",    description: "Usage trends & cost tracking",         icon: "BarChart3",    color: "#F3E5F5", iconColor: "#9C27B0", available: true },
 ];

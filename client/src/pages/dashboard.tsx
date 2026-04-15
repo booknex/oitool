@@ -8,7 +8,7 @@ import {
   Home, Calendar, CalendarDays, Receipt, Building2, Truck, ShoppingCart, Bell, FileText,
   Phone, Zap, DollarSign, Globe, Wrench, Droplet, Archive,
   Lock, Coffee, AlertCircle, BookOpen, Camera, ShoppingBag,
-  ArrowRight, Eye, EyeOff, TrendingUp, AlertTriangle, CircleDollarSign,
+  ArrowRight, Eye, EyeOff, TrendingUp, AlertTriangle, CircleDollarSign, ShieldCheck,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -25,7 +25,7 @@ const ICON_MAP: Record<string, React.ElementType> = {
   Package, ClipboardList, Star, BarChart3, Users, Home, Calendar, CalendarDays, Receipt, Building2,
   Truck, ShoppingCart, Bell, FileText, Phone, Zap, DollarSign, Globe,
   Wrench, Droplet, Archive, Lock, Coffee, AlertCircle, BookOpen, Camera,
-  Settings2, Sparkles,
+  Settings2, Sparkles, ShieldCheck,
 };
 
 const ICON_NAMES = Object.keys(ICON_MAP);
