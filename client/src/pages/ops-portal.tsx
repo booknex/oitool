@@ -720,11 +720,6 @@ export function AdminPortalLogin() {
     staleTime: 0,
   });
 
-  if (!isLoading && meCheck) {
-    navigate("/ops/dashboard");
-    return null;
-  }
-
   const login = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("POST", "/api/admin/login", { email: email.trim(), password });
@@ -751,6 +746,11 @@ export function AdminPortalLogin() {
   }
 
   if (isLoading) return null;
+
+  if (meCheck) {
+    navigate("/ops/dashboard");
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 flex flex-col items-center justify-center p-4">
