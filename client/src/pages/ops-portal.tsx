@@ -8,6 +8,11 @@ import {
   BadgeCheck, Clock, AlertCircle, Ban, RefreshCw,
   LogOut, Shield, Search,
 } from "lucide-react";
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, type TooltipProps,
+} from "recharts";
+import { type ValueType, type NameType } from "recharts/types/component/DefaultTooltipContent";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -310,36 +315,63 @@ function AffiliateModal({ open, affiliate, onClose }: {
   );
 }
 
+// ─── MRR Tooltip ──────────────────────────────────────────────────────────────
+
+function MRRTooltip({ active, payload, label }: TooltipProps<ValueType, NameType>) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="bg-white border border-gray-200 rounded-lg shadow-lg px-3 py-2 text-sm">
+      <p className="font-semibold text-gray-700 mb-0.5">{label}</p>
+      <p className="text-indigo-600 font-bold">{fmt$(Number(payload[0].value))}<span className="text-xs text-gray-400 font-normal ml-1">MRR</span></p>
+    </div>
+  );
+}
+
 // ─── Overview Tab ─────────────────────────────────────────────────────────────
 
 function OverviewTab({ companies, affiliates }: {
   companies: SaasCompanyWithAffiliate[];
   affiliates: SaasAffiliate[];
 }) {
-  const totalMRR    = companies.reduce((s, c) => s + Number(c.mrr), 0);
-  const arr         = totalMRR * 12;
-  const activeCount = companies.filter(c => c.status === "active").length;
-  const trialCount  = companies.filter(c => c.status === "trial").length;
-  const avgMRR      = activeCount > 0 ? totalMRR / activeCount : 0;
+  const totalMRR      = companies.reduce((s, c) => s + Number(c.mrr), 0);
+  const arr           = totalMRR * 12;
+  const activeCount   = companies.filter(c => c.status === "active").length;
+  const trialCount    = companies.filter(c => c.status === "trial").length;
+  const avgMRR        = activeCount > 0 ? totalMRR / activeCount : 0;
   const totalAccounts = companies.length;
-  const activeAffs  = affiliates.filter(a => a.status === "active").length;
-  const totalPayout = affiliates.reduce((s, a) => {
+  const activeAffs    = affiliates.filter(a => a.status === "active").length;
+  const totalPayout   = affiliates.reduce((s, a) => {
     const mrrGen = companies.filter(c => c.affiliateId === a.id).reduce((x, c) => x + Number(c.mrr), 0);
     return s + mrrGen * (Number(a.commissionRate) / 100);
   }, 0);
 
+  // Build last-12-months cumulative MRR data
+  const monthlyData = useMemo(() => {
+    const now = new Date();
+    return Array.from({ length: 12 }, (_, i) => {
+      const d = new Date(now.getFullYear(), now.getMonth() - (11 - i), 1);
+      const endOfMonth = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59);
+      const label = d.toLocaleDateString("en-US", { month: "short", year: "2-digit" });
+      const mrr = companies
+        .filter(c => c.status !== "cancelled" && new Date(c.createdAt) <= endOfMonth)
+        .reduce((s, c) => s + Number(c.mrr), 0);
+      return { month: label, mrr };
+    });
+  }, [companies]);
+
   const kpis = [
-    { label: "Total MRR",       value: fmt$(totalMRR),    sub: "monthly recurring",     icon: DollarSign, bg: "bg-emerald-50", ic: "text-emerald-600" },
-    { label: "ARR",             value: fmt$(arr),          sub: "annualized revenue",    icon: TrendingUp,  bg: "bg-blue-50",    ic: "text-blue-600"    },
-    { label: "Active Accounts", value: String(activeCount),sub: `of ${totalAccounts} total`, icon: BadgeCheck, bg: "bg-violet-50", ic: "text-violet-600" },
-    { label: "Trials",          value: String(trialCount), sub: "in free trial",          icon: Clock,       bg: "bg-amber-50",   ic: "text-amber-600"   },
-    { label: "Avg MRR",         value: fmt$(avgMRR),       sub: "per active account",     icon: ArrowUpRight,bg: "bg-rose-50",    ic: "text-rose-600"    },
-    { label: "Affiliates",      value: `${activeAffs}/${affiliates.length}`, sub: "active / total", icon: Users, bg: "bg-indigo-50", ic: "text-indigo-600" },
-    { label: "Affiliate Payout",value: fmt$(totalPayout),  sub: "est. monthly payout",   icon: DollarSign,  bg: "bg-orange-50",  ic: "text-orange-600"  },
+    { label: "Total MRR",        value: fmt$(totalMRR),    sub: "monthly recurring",          icon: DollarSign, bg: "bg-emerald-50", ic: "text-emerald-600" },
+    { label: "ARR",              value: fmt$(arr),          sub: "annualized revenue",         icon: TrendingUp,  bg: "bg-blue-50",    ic: "text-blue-600"    },
+    { label: "Active Accounts",  value: String(activeCount),sub: `of ${totalAccounts} total`, icon: BadgeCheck,  bg: "bg-violet-50",  ic: "text-violet-600"  },
+    { label: "Trials",           value: String(trialCount), sub: "in free trial",              icon: Clock,       bg: "bg-amber-50",   ic: "text-amber-600"   },
+    { label: "Avg MRR",          value: fmt$(avgMRR),       sub: "per active account",         icon: ArrowUpRight,bg: "bg-rose-50",    ic: "text-rose-600"    },
+    { label: "Affiliates",       value: `${activeAffs}/${affiliates.length}`, sub: "active / total", icon: Users, bg: "bg-indigo-50", ic: "text-indigo-600"  },
+    { label: "Affiliate Payout", value: fmt$(totalPayout),  sub: "est. monthly payout",       icon: DollarSign,  bg: "bg-orange-50",  ic: "text-orange-600"  },
   ];
 
   return (
     <div className="space-y-6">
+      {/* KPI cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-4">
         {kpis.map(k => (
           <Card key={k.label}>
@@ -357,49 +389,44 @@ function OverviewTab({ companies, affiliates }: {
         ))}
       </div>
 
-      {/* Status breakdown */}
-      <div className="grid sm:grid-cols-2 gap-4">
-        <Card>
-          <CardContent className="p-5">
-            <h3 className="text-sm font-semibold text-gray-700 mb-4">Subscription Breakdown</h3>
-            <div className="space-y-3">
-              {STATUSES.map(s => {
-                const count = companies.filter(c => c.status === s.value).length;
-                const pct = totalAccounts > 0 ? Math.round((count / totalAccounts) * 100) : 0;
-                return (
-                  <div key={s.value} className="flex items-center gap-3">
-                    <StatusPill status={s.value} />
-                    <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                      <div className="h-full bg-gray-400 rounded-full" style={{ width: `${pct}%` }} />
-                    </div>
-                    <span className="text-xs font-semibold text-gray-600 w-5 text-right">{count}</span>
-                  </div>
-                );
-              })}
+      {/* Monthly MRR chart */}
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between mb-5 flex-wrap gap-2">
+            <div>
+              <p className="text-sm font-bold text-gray-800 uppercase tracking-wide">Monthly Recurring Revenue</p>
+              <p className="text-xs text-gray-400 mt-0.5">Cumulative MRR · last 12 months</p>
             </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-5">
-            <h3 className="text-sm font-semibold text-gray-700 mb-4">Revenue by Plan</h3>
-            <div className="space-y-3">
-              {PLANS.map(p => {
-                const total = companies.filter(c => c.plan === p.value).reduce((s, c) => s + Number(c.mrr), 0);
-                const count = companies.filter(c => c.plan === p.value).length;
-                return (
-                  <div key={p.value} className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <PlanPill plan={p.value} />
-                      <span className="text-xs text-gray-400">{count} co.</span>
-                    </div>
-                    <span className="text-sm font-semibold text-gray-900">{fmt$(total)}<span className="text-xs text-gray-400 font-normal">/mo</span></span>
-                  </div>
-                );
-              })}
+            <div className="text-right">
+              <p className="text-2xl font-extrabold text-indigo-600">{fmt$(totalMRR)}</p>
+              <p className="text-xs text-gray-400">current MRR</p>
             </div>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+          {companies.length === 0 ? (
+            <div className="flex items-center justify-center h-40 text-gray-400 text-sm">No company data yet</div>
+          ) : (
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={monthlyData} margin={{ top: 4, right: 4, left: -12, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(0,0,0,0.05)" />
+                <XAxis
+                  dataKey="month"
+                  tick={{ fontSize: 11, fill: "#9ca3af" }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis
+                  tick={{ fontSize: 11, fill: "#9ca3af" }}
+                  axisLine={false}
+                  tickLine={false}
+                  tickFormatter={v => v === 0 ? "$0" : `$${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`}
+                />
+                <Tooltip content={<MRRTooltip />} cursor={{ fill: "rgba(99,102,241,0.06)" }} />
+                <Bar dataKey="mrr" name="MRR" fill="#6366f1" radius={[4, 4, 0, 0]} maxBarSize={40} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
@@ -852,18 +879,16 @@ export function AdminPortalDashboard() {
     onError: () => toast({ title: "Logout failed", variant: "destructive" }),
   });
 
-  // Redirect to login if not authenticated
-  if (meLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <RefreshCw className="w-6 h-6 animate-spin text-indigo-600" />
-      </div>
-    );
-  }
-  if (!me) {
-    navigate("/ops");
-    return null;
-  }
+  // Redirect to login if not authenticated — must be BEFORE any early returns
+  useEffect(() => {
+    if (!meLoading && !me) navigate("/ops");
+  }, [meLoading, me]);
+
+  if (meLoading || !me) return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <RefreshCw className="w-6 h-6 animate-spin text-indigo-600" />
+    </div>
+  );
 
   const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
     { id: "overview",   label: "Overview",   icon: TrendingUp  },
