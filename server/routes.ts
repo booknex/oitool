@@ -15,6 +15,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Serve uploaded images as static files
   app.use("/uploads", express.static(UPLOADS_DIR));
 
+  // ─── Public signup (landing page) ─────────────────────────────────────────
+  app.post("/api/public/signup", async (req, res) => {
+    try {
+      const schema = z.object({
+        firstName: z.string().trim().min(1, "First name required"),
+        lastName: z.string().trim().min(1, "Last name required"),
+        businessName: z.string().trim().min(1, "Business name required"),
+        email: z.string().trim().email("Valid email required"),
+        phone: z.string().trim().default(""),
+      });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: parsed.error.errors[0]?.message ?? "Invalid input" });
+      const { firstName, lastName, businessName, email, phone } = parsed.data;
+      const company = await storage.createSaasCompany({
+        name: businessName,
+        ownerName: `${firstName} ${lastName}`.trim(),
+        email,
+        phone,
+        status: "trial",
+        plan: "starter",
+        mrr: 0,
+        affiliateId: null,
+        notes: "Signed up via landing page",
+        address: "",
+        city: "",
+        state: "",
+        country: "",
+        zip: "",
+        website: "",
+      });
+      res.status(201).json({ id: company.id, name: company.name });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Signup failed";
+      res.status(500).json({ error: msg });
+    }
+  });
+
   // Upload endpoint — accepts base64 data URL, writes file to disk
   app.post("/api/upload", async (req, res) => {
     try {

@@ -3,6 +3,7 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import LandingPage from "@/pages/landing";
 import Dashboard from "@/pages/dashboard";
 import Kiosk from "@/pages/kiosk";
 import Reviews from "@/pages/reviews";
@@ -15,16 +16,18 @@ import Support from "@/pages/support";
 import NotFound from "@/pages/not-found";
 import { ArrowLeft } from "lucide-react";
 
+const NO_BACK_ROUTES = ["/", "/dashboard", "/portal"];
+
 function BackButton() {
   const [location, navigate] = useLocation();
-  if (location === "/") return null;
+  if (NO_BACK_ROUTES.includes(location)) return null;
 
   function getBackPath(loc: string): string {
     if (/^\/invoicing\/invoices\/\d+/.test(loc)) return "/invoicing";
     if (/^\/invoicing\/customers\/\d+/.test(loc)) return "/invoicing";
-    if (/^\/invoicing/.test(loc)) return "/";
+    if (/^\/invoicing/.test(loc)) return "/dashboard";
     if (/^\/portal\/dashboard/.test(loc)) return "/portal";
-    return "/";
+    return "/dashboard";
   }
 
   return (
@@ -42,7 +45,8 @@ function BackButton() {
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={Dashboard} />
+      <Route path="/" component={LandingPage} />
+      <Route path="/dashboard" component={Dashboard} />
       <Route path="/kiosk" component={Kiosk} />
       <Route path="/reviews" component={Reviews} />
       <Route path="/calendar" component={CalendarPage} />
