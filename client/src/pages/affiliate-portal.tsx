@@ -93,9 +93,7 @@ function CreateSubAccountModal({ open, onClose }: CreateSubAccountModalProps) {
         email: email.trim(),
         phone: phone.trim(),
       });
-      const body = await res.json() as { error?: string };
-      if (!res.ok) throw new Error(body.error ?? `Request failed (${res.status})`);
-      return body;
+      return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/affiliate/me"] });

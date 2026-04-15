@@ -601,7 +601,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const affiliateId = req.session.affiliateId;
 
       const bodySchema = z.object({
-        name: z.string().min(1, "Company name is required"),
+        name: z.string().trim().min(1, "Company name is required"),
         ownerName: z.string().default(""),
         email: z.string().default(""),
         phone: z.string().default(""),
