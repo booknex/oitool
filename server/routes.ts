@@ -4,7 +4,7 @@ import { createServer, type Server } from "http";
 import { z } from "zod";
 import { storage } from "./storage";
 import { isStripeConfigured, getUncachableStripeClient } from "./stripeClient";
-import { checkoutSchema, restockSchema, createItemSchema, updateItemSchema, createDashboardAppSchema, updateDashboardAppSchema, createPropertySchema, updatePropertySchema, createClientSchema, updateClientSchema, createInvoiceSchema, updateInvoiceSchema, createSaasAffiliateSchema, updateSaasAffiliateSchema, createSaasCompanySchema, updateSaasCompanySchema, createCatalogItemSchema, updateCatalogItemSchema, createStaffSchema, updateStaffSchema, type AnalyticsRange } from "@shared/schema";
+import { checkoutSchema, restockSchema, createItemSchema, updateItemSchema, createDashboardAppSchema, updateDashboardAppSchema, createPropertySchema, updatePropertySchema, createClientSchema, updateClientSchema, createInvoiceSchema, updateInvoiceSchema, createSaasAffiliateSchema, updateSaasAffiliateSchema, createSaasCompanySchema, updateSaasCompanySchema, createCatalogItemSchema, updateCatalogItemSchema, createStaffSchema, updateStaffSchema, createJobSchema, updateJobSchema, type AnalyticsRange } from "@shared/schema";
 import fs from "fs";
 import path from "path";
 
@@ -803,6 +803,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true });
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Failed to delete staff member";
+      res.status(msg.includes("not found") ? 404 : 500).json({ error: msg });
+    }
+  });
+
+  // ── Cleaning Jobs (Scheduling) ───────────────────────────────────────────────
+  app.get("/api/jobs", async (req, res) => {
+    try {
+      const filters: { staffId?: number; week?: string } = {};
+      if (req.query.staffId) filters.staffId = parseInt(req.query.staffId as string, 10);
+      if (req.query.week) filters.week = req.query.week as string;
+      const jobs = await storage.getJobs(filters);
+      res.json(jobs);
+    } catch { res.status(500).json({ error: "Failed to fetch jobs" }); }
+  });
+
+  app.post("/api/jobs", async (req, res) => {
+    try {
+      const parsed = createJobSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message });
+      const job = await storage.createJob(parsed.data);
+      res.status(201).json(job);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Failed to create job";
+      res.status(500).json({ error: msg });
+    }
+  });
+
+  app.patch("/api/jobs/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid id" });
+      const parsed = updateJobSchema.safeParse({ ...req.body, id });
+      if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message });
+      const job = await storage.updateJob(parsed.data);
+      res.json(job);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Failed to update job";
+      res.status(msg.includes("not found") ? 404 : 500).json({ error: msg });
+    }
+  });
+
+  app.delete("/api/jobs/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid id" });
+      await storage.deleteJob(id);
+      res.json({ success: true });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Failed to delete job";
       res.status(msg.includes("not found") ? 404 : 500).json({ error: msg });
     }
   });

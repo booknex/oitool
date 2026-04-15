@@ -559,6 +559,57 @@ export const updateStaffSchema = z.object({
 export type CreateStaffPayload = z.infer<typeof createStaffSchema>;
 export type UpdateStaffPayload = z.infer<typeof updateStaffSchema>;
 
+// ─── Cleaning Jobs (Scheduling) ───────────────────────────────────────────────
+
+export const cleaningJobs = pgTable("cleaning_jobs", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  staffId: integer("staff_id").notNull().references(() => staff.id, { onDelete: "cascade" }),
+  propertyId: integer("property_id").references(() => properties.id, { onDelete: "set null" }),
+  address: text("address").notNull().default(""),
+  date: text("date").notNull(),
+  startTime: text("start_time").notNull().default(""),
+  endTime: text("end_time").notNull().default(""),
+  status: text("status").notNull().default("scheduled"),
+  notes: text("notes").notNull().default(""),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export type CleaningJob = typeof cleaningJobs.$inferSelect;
+
+export type CleaningJobWithDetails = CleaningJob & {
+  staffMember: { id: number; name: string; color: string; role: string } | null;
+  property: { id: number; name: string; address: string } | null;
+};
+
+export const createJobSchema = z.object({
+  title: z.string().min(1, "Title is required"),
+  staffId: z.number({ required_error: "Employee is required" }),
+  propertyId: z.number().nullable().default(null),
+  address: z.string().default(""),
+  date: z.string().min(1, "Date is required"),
+  startTime: z.string().default(""),
+  endTime: z.string().default(""),
+  status: z.enum(["scheduled", "in-progress", "completed", "cancelled"]).default("scheduled"),
+  notes: z.string().default(""),
+});
+
+export const updateJobSchema = z.object({
+  id: z.number(),
+  title: z.string().min(1).optional(),
+  staffId: z.number().optional(),
+  propertyId: z.number().nullable().optional(),
+  address: z.string().optional(),
+  date: z.string().optional(),
+  startTime: z.string().optional(),
+  endTime: z.string().optional(),
+  status: z.enum(["scheduled", "in-progress", "completed", "cancelled"]).optional(),
+  notes: z.string().optional(),
+});
+
+export type CreateJobPayload = z.infer<typeof createJobSchema>;
+export type UpdateJobPayload = z.infer<typeof updateJobSchema>;
+
 // ── Company Settings ──────────────────────────────────────────────────────────
 export const companySettings = pgTable("company_settings", {
   id: serial("id").primaryKey(),

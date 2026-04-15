@@ -101,6 +101,18 @@ A self-service inventory kiosk application for cleaning service operations. Maid
 - **API** — `GET/POST /api/staff`, `PATCH/DELETE /api/staff/:id`
 - **Table** — `staff` (id serial PK, name, email, phone, role, status, color, notes, created_at)
 
+### Scheduling
+- **Route** `/scheduling` — accessible from the "Scheduling" tile on the dashboard
+- **Stats header** — 4 cards: This Week, Scheduled, In Progress, Completed (current week only)
+- **Calendar view** — weekly grid (Mon–Sun) with today highlighted; job blocks colored by employee color; click to edit; "+ Add" button per day
+- **List view** — sorted chronological list with job cards showing title, employee, time, address, status badge
+- **Week navigation** — prev/next week buttons + Today shortcut
+- **Filter bar** — filter by employee and/or status; toggles between calendar/list views
+- **Add/Edit modal** — react-hook-form + Zod; fields: title, assigned employee, date, status, start/end time, address, notes
+- **Two-tap delete** — first tap shows "Confirm" button, second tap deletes
+- **API** — `GET /api/jobs`, `POST /api/jobs`, `PATCH /api/jobs/:id`, `DELETE /api/jobs/:id`
+- **Table** — `cleaning_jobs` (id serial PK, title, staff_id FK→staff, property_id FK→properties nullable, address, date, start_time, end_time, status, notes, created_at)
+
 ### Cleaning Supply Items (12 items)
 1. All-Purpose Cleaner (Sprays)
 2. Glass Cleaner (Sprays)

@@ -50,6 +50,10 @@ import {
   type StaffMember,
   type CreateStaffPayload,
   type UpdateStaffPayload,
+  cleaningJobs,
+  type CleaningJobWithDetails,
+  type CreateJobPayload,
+  type UpdateJobPayload,
 } from "@shared/schema";
 
 // ─── SSRF protection ─────────────────────────────────────────────────────────
@@ -195,22 +199,29 @@ export interface IStorage {
   createStaffMember(data: CreateStaffPayload): Promise<StaffMember>;
   updateStaffMember(data: UpdateStaffPayload): Promise<StaffMember>;
   deleteStaffMember(id: number): Promise<void>;
+  // Cleaning Jobs
+  getJobs(filters?: { staffId?: number; week?: string }): Promise<CleaningJobWithDetails[]>;
+  createJob(data: CreateJobPayload): Promise<CleaningJobWithDetails>;
+  updateJob(data: UpdateJobPayload): Promise<CleaningJobWithDetails>;
+  deleteJob(id: number): Promise<void>;
 }
 
 const DEFAULT_DASHBOARD_APPS: Omit<CreateDashboardAppPayload, "sortOrder">[] = [
-  { name: "Supply Kiosk", description: "Manage inventory & cleaning supplies", icon: "Package",      color: "#E8F4FD", iconColor: "#2196F3", route: "/kiosk",      available: true  },
-  { name: "Calendar",     description: "Property bookings & iCal sync",        icon: "CalendarDays", color: "#E8F5E9", iconColor: "#22C55E", route: "/calendar",   available: true  },
-  { name: "Invoicing",    description: "Bill clients & track payments",         icon: "Receipt",      color: "#EDE9FE", iconColor: "#7C3AED", route: "/invoicing",  available: true  },
-  { name: "Analytics",    description: "Usage trends & cost tracking",          icon: "BarChart3",    color: "#F3E5F5", iconColor: "#9C27B0", route: "/analytics",  available: true  },
-  { name: "Team",         description: "Staff management & schedules",          icon: "Users",        color: "#FBE9E7", iconColor: "#FF5722", route: "/team",       available: true  },
+  { name: "Supply Kiosk",  description: "Manage inventory & cleaning supplies", icon: "Package",       color: "#E8F4FD", iconColor: "#2196F3", route: "/kiosk",       available: true  },
+  { name: "Calendar",      description: "Property bookings & iCal sync",        icon: "CalendarDays",  color: "#E8F5E9", iconColor: "#22C55E", route: "/calendar",    available: true  },
+  { name: "Invoicing",     description: "Bill clients & track payments",         icon: "Receipt",       color: "#EDE9FE", iconColor: "#7C3AED", route: "/invoicing",   available: true  },
+  { name: "Analytics",     description: "Usage trends & cost tracking",          icon: "BarChart3",     color: "#F3E5F5", iconColor: "#9C27B0", route: "/analytics",   available: true  },
+  { name: "Team",          description: "Staff management & schedules",          icon: "Users",         color: "#FBE9E7", iconColor: "#FF5722", route: "/team",        available: true  },
+  { name: "Scheduling",    description: "Assign cleaning jobs to employees",     icon: "CalendarClock", color: "#FFF3E0", iconColor: "#F97316", route: "/scheduling",  available: true  },
 ];
 
 const REQUIRED_APPS = [
-  { route: "/kiosk",      name: "Supply Kiosk", description: "Manage inventory & cleaning supplies", icon: "Package",      color: "#E8F4FD", iconColor: "#2196F3", available: true },
-  { route: "/calendar",   name: "Calendar",     description: "Property bookings & iCal sync",        icon: "CalendarDays", color: "#E8F5E9", iconColor: "#22C55E", available: true },
-  { route: "/invoicing",  name: "Invoicing",    description: "Bill clients & track payments",        icon: "Receipt",      color: "#EDE9FE", iconColor: "#7C3AED", available: true },
-  { route: "/analytics",  name: "Analytics",    description: "Usage trends & cost tracking",         icon: "BarChart3",    color: "#F3E5F5", iconColor: "#9C27B0", available: true },
-  { route: "/team",       name: "Team",         description: "Staff management & schedules",         icon: "Users",        color: "#FBE9E7", iconColor: "#FF5722", available: true },
+  { route: "/kiosk",       name: "Supply Kiosk",  description: "Manage inventory & cleaning supplies", icon: "Package",       color: "#E8F4FD", iconColor: "#2196F3", available: true },
+  { route: "/calendar",    name: "Calendar",      description: "Property bookings & iCal sync",        icon: "CalendarDays",  color: "#E8F5E9", iconColor: "#22C55E", available: true },
+  { route: "/invoicing",   name: "Invoicing",     description: "Bill clients & track payments",        icon: "Receipt",       color: "#EDE9FE", iconColor: "#7C3AED", available: true },
+  { route: "/analytics",   name: "Analytics",     description: "Usage trends & cost tracking",         icon: "BarChart3",     color: "#F3E5F5", iconColor: "#9C27B0", available: true },
+  { route: "/team",        name: "Team",          description: "Staff management & schedules",         icon: "Users",         color: "#FBE9E7", iconColor: "#FF5722", available: true },
+  { route: "/scheduling",  name: "Scheduling",    description: "Assign cleaning jobs to employees",    icon: "CalendarClock", color: "#FFF3E0", iconColor: "#F97316", available: true },
 ];
 
 export class DatabaseStorage implements IStorage {
@@ -870,6 +881,92 @@ export class DatabaseStorage implements IStorage {
     const [existing] = await db.select().from(staff).where(eq(staff.id, id));
     if (!existing) throw new Error(`Staff member with id ${id} not found`);
     await db.delete(staff).where(eq(staff.id, id));
+  }
+
+  // ─── Cleaning Jobs ──────────────────────────────────────────────────────────
+
+  private async buildJobWithDetails(id: number): Promise<CleaningJobWithDetails> {
+    const [job] = await db.select().from(cleaningJobs).where(eq(cleaningJobs.id, id));
+    if (!job) throw new Error(`Job with id ${id} not found`);
+    const [staffMember] = await db.select().from(staff).where(eq(staff.id, job.staffId));
+    let property = null;
+    if (job.propertyId) {
+      const [prop] = await db.select().from(properties).where(eq(properties.id, job.propertyId));
+      if (prop) property = { id: prop.id, name: prop.name, address: prop.address };
+    }
+    return {
+      ...job,
+      staffMember: staffMember ? { id: staffMember.id, name: staffMember.name, color: staffMember.color, role: staffMember.role } : null,
+      property,
+    };
+  }
+
+  async getJobs(filters?: { staffId?: number; week?: string }): Promise<CleaningJobWithDetails[]> {
+    let rows = await db.select().from(cleaningJobs).orderBy(cleaningJobs.date, cleaningJobs.startTime);
+
+    if (filters?.staffId) {
+      rows = rows.filter(j => j.staffId === filters.staffId);
+    }
+    if (filters?.week) {
+      // week = YYYY-MM-DD of Monday; filter for that 7-day range
+      const mon = new Date(filters.week);
+      const sun = new Date(mon);
+      sun.setDate(sun.getDate() + 6);
+      const monStr = mon.toISOString().split("T")[0];
+      const sunStr = sun.toISOString().split("T")[0];
+      rows = rows.filter(j => j.date >= monStr && j.date <= sunStr);
+    }
+
+    const staffList = await db.select().from(staff);
+    const propList = await db.select().from(properties);
+
+    return rows.map(job => {
+      const sm = staffList.find(s => s.id === job.staffId);
+      const prop = job.propertyId ? propList.find(p => p.id === job.propertyId) : null;
+      return {
+        ...job,
+        staffMember: sm ? { id: sm.id, name: sm.name, color: sm.color, role: sm.role } : null,
+        property: prop ? { id: prop.id, name: prop.name, address: prop.address } : null,
+      };
+    });
+  }
+
+  async createJob(data: CreateJobPayload): Promise<CleaningJobWithDetails> {
+    const [row] = await db.insert(cleaningJobs).values({
+      title: data.title,
+      staffId: data.staffId,
+      propertyId: data.propertyId ?? null,
+      address: data.address ?? "",
+      date: data.date,
+      startTime: data.startTime ?? "",
+      endTime: data.endTime ?? "",
+      status: data.status ?? "scheduled",
+      notes: data.notes ?? "",
+    }).returning();
+    return this.buildJobWithDetails(row.id);
+  }
+
+  async updateJob(data: UpdateJobPayload): Promise<CleaningJobWithDetails> {
+    const [existing] = await db.select().from(cleaningJobs).where(eq(cleaningJobs.id, data.id));
+    if (!existing) throw new Error(`Job with id ${data.id} not found`);
+    const updates: Partial<typeof cleaningJobs.$inferInsert> = {};
+    if (data.title !== undefined) updates.title = data.title;
+    if (data.staffId !== undefined) updates.staffId = data.staffId;
+    if ("propertyId" in data) updates.propertyId = data.propertyId ?? null;
+    if (data.address !== undefined) updates.address = data.address;
+    if (data.date !== undefined) updates.date = data.date;
+    if (data.startTime !== undefined) updates.startTime = data.startTime;
+    if (data.endTime !== undefined) updates.endTime = data.endTime;
+    if (data.status !== undefined) updates.status = data.status;
+    if (data.notes !== undefined) updates.notes = data.notes;
+    await db.update(cleaningJobs).set(updates).where(eq(cleaningJobs.id, data.id));
+    return this.buildJobWithDetails(data.id);
+  }
+
+  async deleteJob(id: number): Promise<void> {
+    const [existing] = await db.select().from(cleaningJobs).where(eq(cleaningJobs.id, id));
+    if (!existing) throw new Error(`Job with id ${id} not found`);
+    await db.delete(cleaningJobs).where(eq(cleaningJobs.id, id));
   }
 }
 

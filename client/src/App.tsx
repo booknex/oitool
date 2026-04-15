@@ -15,6 +15,7 @@ import { AffiliateLogin, AffiliateDashboard } from "@/pages/affiliate-portal";
 import Analytics from "@/pages/analytics";
 import Support from "@/pages/support";
 import Team from "@/pages/team";
+import Scheduling from "@/pages/scheduling";
 import NotFound from "@/pages/not-found";
 import { ArrowLeft, LogOut, Shield, Users, LayoutDashboard } from "lucide-react";
 
@@ -190,6 +191,7 @@ function Router() {
       <Route path="/analytics" component={Analytics} />
       <Route path="/support" component={Support} />
       <Route path="/team" component={Team} />
+      <Route path="/scheduling" component={Scheduling} />
       <Route component={NotFound} />
     </Switch>
   );
