@@ -128,142 +128,74 @@ function CreateSubAccountModal({ open, onClose }: CreateSubAccountModalProps) {
 
   return (
     <Dialog open={open} onOpenChange={v => { if (!v) handleClose(); }}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader className="pb-1">
           <DialogTitle>Create Sub-Account</DialogTitle>
           <DialogDescription>
-            Register a new cleaning company. It will start on a free trial linked to your affiliate account.
+            Register a new cleaning company under your affiliate account.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-5 pt-1">
+        <form onSubmit={handleSubmit} className="space-y-3">
 
           {/* Account Section */}
-          <div className="border border-gray-200 rounded-md p-5 space-y-4">
-            <h3 className="text-sm font-semibold text-gray-700">Account</h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-1.5">
-                <Label htmlFor="sub-first">First Name <span className="text-rose-500">*</span></Label>
-                <Input
-                  id="sub-first"
-                  data-testid="input-sub-first-name"
-                  placeholder="Jane"
-                  value={firstName}
-                  onChange={e => setFirstName(e.target.value)}
-                  autoFocus
-                />
+          <div className="border border-gray-200 rounded-md px-4 py-3 space-y-3">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500">Account</h3>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-1">
+                <Label htmlFor="sub-first" className="text-xs">First Name <span className="text-rose-500">*</span></Label>
+                <Input id="sub-first" data-testid="input-sub-first-name" placeholder="Jane" value={firstName} onChange={e => setFirstName(e.target.value)} autoFocus className="h-8 text-sm" />
               </div>
-              <div className="grid gap-1.5">
-                <Label htmlFor="sub-last">Last Name <span className="text-rose-500">*</span></Label>
-                <Input
-                  id="sub-last"
-                  data-testid="input-sub-last-name"
-                  placeholder="Smith"
-                  value={lastName}
-                  onChange={e => setLastName(e.target.value)}
-                />
+              <div className="grid gap-1">
+                <Label htmlFor="sub-last" className="text-xs">Last Name <span className="text-rose-500">*</span></Label>
+                <Input id="sub-last" data-testid="input-sub-last-name" placeholder="Smith" value={lastName} onChange={e => setLastName(e.target.value)} className="h-8 text-sm" />
               </div>
             </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor="sub-email">Email <span className="text-rose-500">*</span></Label>
-              <Input
-                id="sub-email"
-                data-testid="input-sub-account-email"
-                type="email"
-                placeholder="jane@acmecleaning.com"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-              />
-            </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor="sub-phone">Phone Number</Label>
-              <Input
-                id="sub-phone"
-                data-testid="input-sub-account-phone"
-                type="tel"
-                placeholder="+1 (555) 000-0000"
-                value={phone}
-                onChange={e => setPhone(e.target.value)}
-              />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-1">
+                <Label htmlFor="sub-email" className="text-xs">Email <span className="text-rose-500">*</span></Label>
+                <Input id="sub-email" data-testid="input-sub-account-email" type="email" placeholder="jane@acme.com" value={email} onChange={e => setEmail(e.target.value)} className="h-8 text-sm" />
+              </div>
+              <div className="grid gap-1">
+                <Label htmlFor="sub-phone" className="text-xs">Phone Number</Label>
+                <Input id="sub-phone" data-testid="input-sub-account-phone" type="tel" placeholder="+1 (555) 000-0000" value={phone} onChange={e => setPhone(e.target.value)} className="h-8 text-sm" />
+              </div>
             </div>
           </div>
 
           {/* General Information Section */}
-          <div className="border border-gray-200 rounded-md p-5 space-y-4">
-            <h3 className="text-sm font-semibold text-gray-700">General Information</h3>
-            <div className="grid gap-1.5">
-              <Label htmlFor="sub-biz">Business Name <span className="text-rose-500">*</span></Label>
-              <Input
-                id="sub-biz"
-                data-testid="input-sub-account-name"
-                placeholder="Acme Cleaning Co."
-                value={businessName}
-                onChange={e => setBusinessName(e.target.value)}
-              />
-            </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor="sub-address">Street Address</Label>
-              <Input
-                id="sub-address"
-                data-testid="input-sub-account-address"
-                placeholder="1234 Main St"
-                value={address}
-                onChange={e => setAddress(e.target.value)}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-1.5">
-                <Label htmlFor="sub-city">City</Label>
-                <Input
-                  id="sub-city"
-                  data-testid="input-sub-account-city"
-                  placeholder="Port Richey"
-                  value={city}
-                  onChange={e => setCity(e.target.value)}
-                />
+          <div className="border border-gray-200 rounded-md px-4 py-3 space-y-3">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500">General Information</h3>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-1">
+                <Label htmlFor="sub-biz" className="text-xs">Business Name <span className="text-rose-500">*</span></Label>
+                <Input id="sub-biz" data-testid="input-sub-account-name" placeholder="Acme Cleaning Co." value={businessName} onChange={e => setBusinessName(e.target.value)} className="h-8 text-sm" />
               </div>
-              <div className="grid gap-1.5">
-                <Label htmlFor="sub-country">Country <span className="text-rose-500">*</span></Label>
-                <Input
-                  id="sub-country"
-                  data-testid="input-sub-account-country"
-                  placeholder="United States"
-                  value={country}
-                  onChange={e => setCountry(e.target.value)}
-                />
+              <div className="grid gap-1">
+                <Label htmlFor="sub-website" className="text-xs">Website</Label>
+                <Input id="sub-website" data-testid="input-sub-account-website" type="url" placeholder="https://acme.com" value={website} onChange={e => setWebsite(e.target.value)} className="h-8 text-sm" />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-1.5">
-                <Label htmlFor="sub-zip">Zip / Postal Code</Label>
-                <Input
-                  id="sub-zip"
-                  data-testid="input-sub-account-zip"
-                  placeholder="34668"
-                  value={zip}
-                  onChange={e => setZip(e.target.value)}
-                />
+            <div className="grid gap-1">
+              <Label htmlFor="sub-address" className="text-xs">Street Address</Label>
+              <Input id="sub-address" data-testid="input-sub-account-address" placeholder="1234 Main St" value={address} onChange={e => setAddress(e.target.value)} className="h-8 text-sm" />
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="grid gap-1">
+                <Label htmlFor="sub-city" className="text-xs">City</Label>
+                <Input id="sub-city" data-testid="input-sub-account-city" placeholder="Port Richey" value={city} onChange={e => setCity(e.target.value)} className="h-8 text-sm" />
               </div>
-              <div className="grid gap-1.5">
-                <Label htmlFor="sub-state">State / Prov / Region</Label>
-                <Input
-                  id="sub-state"
-                  data-testid="input-sub-account-state"
-                  placeholder="Florida"
-                  value={state}
-                  onChange={e => setState(e.target.value)}
-                />
+              <div className="grid gap-1">
+                <Label htmlFor="sub-state" className="text-xs">State / Region</Label>
+                <Input id="sub-state" data-testid="input-sub-account-state" placeholder="Florida" value={state} onChange={e => setState(e.target.value)} className="h-8 text-sm" />
+              </div>
+              <div className="grid gap-1">
+                <Label htmlFor="sub-zip" className="text-xs">Zip / Postal</Label>
+                <Input id="sub-zip" data-testid="input-sub-account-zip" placeholder="34668" value={zip} onChange={e => setZip(e.target.value)} className="h-8 text-sm" />
               </div>
             </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor="sub-website">Website</Label>
-              <Input
-                id="sub-website"
-                data-testid="input-sub-account-website"
-                type="url"
-                placeholder="https://acmecleaning.com"
-                value={website}
-                onChange={e => setWebsite(e.target.value)}
-              />
+            <div className="grid gap-1">
+              <Label htmlFor="sub-country" className="text-xs">Country</Label>
+              <Input id="sub-country" data-testid="input-sub-account-country" placeholder="United States" value={country} onChange={e => setCountry(e.target.value)} className="h-8 text-sm" />
             </div>
           </div>
 
