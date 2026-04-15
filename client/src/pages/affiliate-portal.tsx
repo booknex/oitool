@@ -4,13 +4,16 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import {
   Building2, Users, DollarSign, TrendingUp, LogOut, RefreshCw,
-  BadgeCheck, Clock, AlertCircle, Ban, Mail, Phone, ChevronRight,
-  Sparkles,
+  BadgeCheck, Clock, AlertCircle, Ban, Mail, Phone,
+  Sparkles, Plus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+} from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import type { SaasAffiliate, SaasCompanyWithAffiliate } from "@shared/schema";
 
@@ -53,6 +56,135 @@ function StatusBadge({ status }: { status: string }) {
       <Icon className="w-3 h-3" />
       {s.label}
     </span>
+  );
+}
+
+// ─── Create Sub-Account Modal ─────────────────────────────────────────────────
+
+interface CreateSubAccountModalProps {
+  open: boolean;
+  onClose: () => void;
+}
+
+function CreateSubAccountModal({ open, onClose }: CreateSubAccountModalProps) {
+  const { toast } = useToast();
+  const [name, setName] = useState("");
+  const [ownerName, setOwnerName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+
+  function reset() {
+    setName("");
+    setOwnerName("");
+    setEmail("");
+    setPhone("");
+  }
+
+  function handleClose() {
+    reset();
+    onClose();
+  }
+
+  const create = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/affiliate/companies", {
+        name: name.trim(),
+        ownerName: ownerName.trim(),
+        email: email.trim(),
+        phone: phone.trim(),
+      });
+      const body = await res.json() as { error?: string };
+      if (!res.ok) throw new Error(body.error ?? `Request failed (${res.status})`);
+      return body;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/affiliate/me"] });
+      toast({ title: "Account created", description: `${name.trim()} has been added to your accounts.` });
+      handleClose();
+    },
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : "Failed to create account";
+      toast({ title: "Could not create account", description: msg, variant: "destructive" });
+    },
+  });
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!name.trim()) return;
+    create.mutate();
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={v => { if (!v) handleClose(); }}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Create Sub-Account</DialogTitle>
+          <DialogDescription>
+            Register a new cleaning company under your affiliate account. It will start on a free trial.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4 pt-1">
+          <div className="grid gap-1.5">
+            <Label htmlFor="sub-name">Company Name <span className="text-rose-500">*</span></Label>
+            <Input
+              id="sub-name"
+              data-testid="input-sub-account-name"
+              placeholder="Acme Cleaning Co."
+              value={name}
+              onChange={e => setName(e.target.value)}
+              autoFocus
+            />
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor="sub-owner">Owner Name</Label>
+            <Input
+              id="sub-owner"
+              data-testid="input-sub-account-owner"
+              placeholder="Jane Smith"
+              value={ownerName}
+              onChange={e => setOwnerName(e.target.value)}
+            />
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor="sub-email">Email</Label>
+            <Input
+              id="sub-email"
+              data-testid="input-sub-account-email"
+              type="email"
+              placeholder="jane@acmecleaning.com"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+            />
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor="sub-phone">Phone</Label>
+            <Input
+              id="sub-phone"
+              data-testid="input-sub-account-phone"
+              type="tel"
+              placeholder="(555) 000-0000"
+              value={phone}
+              onChange={e => setPhone(e.target.value)}
+            />
+          </div>
+          <DialogFooter className="gap-2 pt-2">
+            <Button type="button" variant="outline" onClick={handleClose} disabled={create.isPending}>
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              data-testid="button-sub-account-submit"
+              disabled={!name.trim() || create.isPending}
+              className="bg-rose-600 text-white"
+            >
+              {create.isPending
+                ? <><RefreshCw className="w-4 h-4 animate-spin" /> Creating…</>
+                : "Create Account"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -156,6 +288,7 @@ function LoginPage() {
 function DashboardPage({ data }: { data: PortalData }) {
   const { toast } = useToast();
   const [, navigate] = useLocation();
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   const logout = useMutation({
     mutationFn: async () => {
@@ -207,7 +340,7 @@ function DashboardPage({ data }: { data: PortalData }) {
 
         {/* Welcome */}
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Hello, {affiliate.name.split(" ")[0]} 👋</h2>
+          <h2 className="text-2xl font-bold text-gray-900">Hello, {affiliate.name.split(" ")[0]}</h2>
           <p className="text-gray-500 mt-1">Here's how your accounts are performing this month.</p>
         </div>
 
@@ -327,7 +460,17 @@ function DashboardPage({ data }: { data: PortalData }) {
 
         {/* Companies Table */}
         <div>
-          <h3 className="text-lg font-bold text-gray-900 mb-4">Your Referred Accounts</h3>
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+            <h3 className="text-lg font-bold text-gray-900">Your Referred Accounts</h3>
+            <Button
+              data-testid="button-create-sub-account"
+              className="bg-rose-600 text-white"
+              onClick={() => setShowCreateModal(true)}
+            >
+              <Plus className="w-4 h-4" />
+              Create Sub-Account
+            </Button>
+          </div>
           <Card>
             <CardContent className="p-0">
               {companies.length === 0 ? (
@@ -401,6 +544,8 @@ function DashboardPage({ data }: { data: PortalData }) {
           </Card>
         </div>
       </div>
+
+      <CreateSubAccountModal open={showCreateModal} onClose={() => setShowCreateModal(false)} />
     </div>
   );
 }

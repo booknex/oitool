@@ -593,6 +593,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch { res.status(500).json({ error: "Failed to fetch portal data" }); }
   });
 
+  // ─── Affiliate: Create Sub-Account ────────────────────────────────────────
+  app.post("/api/affiliate/companies", async (req, res) => {
+    try {
+      if (!req.session.affiliateId) return res.status(401).json({ error: "Not authenticated" });
+      const affiliateId = req.session.affiliateId;
+
+      const bodySchema = z.object({
+        name: z.string().min(1, "Company name is required"),
+        ownerName: z.string().default(""),
+        email: z.string().default(""),
+        phone: z.string().default(""),
+      });
+      const parsed = bodySchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: parsed.error.errors[0]?.message ?? "Invalid input" });
+
+      const company = await storage.createSaasCompany({
+        ...parsed.data,
+        status: "trial",
+        plan: "starter",
+        mrr: 0,
+        affiliateId,
+        notes: "",
+      });
+      res.status(201).json(company);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Failed to create company";
+      res.status(500).json({ error: msg });
+    }
+  });
+
   // ─── SaaS Affiliates ───────────────────────────────────────────────────────
 
   app.get("/api/saas/affiliates", async (_req, res) => {
