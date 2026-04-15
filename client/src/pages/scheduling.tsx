@@ -479,9 +479,13 @@ export default function Scheduling() {
     return applyFilters(jobs).filter(j => j.date >= monStr && j.date <= sunStr);
   }, [jobs, monday, filterStaff, filterStatus, filterDateFrom, filterDateTo]);
 
-  // List view jobs (sorted)
+  // List view jobs (sorted) — default to upcoming only unless a date-from filter is set
   const sortedJobs = useMemo(() => {
-    const filtered = applyFilters(jobs);
+    const filtered = applyFilters(jobs).filter(j => {
+      // If no explicit date-from filter, only show upcoming (today and future)
+      if (!filterDateFrom && j.date < todayStr) return false;
+      return true;
+    });
     return [...filtered].sort((a, b) => {
       let av = "", bv = "";
       if (sortField === "date") { av = a.date + a.startTime; bv = b.date + b.startTime; }
@@ -772,8 +776,8 @@ export default function Scheduling() {
           {!jobsLoading && sortedJobs.length === 0 && (
             <div className="text-center py-16 text-muted-foreground">
               <CalendarClock className="w-10 h-10 mx-auto mb-3 opacity-30" />
-              <p className="font-medium">No jobs found</p>
-              <p className="text-sm">Adjust filters or create a new job.</p>
+              <p className="font-medium">No upcoming jobs</p>
+              <p className="text-sm">Set a date range to view past jobs, or create a new one.</p>
             </div>
           )}
           {sortedJobs.map((job, idx) => {
