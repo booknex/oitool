@@ -203,6 +203,12 @@ export const saasCompanies = pgTable("saas_companies", {
   affiliateId: integer("affiliate_id").references(() => saasAffiliates.id),
   trialEndsAt: timestamp("trial_ends_at"),
   notes: text("notes").notNull().default(""),
+  address: text("address").notNull().default(""),
+  city: text("city").notNull().default(""),
+  state: text("state").notNull().default(""),
+  country: text("country").notNull().default(""),
+  zip: text("zip").notNull().default(""),
+  website: text("website").notNull().default(""),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -223,6 +229,12 @@ export const createSaasCompanySchema = z.object({
   affiliateId: z.number().nullable().default(null),
   trialEndsAt: z.string().nullable().optional(),
   notes: z.string().default(""),
+  address: z.string().default(""),
+  city: z.string().default(""),
+  state: z.string().default(""),
+  country: z.string().default(""),
+  zip: z.string().default(""),
+  website: z.string().default(""),
 });
 
 export const updateSaasCompanySchema = z.object({
@@ -237,6 +249,12 @@ export const updateSaasCompanySchema = z.object({
   affiliateId: z.number().nullable().optional(),
   trialEndsAt: z.string().nullable().optional(),
   notes: z.string().optional(),
+  address: z.string().optional(),
+  city: z.string().optional(),
+  state: z.string().optional(),
+  country: z.string().optional(),
+  zip: z.string().optional(),
+  website: z.string().optional(),
 });
 
 export type CreateSaasCompanyPayload = z.infer<typeof createSaasCompanySchema>;

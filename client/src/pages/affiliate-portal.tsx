@@ -68,16 +68,22 @@ interface CreateSubAccountModalProps {
 
 function CreateSubAccountModal({ open, onClose }: CreateSubAccountModalProps) {
   const { toast } = useToast();
-  const [name, setName] = useState("");
-  const [ownerName, setOwnerName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [businessName, setBusinessName] = useState("");
+  const [address, setAddress] = useState("");
+  const [city, setCity] = useState("");
+  const [country, setCountry] = useState("United States");
+  const [zip, setZip] = useState("");
+  const [state, setState] = useState("");
+  const [website, setWebsite] = useState("");
 
   function reset() {
-    setName("");
-    setOwnerName("");
-    setEmail("");
-    setPhone("");
+    setFirstName(""); setLastName(""); setEmail(""); setPhone("");
+    setBusinessName(""); setAddress(""); setCity(""); setCountry("United States");
+    setZip(""); setState(""); setWebsite("");
   }
 
   function handleClose() {
@@ -85,19 +91,27 @@ function CreateSubAccountModal({ open, onClose }: CreateSubAccountModalProps) {
     onClose();
   }
 
+  const canSubmit = firstName.trim() && lastName.trim() && email.trim() && businessName.trim();
+
   const create = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("POST", "/api/affiliate/companies", {
-        name: name.trim(),
-        ownerName: ownerName.trim(),
+        name: businessName.trim(),
+        ownerName: `${firstName.trim()} ${lastName.trim()}`.trim(),
         email: email.trim(),
         phone: phone.trim(),
+        address: address.trim(),
+        city: city.trim(),
+        state: state.trim(),
+        country: country.trim(),
+        zip: zip.trim(),
+        website: website.trim(),
       });
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/affiliate/me"] });
-      toast({ title: "Account created", description: `${name.trim()} has been added to your accounts.` });
+      toast({ title: "Account created", description: `${businessName.trim()} has been added to your accounts.` });
       handleClose();
     },
     onError: (err: unknown) => {
@@ -108,76 +122,164 @@ function CreateSubAccountModal({ open, onClose }: CreateSubAccountModalProps) {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!name.trim()) return;
+    if (!canSubmit) return;
     create.mutate();
   }
 
   return (
     <Dialog open={open} onOpenChange={v => { if (!v) handleClose(); }}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Create Sub-Account</DialogTitle>
           <DialogDescription>
-            Register a new cleaning company under your affiliate account. It will start on a free trial.
+            Register a new cleaning company. It will start on a free trial linked to your affiliate account.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4 pt-1">
-          <div className="grid gap-1.5">
-            <Label htmlFor="sub-name">Company Name <span className="text-rose-500">*</span></Label>
-            <Input
-              id="sub-name"
-              data-testid="input-sub-account-name"
-              placeholder="Acme Cleaning Co."
-              value={name}
-              onChange={e => setName(e.target.value)}
-              autoFocus
-            />
+        <form onSubmit={handleSubmit} className="space-y-5 pt-1">
+
+          {/* Account Section */}
+          <div className="border border-gray-200 rounded-md p-5 space-y-4">
+            <h3 className="text-sm font-semibold text-gray-700">Account</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-1.5">
+                <Label htmlFor="sub-first">First Name <span className="text-rose-500">*</span></Label>
+                <Input
+                  id="sub-first"
+                  data-testid="input-sub-first-name"
+                  placeholder="Jane"
+                  value={firstName}
+                  onChange={e => setFirstName(e.target.value)}
+                  autoFocus
+                />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="sub-last">Last Name <span className="text-rose-500">*</span></Label>
+                <Input
+                  id="sub-last"
+                  data-testid="input-sub-last-name"
+                  placeholder="Smith"
+                  value={lastName}
+                  onChange={e => setLastName(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="sub-email">Email <span className="text-rose-500">*</span></Label>
+              <Input
+                id="sub-email"
+                data-testid="input-sub-account-email"
+                type="email"
+                placeholder="jane@acmecleaning.com"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="sub-phone">Phone Number</Label>
+              <Input
+                id="sub-phone"
+                data-testid="input-sub-account-phone"
+                type="tel"
+                placeholder="+1 (555) 000-0000"
+                value={phone}
+                onChange={e => setPhone(e.target.value)}
+              />
+            </div>
           </div>
-          <div className="grid gap-1.5">
-            <Label htmlFor="sub-owner">Owner Name</Label>
-            <Input
-              id="sub-owner"
-              data-testid="input-sub-account-owner"
-              placeholder="Jane Smith"
-              value={ownerName}
-              onChange={e => setOwnerName(e.target.value)}
-            />
+
+          {/* General Information Section */}
+          <div className="border border-gray-200 rounded-md p-5 space-y-4">
+            <h3 className="text-sm font-semibold text-gray-700">General Information</h3>
+            <div className="grid gap-1.5">
+              <Label htmlFor="sub-biz">Business Name <span className="text-rose-500">*</span></Label>
+              <Input
+                id="sub-biz"
+                data-testid="input-sub-account-name"
+                placeholder="Acme Cleaning Co."
+                value={businessName}
+                onChange={e => setBusinessName(e.target.value)}
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="sub-address">Street Address</Label>
+              <Input
+                id="sub-address"
+                data-testid="input-sub-account-address"
+                placeholder="1234 Main St"
+                value={address}
+                onChange={e => setAddress(e.target.value)}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-1.5">
+                <Label htmlFor="sub-city">City</Label>
+                <Input
+                  id="sub-city"
+                  data-testid="input-sub-account-city"
+                  placeholder="Port Richey"
+                  value={city}
+                  onChange={e => setCity(e.target.value)}
+                />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="sub-country">Country <span className="text-rose-500">*</span></Label>
+                <Input
+                  id="sub-country"
+                  data-testid="input-sub-account-country"
+                  placeholder="United States"
+                  value={country}
+                  onChange={e => setCountry(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-1.5">
+                <Label htmlFor="sub-zip">Zip / Postal Code</Label>
+                <Input
+                  id="sub-zip"
+                  data-testid="input-sub-account-zip"
+                  placeholder="34668"
+                  value={zip}
+                  onChange={e => setZip(e.target.value)}
+                />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="sub-state">State / Prov / Region</Label>
+                <Input
+                  id="sub-state"
+                  data-testid="input-sub-account-state"
+                  placeholder="Florida"
+                  value={state}
+                  onChange={e => setState(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="sub-website">Website</Label>
+              <Input
+                id="sub-website"
+                data-testid="input-sub-account-website"
+                type="url"
+                placeholder="https://acmecleaning.com"
+                value={website}
+                onChange={e => setWebsite(e.target.value)}
+              />
+            </div>
           </div>
-          <div className="grid gap-1.5">
-            <Label htmlFor="sub-email">Email</Label>
-            <Input
-              id="sub-email"
-              data-testid="input-sub-account-email"
-              type="email"
-              placeholder="jane@acmecleaning.com"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-            />
-          </div>
-          <div className="grid gap-1.5">
-            <Label htmlFor="sub-phone">Phone</Label>
-            <Input
-              id="sub-phone"
-              data-testid="input-sub-account-phone"
-              type="tel"
-              placeholder="(555) 000-0000"
-              value={phone}
-              onChange={e => setPhone(e.target.value)}
-            />
-          </div>
-          <DialogFooter className="gap-2 pt-2">
+
+          <DialogFooter className="gap-2 pt-1">
             <Button type="button" variant="outline" onClick={handleClose} disabled={create.isPending}>
               Cancel
             </Button>
             <Button
               type="submit"
               data-testid="button-sub-account-submit"
-              disabled={!name.trim() || create.isPending}
+              disabled={!canSubmit || create.isPending}
               className="bg-rose-600 text-white"
             >
               {create.isPending
                 ? <><RefreshCw className="w-4 h-4 animate-spin" /> Creating…</>
-                : "Create Account"}
+                : "Save"}
             </Button>
           </DialogFooter>
         </form>

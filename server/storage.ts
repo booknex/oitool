@@ -779,6 +779,12 @@ export class DatabaseStorage implements IStorage {
       affiliateId: data.affiliateId ?? null,
       trialEndsAt: data.trialEndsAt ? new Date(data.trialEndsAt) : null,
       notes: data.notes ?? "",
+      address: data.address ?? "",
+      city: data.city ?? "",
+      state: data.state ?? "",
+      country: data.country ?? "",
+      zip: data.zip ?? "",
+      website: data.website ?? "",
     }).returning();
     return await this.buildCompanyWithAffiliate(row.id);
   }

@@ -601,10 +601,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const affiliateId = req.session.affiliateId;
 
       const bodySchema = z.object({
-        name: z.string().trim().min(1, "Company name is required"),
+        name: z.string().trim().min(1, "Business name is required"),
         ownerName: z.string().default(""),
         email: z.string().default(""),
         phone: z.string().default(""),
+        address: z.string().default(""),
+        city: z.string().default(""),
+        state: z.string().default(""),
+        country: z.string().default(""),
+        zip: z.string().default(""),
+        website: z.string().default(""),
       });
       const parsed = bodySchema.safeParse(req.body);
       if (!parsed.success) return res.status(400).json({ error: parsed.error.errors[0]?.message ?? "Invalid input" });
