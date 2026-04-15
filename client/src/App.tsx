@@ -8,7 +8,6 @@ import Dashboard from "@/pages/dashboard";
 import AdminDashboard from "@/pages/admin";
 import { AdminPortalLogin, AdminPortalDashboard } from "@/pages/ops-portal";
 import Kiosk from "@/pages/kiosk";
-import Reviews from "@/pages/reviews";
 import CalendarPage from "@/pages/calendar";
 import Invoicing from "@/pages/invoicing";
 import SaasAdmin from "@/pages/saas";
@@ -50,7 +49,6 @@ function Router() {
       <Route path="/" component={LandingPage} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/kiosk" component={Kiosk} />
-      <Route path="/reviews" component={Reviews} />
       <Route path="/calendar" component={CalendarPage} />
       <Route path="/invoicing" component={Invoicing} />
       <Route path="/invoicing/customers/:id" component={Invoicing} />
