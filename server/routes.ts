@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import express from "express";
 import { createServer, type Server } from "http";
+import { z } from "zod";
 import { storage } from "./storage";
 import { isStripeConfigured, getUncachableStripeClient } from "./stripeClient";
 import { checkoutSchema, restockSchema, createItemSchema, updateItemSchema, createDashboardAppSchema, updateDashboardAppSchema, createPropertySchema, updatePropertySchema, createClientSchema, updateClientSchema, createInvoiceSchema, updateInvoiceSchema, createSaasAffiliateSchema, updateSaasAffiliateSchema, createSaasCompanySchema, updateSaasCompanySchema, createCatalogItemSchema, updateCatalogItemSchema, type AnalyticsRange } from "@shared/schema";
