@@ -40,6 +40,13 @@ interface SignupPayload {
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
+const STATS = [
+  { target: 200, suffix: "+", label: "Companies" },
+  { target: 12000, suffix: "+", label: "Items Tracked" },
+  { target: 99, suffix: "%", label: "Uptime" },
+  { target: 14, suffix: "-day", label: "Free Trial" },
+];
+
 const FEATURES = [
   {
     icon: Package,
@@ -112,6 +119,45 @@ function useReveal(threshold = 0.12) {
     return () => obs.disconnect();
   }, [threshold]);
   return { ref, visible };
+}
+
+// ─── Count-up stat ────────────────────────────────────────────────────────────
+
+function CountUp({ target, suffix = "", duration = 1400 }: { target: number; suffix?: string; duration?: number }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const [count, setCount] = useState(0);
+  const [started, setStarted] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !started) {
+          setStarted(true);
+          obs.disconnect();
+        }
+      },
+      { threshold: 0.5 }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [started]);
+
+  useEffect(() => {
+    if (!started) return;
+    const start = performance.now();
+    const step = (now: number) => {
+      const elapsed = now - start;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setCount(Math.round(eased * target));
+      if (progress < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }, [started, target, duration]);
+
+  return <span ref={ref}>{count.toLocaleString()}{suffix}</span>;
 }
 
 // ─── 3-D tilt card ───────────────────────────────────────────────────────────
@@ -399,7 +445,7 @@ function SignupForm() {
           type="submit"
           data-testid="button-landing-submit"
           disabled={!firstName || !lastName || !businessName || !email || submit.isPending}
-          className="w-full flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-400 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl py-2.5 transition-all shadow-[0_0_20px_rgba(59,130,246,0.35)] hover:shadow-[0_0_28px_rgba(59,130,246,0.55)]"
+          className="cta-pulse-ring w-full flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-400 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl py-2.5 transition-all shadow-[0_0_20px_rgba(59,130,246,0.35)] hover:shadow-[0_0_28px_rgba(59,130,246,0.55)]"
         >
           {submit.isPending ? "Submitting…" : <><span>Get Started</span><ArrowRight className="w-4 h-4" /></>}
         </button>
@@ -549,19 +595,16 @@ export default function LandingPage() {
               </TiltCard>
             </div>
 
-            {/* Stat pills */}
+            {/* Stat pills — count-up on scroll */}
             <div className="flex flex-wrap gap-3">
-              {[
-                { value: "Real-time", label: "Inventory" },
-                { value: "Stripe", label: "Payments" },
-                { value: "iCal", label: "Sync" },
-                { value: "All-in-one", label: "Platform" },
-              ].map((s) => (
+              {STATS.map((s) => (
                 <div
                   key={s.label}
                   className="flex flex-col items-center justify-center rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md px-5 py-3 shadow-[0_4px_16px_rgba(0,0,0,0.2)]"
                 >
-                  <span className="text-base font-extrabold text-white">{s.value}</span>
+                  <span className="text-base font-extrabold text-white">
+                    <CountUp target={s.target} suffix={s.suffix} />
+                  </span>
                   <span className="text-[11px] text-slate-400 mt-0.5">{s.label}</span>
                 </div>
               ))}
@@ -605,25 +648,24 @@ export default function LandingPage() {
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {FEATURES.map((f, i) => (
-              <TiltCard
+              <div
                 key={f.title}
                 className={`transition-all duration-700 ${featuresReveal.visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
-                // stagger via inline style
+                style={{ transitionDelay: featuresReveal.visible ? `${i * 80}ms` : "0ms" }}
               >
-                <div
-                  className="group relative h-full rounded-2xl border border-white/8 bg-white/4 backdrop-blur-md p-6 flex gap-4 overflow-hidden"
-                  style={{ transitionDelay: featuresReveal.visible ? `${i * 60}ms` : "0ms" }}
-                >
-                  <div className={`absolute inset-0 bg-gradient-to-br ${f.grad} opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl`} />
-                  <div className={`relative shrink-0 w-10 h-10 rounded-xl border flex items-center justify-center ${f.iconBg}`}>
-                    <f.icon className={`w-5 h-5 ${f.iconColor}`} />
+                <TiltCard className="h-full">
+                  <div className="group relative h-full rounded-2xl border border-white/8 bg-white/4 backdrop-blur-md p-6 flex gap-4 overflow-hidden">
+                    <div className={`absolute inset-0 bg-gradient-to-br ${f.grad} opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl`} />
+                    <div className={`relative shrink-0 w-10 h-10 rounded-xl border flex items-center justify-center ${f.iconBg}`}>
+                      <f.icon className={`w-5 h-5 ${f.iconColor}`} />
+                    </div>
+                    <div className="relative">
+                      <h3 className="font-semibold text-white mb-1.5">{f.title}</h3>
+                      <p className="text-sm text-slate-400 leading-relaxed">{f.desc}</p>
+                    </div>
                   </div>
-                  <div className="relative">
-                    <h3 className="font-semibold text-white mb-1.5">{f.title}</h3>
-                    <p className="text-sm text-slate-400 leading-relaxed">{f.desc}</p>
-                  </div>
-                </div>
-              </TiltCard>
+                </TiltCard>
+              </div>
             ))}
           </div>
         </div>
