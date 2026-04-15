@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest, getQueryFn } from "@/lib/queryClient";
 import { useLocation } from "wouter";
@@ -90,12 +90,12 @@ function CompanyModal({ open, company, affiliates, onClose }: {
   const [trialEnds, setTrialEnd]= useState(
     company?.trialEndsAt ? new Date(company.trialEndsAt).toISOString().slice(0, 10) : ""
   );
-  const [affiliateId, setAffId] = useState<string>(String(company?.affiliateId ?? ""));
+  const [affiliateId, setAffId] = useState<string>(company?.affiliateId ? String(company.affiliateId) : "__none__");
   const [notes, setNotes]       = useState(company?.notes ?? "");
 
   function reset() {
     setName(""); setOwner(""); setEmail(""); setPhone("");
-    setPlan("starter"); setStatus("trial"); setMrr(""); setTrialEnd(""); setAffId(""); setNotes("");
+    setPlan("starter"); setStatus("trial"); setMrr(""); setTrialEnd(""); setAffId("__none__"); setNotes("");
   }
   function handleClose() { if (!isEdit) reset(); onClose(); }
 
@@ -105,7 +105,7 @@ function CompanyModal({ open, company, affiliates, onClose }: {
         name: name.trim(), ownerName: ownerName.trim(), email: email.trim(), phone: phone.trim(),
         plan, status, mrr: Number(mrr) || 0,
         trialEndsAt: trialEnds || null,
-        affiliateId: affiliateId ? Number(affiliateId) : null,
+        affiliateId: (affiliateId && affiliateId !== "__none__") ? Number(affiliateId) : null,
         notes: notes.trim(),
       };
       if (isEdit) {
@@ -190,7 +190,7 @@ function CompanyModal({ open, company, affiliates, onClose }: {
                 <Select value={affiliateId} onValueChange={setAffId}>
                   <SelectTrigger data-testid="select-ops-affiliate"><SelectValue placeholder="None" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="__none__">None</SelectItem>
                     {affiliates.map(a => <SelectItem key={a.id} value={String(a.id)}>{a.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
@@ -745,12 +745,11 @@ export function AdminPortalLogin() {
     login.mutate();
   }
 
-  if (isLoading) return null;
+  useEffect(() => {
+    if (!isLoading && meCheck) navigate("/ops/dashboard");
+  }, [isLoading, meCheck]);
 
-  if (meCheck) {
-    navigate("/ops/dashboard");
-    return null;
-  }
+  if (isLoading || meCheck) return null;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 flex flex-col items-center justify-center p-4">
