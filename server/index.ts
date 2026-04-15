@@ -10,6 +10,7 @@ import { runMigrations } from "stripe-replit-sync";
 declare module "express-session" {
   interface SessionData {
     affiliateId?: number;
+    isAdmin?: boolean;
   }
 }
 

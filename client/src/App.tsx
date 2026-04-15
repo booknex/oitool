@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import LandingPage from "@/pages/landing";
 import Dashboard from "@/pages/dashboard";
 import AdminDashboard from "@/pages/admin";
+import { AdminPortalLogin, AdminPortalDashboard } from "@/pages/ops-portal";
 import Kiosk from "@/pages/kiosk";
 import Reviews from "@/pages/reviews";
 import CalendarPage from "@/pages/calendar";
@@ -17,7 +18,7 @@ import Support from "@/pages/support";
 import NotFound from "@/pages/not-found";
 import { ArrowLeft } from "lucide-react";
 
-const NO_BACK_ROUTES = ["/", "/dashboard", "/portal", "/admin", "/saas"];
+const NO_BACK_ROUTES = ["/", "/dashboard", "/portal", "/admin", "/saas", "/ops", "/ops/dashboard"];
 
 function BackButton() {
   const [location, navigate] = useLocation();
@@ -58,6 +59,8 @@ function Router() {
       <Route path="/saas" component={SaasAdmin} />
       <Route path="/portal" component={AffiliateLogin} />
       <Route path="/portal/dashboard" component={AffiliateDashboard} />
+      <Route path="/ops" component={AdminPortalLogin} />
+      <Route path="/ops/dashboard" component={AdminPortalDashboard} />
       <Route path="/analytics" component={Analytics} />
       <Route path="/support" component={Support} />
       <Route component={NotFound} />

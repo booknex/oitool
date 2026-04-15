@@ -287,11 +287,11 @@ export default function LandingPage() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
                 <DropdownMenuItem
-                  data-testid="link-signin-admin"
-                  onClick={() => navigate("/dashboard")}
+                  data-testid="link-signin-ops"
+                  onClick={() => navigate("/ops")}
                 >
-                  <Shield className="w-4 h-4 mr-2 text-rose-500" />
-                  Admin Dashboard
+                  <Shield className="w-4 h-4 mr-2 text-indigo-600" />
+                  Admin Portal
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   data-testid="link-signin-affiliate"
@@ -301,11 +301,11 @@ export default function LandingPage() {
                   Affiliate Portal
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  data-testid="link-signin-kiosk"
-                  onClick={() => navigate("/kiosk")}
+                  data-testid="link-signin-dashboard"
+                  onClick={() => navigate("/dashboard")}
                 >
                   <Package className="w-4 h-4 mr-2 text-blue-500" />
-                  Staff Kiosk
+                  Staff Dashboard
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -500,11 +500,11 @@ export default function LandingPage() {
             <Button
               variant="outline"
               data-testid="link-footer-admin"
-              onClick={() => navigate("/dashboard")}
+              onClick={() => navigate("/ops")}
               className="border-slate-700 text-slate-300 bg-transparent hover:bg-slate-800 hover:text-white"
             >
               <Shield className="w-4 h-4 mr-2" />
-              Admin Dashboard
+              Admin Portal
             </Button>
             <Button
               variant="outline"

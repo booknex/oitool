@@ -607,6 +607,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     req.session.destroy(() => res.json({ success: true }));
   });
 
+  // ─── Admin portal auth ────────────────────────────────────────────────────
+  app.post("/api/admin/login", (req, res) => {
+    const { email, password } = req.body ?? {};
+    const ADMIN_EMAIL    = process.env.ADMIN_EMAIL    ?? "admin@cleanex.com";
+    const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? "cleanex2024";
+    if (!email || !password) return res.status(400).json({ error: "Email and password required" });
+    if (email.toLowerCase().trim() !== ADMIN_EMAIL.toLowerCase() || password !== ADMIN_PASSWORD) {
+      return res.status(401).json({ error: "Invalid email or password" });
+    }
+    req.session.isAdmin = true;
+    res.json({ ok: true, email: ADMIN_EMAIL });
+  });
+
+  app.post("/api/admin/logout", (req, res) => {
+    req.session.destroy(() => res.json({ success: true }));
+  });
+
+  app.get("/api/admin/me", (req, res) => {
+    if (!req.session.isAdmin) return res.status(401).json({ error: "Not authenticated" });
+    const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? "admin@cleanex.com";
+    res.json({ email: ADMIN_EMAIL });
+  });
+
   app.get("/api/affiliate/me", async (req, res) => {
     try {
       if (!req.session.affiliateId) return res.status(401).json({ error: "Not authenticated" });

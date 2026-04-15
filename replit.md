@@ -31,14 +31,16 @@ A self-service inventory kiosk application for cleaning service operations. Maid
 - **Auth API** — `POST /api/affiliate/login`, `POST /api/affiliate/logout`, `GET /api/affiliate/me` (returns affiliate + stats + companies)
 - Admin sets `access_code` per affiliate in SaaS Admin; affiliates table shows the code for easy sharing
 
-### SaaS Admin Dashboard
-- **Route** `/saas` — accessible from the "SaaS Admin" tile on the dashboard
-- **Companies tab** — manage cleaning company accounts: name, owner, email, phone, status (trial/active/paused/cancelled), plan (Starter $99 / Pro $199 / Enterprise $399), MRR, trial end date, and referring affiliate
-- **Affiliates tab** — manage sales affiliates: name, contact info, commission rate (%), and auto-calculated MRR attribution + estimated monthly payout
-- **KPI cards** — Total MRR, Active Accounts, Total Accounts, Active Affiliates
-- **Two-tap delete** — confirmation pattern on both companies and affiliates
-- **API** — `GET/POST /api/saas/companies`, `PATCH/DELETE /api/saas/companies/:id`, `GET/POST /api/saas/affiliates`, `PATCH/DELETE /api/saas/affiliates/:id`
-- **Tables** — `saas_affiliates` (id, name, email, phone, commission_rate, status, notes, created_at), `saas_companies` (id, name, owner_name, email, phone, status, plan, mrr, affiliate_id FK, trial_ends_at, notes, created_at)
+### Admin Portal (Protected)
+- **Routes** — `/ops` = login page, `/ops/dashboard` = protected dashboard (accessible from landing page Sign In → Admin Portal)
+- **Authentication** — email + password login; session-based auth via `req.session.isAdmin`; credentials from `ADMIN_EMAIL`/`ADMIN_PASSWORD` env vars (default: `admin@cleanex.com` / `cleanex2024`)
+- **Auth API** — `POST /api/admin/login`, `POST /api/admin/logout`, `GET /api/admin/me`
+- **Overview tab** — 7 KPI cards (MRR, ARR, Active Accounts, Trials, Avg MRR, Affiliates, Payout); subscription status & revenue by plan breakdowns
+- **Companies tab** — full CRUD: status/plan filter bar + search, inline plan and status quick-edits, create/edit modal with all fields, two-step delete confirmation; totals footer
+- **Affiliates tab** — full CRUD: affiliate table with MRR attribution, commission payout calculation, access code display; create/edit modal; two-tap delete
+- **API** (reuses SaaS routes) — `GET/POST /api/saas/companies`, `PATCH/DELETE /api/saas/companies/:id`, `GET/POST /api/saas/affiliates`, `PATCH/DELETE /api/saas/affiliates/:id`
+- **Tables** — `saas_affiliates` (id, name, email, phone, commission_rate, status, access_code, notes, created_at), `saas_companies` (id, name, owner_name, email, phone, status, plan, mrr, affiliate_id FK, trial_ends_at, notes, address, city, state, country, zip, website, created_at)
+- **Removed from dashboard** — the old `/saas` and `/admin` tiles are no longer seeded or shown in the staff dashboard
 
 ### Invoicing
 - **Route** `/invoicing` — accessible from the "Invoicing" tile on the dashboard
