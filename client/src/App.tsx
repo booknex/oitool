@@ -22,7 +22,7 @@ import { ArrowLeft, LogOut, Shield, Users, LayoutDashboard } from "lucide-react"
 
 // ─── Routes where the footer & back button are hidden ────────────────────────
 
-const NO_BACK_ROUTES = ["/", "/dashboard", "/portal", "/admin", "/saas", "/ops", "/ops/dashboard"];
+const NO_BACK_ROUTES = ["/", "/dashboard", "/portal", "/admin", "/saas", "/ops", "/ops/dashboard", "/tracking", "/tracking/employee"];
 const NO_SESSION_FOOTER_ROUTES = ["/", "/ops", "/portal"];
 
 // ─── Back button ─────────────────────────────────────────────────────────────

@@ -3,10 +3,9 @@ import { useLocation, useSearch } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MapPin, Users, Clock, Navigation, Radio, AlertCircle, RefreshCw, LogOut, Building2, Eye, EyeOff } from "lucide-react";
+import { MapPin, Navigation, Radio, AlertCircle, RefreshCw, Building2, Eye, EyeOff, Users, Clock, ArrowLeft } from "lucide-react";
 import type { ActiveLocation, StaffMember, Property } from "@shared/schema";
 import "leaflet/dist/leaflet.css";
 
@@ -19,39 +18,65 @@ function timeAgo(iso: string): string {
   return `${Math.floor(secs / 3600)}h ago`;
 }
 
-function buildMarkerHtml(color: string, initials: string): string {
-  return `
-    <div style="
-      background:${color};
-      color:#fff;
-      width:36px;height:36px;
-      border-radius:50% 50% 50% 0;
-      transform:rotate(-45deg);
-      border:2px solid #fff;
-      box-shadow:0 2px 6px rgba(0,0,0,0.35);
-      display:flex;align-items:center;justify-content:center;
-    ">
-      <span style="transform:rotate(45deg);font-size:11px;font-weight:700;">${initials}</span>
-    </div>
-  `;
-}
-
 function initials(name: string): string {
   return name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
+}
+
+function buildStaffMarkerHtml(color: string, init: string): string {
+  return `
+    <div style="
+      position:relative;
+      width:44px;height:52px;
+      display:flex;flex-direction:column;align-items:center;
+    ">
+      <div style="
+        width:44px;height:44px;
+        background:${color};
+        border-radius:50%;
+        border:3px solid #fff;
+        box-shadow:0 2px 12px rgba(0,0,0,0.25);
+        display:flex;align-items:center;justify-content:center;
+        font-size:13px;font-weight:700;color:#fff;
+        letter-spacing:-0.5px;
+        font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display',sans-serif;
+      ">${init}</div>
+      <div style="
+        width:0;height:0;
+        border-left:6px solid transparent;
+        border-right:6px solid transparent;
+        border-top:8px solid ${color};
+        margin-top:-1px;
+        filter:drop-shadow(0 2px 4px rgba(0,0,0,0.15));
+      "></div>
+    </div>
+  `;
 }
 
 function buildPropertyMarkerHtml(color: string, label: string): string {
   return `
     <div style="
-      background:${color};
-      color:#fff;
-      width:32px;height:32px;
-      border-radius:6px;
-      border:2px solid #fff;
-      box-shadow:0 2px 6px rgba(0,0,0,0.35);
-      display:flex;align-items:center;justify-content:center;
+      position:relative;
+      width:38px;height:46px;
+      display:flex;flex-direction:column;align-items:center;
     ">
-      <span style="font-size:10px;font-weight:700;letter-spacing:-0.5px;">${label}</span>
+      <div style="
+        width:38px;height:38px;
+        background:${color};
+        border-radius:10px;
+        border:3px solid #fff;
+        box-shadow:0 2px 12px rgba(0,0,0,0.22);
+        display:flex;align-items:center;justify-content:center;
+        font-size:11px;font-weight:700;color:#fff;
+        letter-spacing:-0.5px;
+        font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display',sans-serif;
+      ">${label}</div>
+      <div style="
+        width:0;height:0;
+        border-left:5px solid transparent;
+        border-right:5px solid transparent;
+        border-top:7px solid ${color};
+        margin-top:-1px;
+      "></div>
     </div>
   `;
 }
@@ -76,24 +101,30 @@ function AdminMap() {
     queryKey: ["/api/properties"],
   });
 
-  const mappableProperties = allProperties.filter(
-    p => p.lat != null && p.lng != null
-  );
+  const mappableProperties = allProperties.filter(p => p.lat != null && p.lng != null);
 
-  // Init map
+  // Init map with CartoDB Positron tiles (Apple Maps-like light style)
   useEffect(() => {
     if (!mapRef.current || mapInstance.current) return;
     import("leaflet").then(mod => {
       const L = mod.default ?? mod;
       const map = L.map(mapRef.current!, {
-        center: [28.27, -82.72],
-        zoom: 11,
-        zoomControl: true,
+        center: [25.79, -80.13],
+        zoom: 13,
+        zoomControl: false,
+        attributionControl: true,
       });
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-        maxZoom: 19,
+
+      // CartoDB Positron — clean, minimal, iOS Maps-like
+      L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> © <a href="https://carto.com/">CARTO</a>',
+        subdomains: "abcd",
+        maxZoom: 20,
       }).addTo(map);
+
+      // Custom zoom controls (bottom-right)
+      L.control.zoom({ position: "bottomright" }).addTo(map);
+
       mapInstance.current = map;
       setMapReady(true);
     });
@@ -115,27 +146,36 @@ function AdminMap() {
       const bounds: [number, number][] = [];
       locations.forEach(loc => {
         const icon = L.divIcon({
-          html: buildMarkerHtml(loc.color, initials(loc.name)),
+          html: buildStaffMarkerHtml(loc.color, initials(loc.name)),
           className: "",
-          iconSize: [36, 36],
-          iconAnchor: [18, 36],
-          popupAnchor: [0, -36],
+          iconSize: [44, 52],
+          iconAnchor: [22, 52],
+          popupAnchor: [0, -54],
         });
         const marker = L.marker([loc.lat, loc.lng], { icon })
           .addTo(mapInstance.current!)
           .bindPopup(`
-            <div style="min-width:140px">
-              <strong style="font-size:14px">${loc.name}</strong><br/>
-              <span style="font-size:12px;color:#666">Last seen: ${timeAgo(loc.lastSeen)}</span><br/>
-              ${loc.accuracy > 0 ? `<span style="font-size:11px;color:#888">±${Math.round(loc.accuracy)}m accuracy</span>` : ""}
+            <div style="
+              font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display',sans-serif;
+              min-width:160px;padding:4px 0;
+            ">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+                <div style="width:32px;height:32px;border-radius:50%;background:${loc.color};display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700;">${initials(loc.name)}</div>
+                <strong style="font-size:14px;font-weight:600;">${loc.name}</strong>
+              </div>
+              <div style="display:flex;align-items:center;gap:6px;color:#666;font-size:12px;">
+                <div style="width:6px;height:6px;border-radius:50%;background:#34C759;flex-shrink:0;"></div>
+                Active · ${timeAgo(loc.lastSeen)}
+              </div>
+              ${loc.accuracy > 0 ? `<div style="color:#aaa;font-size:11px;margin-top:3px;">±${Math.round(loc.accuracy)}m accuracy</div>` : ""}
             </div>
-          `);
+          `, { className: "ios-popup" });
         staffMarkersRef.current.push(marker);
         bounds.push([loc.lat, loc.lng]);
       });
 
       if (bounds.length > 0 && propertyMarkersRef.current.length === 0) {
-        mapInstance.current!.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 });
+        mapInstance.current!.fitBounds(bounds, { padding: [80, 80], maxZoom: 14 });
       }
     });
     setLastRefresh(new Date());
@@ -160,23 +200,28 @@ function AdminMap() {
         const icon = L.divIcon({
           html: buildPropertyMarkerHtml(prop.color, initials(prop.name)),
           className: "",
-          iconSize: [32, 32],
-          iconAnchor: [16, 32],
-          popupAnchor: [0, -34],
+          iconSize: [38, 46],
+          iconAnchor: [19, 46],
+          popupAnchor: [0, -48],
         });
         const marker = L.marker([lat, lng], { icon })
           .addTo(mapInstance.current!)
           .bindPopup(`
-            <div style="min-width:150px">
-              <strong style="font-size:13px">${prop.name}</strong><br/>
-              ${prop.address ? `<span style="font-size:12px;color:#666">${prop.address}</span>` : ""}
+            <div style="
+              font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display',sans-serif;
+              min-width:160px;padding:4px 0;
+            ">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+                <div style="width:30px;height:30px;border-radius:8px;background:${prop.color};display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700;">${initials(prop.name)}</div>
+                <strong style="font-size:14px;font-weight:600;">${prop.name}</strong>
+              </div>
+              ${prop.address ? `<div style="color:#888;font-size:12px;">${prop.address}</div>` : ""}
             </div>
-          `);
+          `, { className: "ios-popup" });
         propertyMarkersRef.current.push(marker);
         bounds.push([lat, lng]);
       });
 
-      // Fit all markers (properties + employees) on first load
       const allBounds: [number, number][] = [
         ...bounds,
         ...staffMarkersRef.current.map(m => {
@@ -185,96 +230,127 @@ function AdminMap() {
         }),
       ];
       if (allBounds.length > 0) {
-        mapInstance.current!.fitBounds(allBounds, { padding: [50, 50], maxZoom: 14 });
+        mapInstance.current!.fitBounds(allBounds, { padding: [80, 80], maxZoom: 14 });
       }
     });
   }, [mappableProperties, mapReady, showProperties]);
 
   return (
-    <div className="flex h-full">
-      {/* Sidebar */}
-      <div className="w-72 flex-shrink-0 border-r bg-card flex flex-col">
-        {/* Staff section header */}
-        <div className="px-4 py-3 border-b flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <Radio className="w-4 h-4 text-cyan-500" />
-            <span className="font-semibold text-sm">Active Staff</span>
-            <Badge variant="secondary" data-testid="badge-active-count">{locations.length}</Badge>
-          </div>
-          <Button
-            size="icon"
-            variant="ghost"
-            onClick={() => refetch()}
-            disabled={isFetching}
-            data-testid="button-refresh-locations"
-          >
-            <RefreshCw className={`w-4 h-4 ${isFetching ? "animate-spin" : ""}`} />
-          </Button>
-        </div>
+    <div className="relative w-full h-full">
+      {/* Map fills everything */}
+      <div ref={mapRef} className="absolute inset-0" data-testid="map-container" />
 
-        <div className="flex-1 overflow-y-auto">
-          {/* Employee location cards */}
-          <div className="p-3 space-y-2">
-            {locations.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-24 gap-2 text-muted-foreground text-sm">
-                <MapPin className="w-7 h-7 opacity-30" />
-                <span>No active staff</span>
-                <span className="text-xs opacity-60">Pings expire after 10 min</span>
+      {/* Floating sidebar panel — iOS Maps style */}
+      <div
+        className="absolute top-4 left-4 bottom-4 z-[1000] flex flex-col"
+        style={{ width: "280px" }}
+      >
+        <div
+          className="flex flex-col h-full rounded-2xl overflow-hidden"
+          style={{
+            background: "rgba(255,255,255,0.92)",
+            backdropFilter: "blur(20px) saturate(180%)",
+            WebkitBackdropFilter: "blur(20px) saturate(180%)",
+            boxShadow: "0 4px 30px rgba(0,0,0,0.14), 0 1px 4px rgba(0,0,0,0.08)",
+          }}
+        >
+          {/* Header */}
+          <div className="px-4 pt-4 pb-3 flex items-center justify-between gap-2 border-b border-black/[0.06]">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0">
+                <Radio className="w-3.5 h-3.5 text-white" />
               </div>
-            ) : (
-              locations.map(loc => (
-                <Card
-                  key={loc.staffId}
-                  className="cursor-pointer hover-elevate"
-                  data-testid={`card-location-${loc.staffId}`}
-                  onClick={() => mapInstance.current?.setView([loc.lat, loc.lng], 15)}
-                >
-                  <CardContent className="p-3 flex items-center gap-3">
+              <div>
+                <p className="text-[13px] font-semibold text-gray-900 leading-tight">Live Tracking</p>
+                <p className="text-[11px] text-gray-400 leading-tight">{lastRefresh.toLocaleTimeString()}</p>
+              </div>
+            </div>
+            <button
+              onClick={() => refetch()}
+              disabled={isFetching}
+              className="w-8 h-8 rounded-full flex items-center justify-center bg-black/5 hover:bg-black/10 transition-colors"
+              data-testid="button-refresh-locations"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 text-gray-600 ${isFetching ? "animate-spin" : ""}`} />
+            </button>
+          </div>
+
+          {/* Scrollable content */}
+          <div className="flex-1 overflow-y-auto">
+
+            {/* Active Staff section */}
+            <div className="px-4 pt-3 pb-1 flex items-center gap-1.5">
+              <Users className="w-3.5 h-3.5 text-gray-400" />
+              <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">Active Staff</span>
+              {locations.length > 0 && (
+                <span className="ml-auto text-[11px] font-semibold text-blue-500">{locations.length}</span>
+              )}
+            </div>
+
+            <div className="px-3 pb-2 space-y-1">
+              {locations.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-5 gap-1.5">
+                  <MapPin className="w-6 h-6 text-gray-300" />
+                  <p className="text-[12px] text-gray-400">No staff sharing location</p>
+                  <p className="text-[11px] text-gray-300">Pings expire after 10 min</p>
+                </div>
+              ) : (
+                locations.map(loc => (
+                  <button
+                    key={loc.staffId}
+                    className="w-full flex items-center gap-3 py-2.5 px-3 rounded-xl text-left transition-colors"
+                    style={{ background: "transparent" }}
+                    onMouseEnter={e => (e.currentTarget.style.background = "rgba(0,0,0,0.04)")}
+                    onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+                    onClick={() => mapInstance.current?.setView([loc.lat, loc.lng], 15)}
+                    data-testid={`card-location-${loc.staffId}`}
+                  >
                     <div
-                      className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-white text-xs font-bold"
-                      style={{ background: loc.color }}
+                      className="w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center text-white text-xs font-bold border-2 border-white"
+                      style={{ background: loc.color, boxShadow: "0 1px 4px rgba(0,0,0,0.18)" }}
                     >
                       {initials(loc.name)}
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm truncate">{loc.name}</p>
-                      <p className="text-xs text-muted-foreground flex items-center gap-1">
-                        <Clock className="w-3 h-3" /> {timeAgo(loc.lastSeen)}
+                    <div className="flex-1 min-w-0 text-left">
+                      <p className="text-[13px] font-semibold text-gray-900 truncate">{loc.name}</p>
+                      <p className="text-[11px] text-gray-400 flex items-center gap-1">
+                        <Clock className="w-2.5 h-2.5" /> {timeAgo(loc.lastSeen)}
                       </p>
                     </div>
                     <div className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />
-                  </CardContent>
-                </Card>
-              ))
-            )}
-          </div>
+                  </button>
+                ))
+              )}
+            </div>
 
-          {/* Divider + Properties section */}
-          <div className="border-t">
-            <div className="px-4 py-2.5 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Building2 className="w-4 h-4 text-indigo-500" />
-                <span className="font-semibold text-sm">Properties</span>
-                <Badge variant="secondary">{mappableProperties.length}</Badge>
-              </div>
-              <Button
-                size="icon"
-                variant="ghost"
+            {/* Divider */}
+            <div className="mx-3 border-t border-black/[0.06]" />
+
+            {/* Properties section */}
+            <div className="px-4 pt-3 pb-1 flex items-center gap-1.5">
+              <Building2 className="w-3.5 h-3.5 text-gray-400" />
+              <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">Properties</span>
+              {mappableProperties.length > 0 && (
+                <span className="ml-auto text-[11px] font-semibold text-blue-500">{mappableProperties.length}</span>
+              )}
+              <button
                 onClick={() => setShowProperties(v => !v)}
+                className="w-6 h-6 rounded-full flex items-center justify-center ml-1 bg-black/5 hover:bg-black/10 transition-colors"
                 data-testid="button-toggle-properties"
               >
                 {showProperties
-                  ? <Eye className="w-4 h-4" />
-                  : <EyeOff className="w-4 h-4" />}
-              </Button>
+                  ? <Eye className="w-3 h-3 text-gray-500" />
+                  : <EyeOff className="w-3 h-3 text-gray-500" />}
+              </button>
             </div>
 
             {showProperties && (
               <div className="px-3 pb-3 space-y-1">
                 {mappableProperties.length === 0 ? (
-                  <p className="text-xs text-muted-foreground text-center py-3">
-                    No properties with addresses yet — add one in the Calendar tab.
-                  </p>
+                  <div className="flex flex-col items-center justify-center py-4 gap-1">
+                    <p className="text-[12px] text-gray-400 text-center">No mapped properties yet</p>
+                    <p className="text-[11px] text-gray-300 text-center">Add addresses in the Calendar tab</p>
+                  </div>
                 ) : (
                   mappableProperties.map(prop => {
                     const lat = parseFloat(String(prop.lat));
@@ -282,20 +358,23 @@ function AdminMap() {
                     return (
                       <button
                         key={prop.id}
-                        className="w-full flex items-center gap-3 py-2 px-2 rounded-md text-left hover-elevate"
+                        className="w-full flex items-center gap-3 py-2.5 px-3 rounded-xl text-left transition-colors"
+                        style={{ background: "transparent" }}
+                        onMouseEnter={e => (e.currentTarget.style.background = "rgba(0,0,0,0.04)")}
+                        onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
                         onClick={() => mapInstance.current?.setView([lat, lng], 15)}
                         data-testid={`button-property-${prop.id}`}
                       >
                         <div
-                          className="w-6 h-6 rounded flex-shrink-0 flex items-center justify-center text-white text-xs font-bold"
-                          style={{ background: prop.color }}
+                          className="w-8 h-8 rounded-[9px] flex-shrink-0 flex items-center justify-center text-white text-[11px] font-bold border-2 border-white"
+                          style={{ background: prop.color, boxShadow: "0 1px 4px rgba(0,0,0,0.18)" }}
                         >
                           {initials(prop.name)}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium truncate">{prop.name}</p>
+                          <p className="text-[13px] font-semibold text-gray-900 truncate">{prop.name}</p>
                           {prop.address && (
-                            <p className="text-xs text-muted-foreground truncate">{prop.address}</p>
+                            <p className="text-[11px] text-gray-400 truncate">{prop.address}</p>
                           )}
                         </div>
                       </button>
@@ -306,24 +385,55 @@ function AdminMap() {
             )}
           </div>
         </div>
-
-        <div className="p-3 border-t text-xs text-muted-foreground text-center">
-          Staff auto-refreshes every 30s · {lastRefresh.toLocaleTimeString()}
-        </div>
       </div>
 
-      {/* Map */}
-      <div className="flex-1 relative">
-        <div ref={mapRef} className="w-full h-full" data-testid="map-container" />
-        {locations.length === 0 && mappableProperties.length === 0 && (
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className="bg-background/80 backdrop-blur-sm rounded-md px-6 py-4 flex flex-col items-center gap-2 shadow-lg">
-              <MapPin className="w-10 h-10 text-muted-foreground opacity-40" />
-              <p className="text-muted-foreground text-sm">No staff or properties on map yet</p>
-            </div>
-          </div>
-        )}
-      </div>
+      {/* iOS-style popup CSS */}
+      <style>{`
+        .ios-popup .leaflet-popup-content-wrapper {
+          background: rgba(255,255,255,0.96);
+          backdrop-filter: blur(16px);
+          -webkit-backdrop-filter: blur(16px);
+          border-radius: 14px;
+          box-shadow: 0 4px 24px rgba(0,0,0,0.15), 0 1px 4px rgba(0,0,0,0.08);
+          padding: 12px 16px;
+          border: none;
+        }
+        .ios-popup .leaflet-popup-tip-container { display: none; }
+        .ios-popup .leaflet-popup-close-button {
+          color: #aaa;
+          font-size: 18px;
+          top: 8px;
+          right: 10px;
+        }
+        .ios-popup .leaflet-popup-content { margin: 0; }
+        .leaflet-control-zoom {
+          border: none !important;
+          box-shadow: 0 2px 12px rgba(0,0,0,0.15) !important;
+        }
+        .leaflet-control-zoom a {
+          background: rgba(255,255,255,0.92) !important;
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+          color: #333 !important;
+          border: none !important;
+          font-size: 16px !important;
+          width: 36px !important;
+          height: 36px !important;
+          line-height: 36px !important;
+        }
+        .leaflet-control-zoom a:first-child {
+          border-radius: 10px 10px 0 0 !important;
+        }
+        .leaflet-control-zoom a:last-child {
+          border-radius: 0 0 10px 10px !important;
+        }
+        .leaflet-control-attribution {
+          background: rgba(255,255,255,0.7) !important;
+          backdrop-filter: blur(8px);
+          border-radius: 8px 0 0 0 !important;
+          font-size: 10px !important;
+        }
+      `}</style>
     </div>
   );
 }
@@ -369,9 +479,7 @@ function EmployeeView() {
           accuracy: pos.coords.accuracy ?? 0,
         });
       },
-      err => {
-        setError(`Location error: ${err.message}`);
-      },
+      err => setError(`Location error: ${err.message}`),
       { enableHighAccuracy: true, timeout: 10_000, maximumAge: 30_000 }
     );
   }, [pingMutation]);
@@ -398,40 +506,49 @@ function EmployeeView() {
   const selectedMember = activeStaff.find(s => s.id === parseInt(selectedStaffId));
 
   return (
-    <div className="h-full flex flex-col items-center justify-center p-6 bg-background">
-      <div className="w-full max-w-md space-y-6">
+    <div
+      className="h-full flex flex-col items-center justify-center p-6"
+      style={{
+        background: "linear-gradient(160deg, #f0f4ff 0%, #e8f5e9 100%)",
+      }}
+    >
+      <div className="w-full max-w-sm space-y-5">
         {/* Header */}
         <div className="text-center space-y-1">
-          <div className="flex items-center justify-center gap-2 text-cyan-600 dark:text-cyan-400 mb-2">
-            <Navigation className="w-7 h-7" />
+          <div
+            className="w-16 h-16 rounded-2xl bg-blue-500 flex items-center justify-center mx-auto mb-4 shadow-lg"
+          >
+            <Navigation className="w-8 h-8 text-white" />
           </div>
-          <h2 className="text-2xl font-bold">Share My Location</h2>
-          <p className="text-muted-foreground text-sm">
-            Let the admin track your location in real time
-          </p>
+          <h2 className="text-2xl font-bold text-gray-900">Share Location</h2>
+          <p className="text-[14px] text-gray-500">Let the team see where you are</p>
         </div>
 
-        {/* Staff selector */}
-        <Card>
-          <CardContent className="p-6 space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Select your name</label>
+        {/* Card */}
+        <div
+          className="rounded-2xl overflow-hidden"
+          style={{
+            background: "rgba(255,255,255,0.9)",
+            backdropFilter: "blur(20px)",
+            boxShadow: "0 4px 30px rgba(0,0,0,0.10)",
+          }}
+        >
+          <div className="p-5 space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-[13px] font-semibold text-gray-600">Your Name</label>
               <Select
                 value={selectedStaffId}
                 onValueChange={v => { setSelectedStaffId(v); stopSharing(); }}
                 disabled={sharing}
               >
-                <SelectTrigger data-testid="select-staff-name">
-                  <SelectValue placeholder="Choose your name…" />
+                <SelectTrigger data-testid="select-staff-name" className="rounded-xl border-black/10">
+                  <SelectValue placeholder="Select your name…" />
                 </SelectTrigger>
                 <SelectContent>
                   {activeStaff.map(s => (
                     <SelectItem key={s.id} value={String(s.id)} data-testid={`option-staff-${s.id}`}>
                       <div className="flex items-center gap-2">
-                        <div
-                          className="w-5 h-5 rounded-full flex-shrink-0"
-                          style={{ background: s.color }}
-                        />
+                        <div className="w-4 h-4 rounded-full flex-shrink-0" style={{ background: s.color }} />
                         {s.name}
                       </div>
                     </SelectItem>
@@ -440,23 +557,19 @@ function EmployeeView() {
               </Select>
             </div>
 
-            {/* Status indicator */}
+            {/* Sharing status */}
             {sharing && selectedMember && (
-              <div className="flex items-center gap-3 p-3 bg-green-50 dark:bg-green-950/30 rounded-md border border-green-200 dark:border-green-800">
-                <div className="relative">
+              <div className="flex items-center gap-3 p-3 bg-green-50 rounded-xl border border-green-100">
+                <div className="relative flex-shrink-0">
                   <div className="w-3 h-3 rounded-full bg-green-500" />
                   <div className="absolute inset-0 w-3 h-3 rounded-full bg-green-500 animate-ping" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-green-700 dark:text-green-300">
-                    Sharing as {selectedMember.name}
-                  </p>
-                  {status && (
-                    <p className="text-xs text-green-600 dark:text-green-400 truncate">{status}</p>
-                  )}
+                  <p className="text-[13px] font-semibold text-green-700">Sharing as {selectedMember.name}</p>
+                  {status && <p className="text-[11px] text-green-600 truncate">{status}</p>}
                   {pingCount > 0 && (
-                    <p className="text-xs text-green-500 dark:text-green-500">
-                      {pingCount} ping{pingCount !== 1 ? "s" : ""} sent · every 30s
+                    <p className="text-[11px] text-green-500">
+                      {pingCount} ping{pingCount !== 1 ? "s" : ""} · every 30s
                     </p>
                   )}
                 </div>
@@ -464,41 +577,40 @@ function EmployeeView() {
             )}
 
             {error && (
-              <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-950/30 rounded-md border border-red-200 dark:border-red-800">
+              <div className="flex items-center gap-2 p-3 bg-red-50 rounded-xl border border-red-100">
                 <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
-                <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
+                <p className="text-[13px] text-red-700">{error}</p>
               </div>
             )}
 
-            {/* Action button */}
             {!sharing ? (
-              <Button
-                className="w-full"
-                size="lg"
+              <button
                 onClick={startSharing}
                 disabled={!selectedStaffId}
+                className="w-full py-3 rounded-xl font-semibold text-[15px] text-white transition-all"
+                style={{
+                  background: selectedStaffId ? "#007AFF" : "#aaa",
+                  boxShadow: selectedStaffId ? "0 4px 14px rgba(0,122,255,0.4)" : "none",
+                }}
                 data-testid="button-start-sharing"
               >
-                <Navigation className="w-4 h-4 mr-2" />
                 Start Sharing Location
-              </Button>
+              </button>
             ) : (
-              <Button
-                className="w-full"
-                size="lg"
-                variant="destructive"
+              <button
                 onClick={stopSharing}
+                className="w-full py-3 rounded-xl font-semibold text-[15px] text-white bg-red-500 transition-all"
+                style={{ boxShadow: "0 4px 14px rgba(239,68,68,0.35)" }}
                 data-testid="button-stop-sharing"
               >
-                <LogOut className="w-4 h-4 mr-2" />
                 Stop Sharing
-              </Button>
+              </button>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        <p className="text-center text-xs text-muted-foreground">
-          Your location is sent to the admin map and expires after 10 minutes of inactivity.
+        <p className="text-center text-[12px] text-gray-400">
+          Location data expires after 10 minutes of inactivity.
         </p>
       </div>
     </div>
@@ -510,6 +622,7 @@ function EmployeeView() {
 export default function TrackingPage() {
   const [location] = useLocation();
   const searchStr = useSearch();
+  const [, navigate] = useLocation();
 
   function resolveView(): "admin" | "employee" {
     const params = new URLSearchParams(searchStr);
@@ -525,39 +638,66 @@ export default function TrackingPage() {
   }, [location, searchStr]);
 
   return (
-    <div className="fixed inset-0 z-10 flex flex-col bg-background">
-      {/* Top bar */}
-      <div className="flex items-center justify-between px-4 py-3 border-b bg-card">
-        <div className="flex items-center gap-2">
-          <MapPin className="w-5 h-5 text-cyan-500" />
-          <h1 className="font-semibold text-base">Employee Tracking</h1>
-        </div>
-        <div className="flex gap-2">
-          <Button
-            size="sm"
-            variant={view === "admin" ? "default" : "outline"}
+    <div className="fixed inset-0 z-10" style={{ background: "#e8ecf0" }}>
+      {/* Map or Employee view fills everything */}
+      <div className="absolute inset-0">
+        {view === "admin" ? <AdminMap /> : <EmployeeView />}
+      </div>
+
+      {/* Floating top-right controls */}
+      <div className="absolute top-4 right-4 z-[1001] flex items-center gap-2">
+        {/* View toggle pill */}
+        <div
+          className="flex items-center rounded-full p-1 gap-1"
+          style={{
+            background: "rgba(255,255,255,0.90)",
+            backdropFilter: "blur(20px) saturate(180%)",
+            WebkitBackdropFilter: "blur(20px) saturate(180%)",
+            boxShadow: "0 2px 16px rgba(0,0,0,0.12)",
+          }}
+        >
+          <button
             onClick={() => setView("admin")}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[13px] font-semibold transition-all"
+            style={{
+              background: view === "admin" ? "#007AFF" : "transparent",
+              color: view === "admin" ? "#fff" : "#555",
+            }}
             data-testid="button-view-admin"
           >
-            <Users className="w-4 h-4 mr-1" />
+            <Users className="w-3.5 h-3.5" />
             Map
-          </Button>
-          <Button
-            size="sm"
-            variant={view === "employee" ? "default" : "outline"}
+          </button>
+          <button
             onClick={() => setView("employee")}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[13px] font-semibold transition-all"
+            style={{
+              background: view === "employee" ? "#007AFF" : "transparent",
+              color: view === "employee" ? "#fff" : "#555",
+            }}
             data-testid="button-view-employee"
           >
-            <Navigation className="w-4 h-4 mr-1" />
-            Share My Location
-          </Button>
+            <Navigation className="w-3.5 h-3.5" />
+            Share
+          </button>
         </div>
       </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-hidden">
-        {view === "admin" ? <AdminMap /> : <EmployeeView />}
-      </div>
+      {/* Floating back button */}
+      <button
+        onClick={() => navigate("/dashboard")}
+        className="absolute top-4 z-[1001] flex items-center justify-center w-9 h-9 rounded-full transition-all"
+        style={{
+          left: "calc(280px + 32px)",
+          background: "rgba(255,255,255,0.90)",
+          backdropFilter: "blur(20px) saturate(180%)",
+          WebkitBackdropFilter: "blur(20px) saturate(180%)",
+          boxShadow: "0 2px 16px rgba(0,0,0,0.12)",
+        }}
+        data-testid="button-back-tracking"
+      >
+        <ArrowLeft className="w-4 h-4 text-gray-700" />
+      </button>
     </div>
   );
 }
