@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useLocation } from "wouter";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -25,6 +25,7 @@ import {
   Zap,
   Clock,
   Lock,
+  TrendingUp,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -37,79 +38,230 @@ interface SignupPayload {
   phone: string;
 }
 
-// ─── Data ────────────────────────────────────────────────────────────────────
+// ─── Data ─────────────────────────────────────────────────────────────────────
 
 const FEATURES = [
   {
     icon: Package,
     title: "Inventory Kiosk",
     desc: "Staff self-checkout for cleaning supplies with real-time stock levels and automatic deduction.",
-    color: "from-blue-500/20 to-cyan-500/20",
+    grad: "from-blue-500/20 to-cyan-500/20",
     iconColor: "text-blue-400",
+    iconBg: "bg-blue-500/15 border-blue-400/20",
   },
   {
     icon: Receipt,
     title: "Invoicing & Payments",
     desc: "Send professional invoices and collect payments via Stripe — right from the dashboard.",
-    color: "from-violet-500/20 to-blue-500/20",
+    grad: "from-violet-500/20 to-blue-500/20",
     iconColor: "text-violet-400",
+    iconBg: "bg-violet-500/15 border-violet-400/20",
   },
   {
     icon: CalendarDays,
     title: "Property Calendar",
     desc: "Sync Airbnb iCal feeds to see checkouts, check-ins, and plan cleans automatically.",
-    color: "from-cyan-500/20 to-teal-500/20",
+    grad: "from-cyan-500/20 to-teal-500/20",
     iconColor: "text-cyan-400",
+    iconBg: "bg-cyan-500/15 border-cyan-400/20",
   },
   {
     icon: BarChart3,
     title: "Analytics",
     desc: "Track supply costs, restock trends, and revenue over time with live charts.",
-    color: "from-indigo-500/20 to-violet-500/20",
+    grad: "from-indigo-500/20 to-violet-500/20",
     iconColor: "text-indigo-400",
+    iconBg: "bg-indigo-500/15 border-indigo-400/20",
   },
   {
     icon: Users,
     title: "Affiliate Program",
     desc: "Grow through partners — affiliates get their own portal to manage and track referrals.",
-    color: "from-blue-500/20 to-indigo-500/20",
+    grad: "from-blue-500/20 to-indigo-500/20",
     iconColor: "text-blue-400",
+    iconBg: "bg-blue-500/15 border-blue-400/20",
   },
   {
     icon: Zap,
     title: "Instant Setup",
     desc: "Get your team up and running in minutes — no IT team or complex configuration required.",
-    color: "from-sky-500/20 to-blue-500/20",
+    grad: "from-sky-500/20 to-blue-500/20",
     iconColor: "text-sky-400",
+    iconBg: "bg-sky-500/15 border-sky-400/20",
   },
 ];
 
-const STATS = [
-  { value: "Real-time", label: "Inventory" },
-  { value: "Stripe", label: "Payments" },
-  { value: "iCal", label: "Sync" },
-  { value: "All-in-one", label: "Platform" },
-];
+// ─── Scroll-reveal hook ───────────────────────────────────────────────────────
 
-// ─── Glass card primitive ────────────────────────────────────────────────────
+function useReveal(threshold = 0.12) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setVisible(true);
+          obs.disconnect();
+        }
+      },
+      { threshold }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [threshold]);
+  return { ref, visible };
+}
 
-function GlassCard({
-  children,
-  className = "",
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
+// ─── 3-D tilt card ───────────────────────────────────────────────────────────
+
+function TiltCard({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  const card = useRef<HTMLDivElement>(null);
+  const [tilt, setTilt] = useState({ x: 0, y: 0 });
+
+  const onMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = card.current!.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const dx = (e.clientX - cx) / (rect.width / 2);
+    const dy = (e.clientY - cy) / (rect.height / 2);
+    setTilt({ x: -dy * 6, y: dx * 6 });
+  }, []);
+
+  const onLeave = useCallback(() => setTilt({ x: 0, y: 0 }), []);
+
   return (
     <div
-      className={`rounded-2xl border border-white/10 bg-white/6 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.3)] ${className}`}
+      ref={card}
+      onMouseMove={onMove}
+      onMouseLeave={onLeave}
+      className={className}
+      style={{
+        transform: `perspective(700px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)`,
+        transition: tilt.x === 0 && tilt.y === 0 ? "transform 0.5s ease" : "transform 0.08s linear",
+        willChange: "transform",
+      }}
     >
       {children}
     </div>
   );
 }
 
-// ─── Signup Form ─────────────────────────────────────────────────────────────
+// ─── Dot grid ─────────────────────────────────────────────────────────────────
+
+function DotGrid() {
+  return (
+    <div
+      className="absolute inset-0 pointer-events-none"
+      style={{
+        backgroundImage: "radial-gradient(circle, rgba(148,163,184,0.12) 1px, transparent 1px)",
+        backgroundSize: "28px 28px",
+        maskImage: "radial-gradient(ellipse 80% 60% at 50% 0%, black 0%, transparent 100%)",
+        WebkitMaskImage: "radial-gradient(ellipse 80% 60% at 50% 0%, black 0%, transparent 100%)",
+      }}
+    />
+  );
+}
+
+// ─── App Mockup ───────────────────────────────────────────────────────────────
+
+const BAR_HEIGHTS = [38, 52, 44, 68, 55, 82, 63, 90, 72, 84, 61, 95];
+
+function AppMockup() {
+  return (
+    <div className="rounded-2xl border border-white/12 bg-[#0d1426]/80 backdrop-blur-xl overflow-hidden shadow-[0_24px_60px_rgba(0,0,0,0.55),0_0_0_1px_rgba(255,255,255,0.06)]">
+      {/* Browser chrome */}
+      <div className="flex items-center gap-2 px-4 py-3 bg-white/4 border-b border-white/8">
+        <div className="flex gap-1.5">
+          <div className="w-2.5 h-2.5 rounded-full bg-red-400/70" />
+          <div className="w-2.5 h-2.5 rounded-full bg-yellow-400/70" />
+          <div className="w-2.5 h-2.5 rounded-full bg-emerald-400/70" />
+        </div>
+        <div className="flex-1 mx-2 h-5 rounded-md bg-white/6 border border-white/8 flex items-center justify-center gap-1.5">
+          <div className="w-1.5 h-1.5 rounded-full bg-emerald-400/60" />
+          <span className="text-[9px] text-slate-500 font-mono">app.cleanexinc.com/dashboard</span>
+        </div>
+      </div>
+
+      {/* Mini dashboard content */}
+      <div className="p-4 space-y-3">
+        {/* Tiny nav */}
+        <div className="flex items-center justify-between mb-1">
+          <div className="flex items-center gap-1.5">
+            <div className="w-4 h-4 rounded-md bg-blue-500 flex items-center justify-center">
+              <Sparkles className="w-2.5 h-2.5 text-white" />
+            </div>
+            <span className="text-[10px] font-bold text-white">Cleanex</span>
+            <span className="text-[9px] text-slate-500">Operations</span>
+          </div>
+          <div className="w-5 h-5 rounded-full bg-blue-500/30 border border-blue-400/30" />
+        </div>
+
+        {/* Stat cards */}
+        <div className="grid grid-cols-3 gap-2">
+          {[
+            { label: "MRR", value: "$12.4K", color: "text-blue-400", bg: "bg-blue-500/10 border-blue-400/15" },
+            { label: "Properties", value: "24", color: "text-cyan-400", bg: "bg-cyan-500/10 border-cyan-400/15" },
+            { label: "Supplies", value: "156", color: "text-indigo-400", bg: "bg-indigo-500/10 border-indigo-400/15" },
+          ].map((s) => (
+            <div key={s.label} className={`rounded-xl border p-2.5 ${s.bg}`}>
+              <div className={`text-sm font-bold leading-tight ${s.color}`}>{s.value}</div>
+              <div className="text-[9px] text-slate-500 mt-0.5">{s.label}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Bar chart */}
+        <div className="rounded-xl bg-white/4 border border-white/6 p-3">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[9px] text-slate-400 font-medium">Monthly Revenue</span>
+            <TrendingUp className="w-2.5 h-2.5 text-blue-400" />
+          </div>
+          <div className="flex items-end gap-0.5 h-10">
+            {BAR_HEIGHTS.map((h, i) => (
+              <div
+                key={i}
+                className="flex-1 rounded-sm"
+                style={{
+                  height: `${h}%`,
+                  background: `rgba(59,130,246,${0.35 + (h / 100) * 0.45})`,
+                }}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* App tiles */}
+        <div className="grid grid-cols-4 gap-1.5">
+          {[
+            { Icon: Package, label: "Kiosk", bg: "bg-blue-500/15 border-blue-400/15", ic: "text-blue-400" },
+            { Icon: CalendarDays, label: "Calendar", bg: "bg-cyan-500/15 border-cyan-400/15", ic: "text-cyan-400" },
+            { Icon: Receipt, label: "Invoice", bg: "bg-violet-500/15 border-violet-400/15", ic: "text-violet-400" },
+            { Icon: BarChart3, label: "Analytics", bg: "bg-indigo-500/15 border-indigo-400/15", ic: "text-indigo-400" },
+          ].map(({ Icon, label, bg, ic }) => (
+            <div key={label} className={`rounded-xl border p-2 flex flex-col items-center gap-1 ${bg}`}>
+              <Icon className={`w-3.5 h-3.5 ${ic}`} />
+              <span className="text-[8px] text-slate-400 font-medium">{label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Glass card ───────────────────────────────────────────────────────────────
+
+function GlassCard({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  return (
+    <div className={`rounded-2xl border border-white/10 bg-white/6 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.3)] ${className}`}>
+      {children}
+    </div>
+  );
+}
+
+// ─── Signup form ─────────────────────────────────────────────────────────────
 
 function SignupForm() {
   const { toast } = useToast();
@@ -182,7 +334,7 @@ function SignupForm() {
               value={firstName}
               onChange={e => setFirstName(e.target.value)}
               required
-              className="bg-white/8 border-white/12 text-white placeholder:text-slate-500 focus:border-blue-400/50 focus:ring-blue-400/20"
+              className="bg-white/8 border-white/12 text-white placeholder:text-slate-500"
             />
           </div>
           <div className="grid gap-1.5">
@@ -196,7 +348,7 @@ function SignupForm() {
               value={lastName}
               onChange={e => setLastName(e.target.value)}
               required
-              className="bg-white/8 border-white/12 text-white placeholder:text-slate-500 focus:border-blue-400/50 focus:ring-blue-400/20"
+              className="bg-white/8 border-white/12 text-white placeholder:text-slate-500"
             />
           </div>
         </div>
@@ -211,7 +363,7 @@ function SignupForm() {
             value={businessName}
             onChange={e => setBusinessName(e.target.value)}
             required
-            className="bg-white/8 border-white/12 text-white placeholder:text-slate-500 focus:border-blue-400/50 focus:ring-blue-400/20"
+            className="bg-white/8 border-white/12 text-white placeholder:text-slate-500"
           />
         </div>
         <div className="grid gap-1.5">
@@ -226,7 +378,7 @@ function SignupForm() {
             value={email}
             onChange={e => setEmail(e.target.value)}
             required
-            className="bg-white/8 border-white/12 text-white placeholder:text-slate-500 focus:border-blue-400/50 focus:ring-blue-400/20"
+            className="bg-white/8 border-white/12 text-white placeholder:text-slate-500"
           />
         </div>
         <div className="grid gap-1.5">
@@ -240,14 +392,14 @@ function SignupForm() {
             placeholder="+1 (555) 000-0000"
             value={phone}
             onChange={e => setPhone(e.target.value)}
-            className="bg-white/8 border-white/12 text-white placeholder:text-slate-500 focus:border-blue-400/50 focus:ring-blue-400/20"
+            className="bg-white/8 border-white/12 text-white placeholder:text-slate-500"
           />
         </div>
         <button
           type="submit"
           data-testid="button-landing-submit"
           disabled={!firstName || !lastName || !businessName || !email || submit.isPending}
-          className="w-full flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-400 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl py-2.5 transition-all shadow-[0_0_20px_rgba(59,130,246,0.4)] hover:shadow-[0_0_28px_rgba(59,130,246,0.55)]"
+          className="w-full flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-400 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl py-2.5 transition-all shadow-[0_0_20px_rgba(59,130,246,0.35)] hover:shadow-[0_0_28px_rgba(59,130,246,0.55)]"
         >
           {submit.isPending ? "Submitting…" : <><span>Get Started</span><ArrowRight className="w-4 h-4" /></>}
         </button>
@@ -262,15 +414,20 @@ function SignupForm() {
 export default function LandingPage() {
   const [, navigate] = useLocation();
 
+  const featuresReveal = useReveal();
+  const whyReveal = useReveal();
+  const portalReveal = useReveal();
+  const mockupReveal = useReveal();
+
   return (
     <div className="min-h-screen bg-[#080d1a] text-white flex flex-col overflow-x-hidden">
 
-      {/* ── Ambient background orbs ── */}
+      {/* ── Animated ambient orbs ── */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-[-20%] left-[-10%] w-[700px] h-[700px] rounded-full bg-blue-600/20 blur-[120px]" />
-        <div className="absolute top-[10%] right-[-15%] w-[600px] h-[600px] rounded-full bg-indigo-500/15 blur-[100px]" />
-        <div className="absolute bottom-[5%] left-[20%] w-[500px] h-[500px] rounded-full bg-cyan-600/10 blur-[100px]" />
-        <div className="absolute bottom-[-10%] right-[5%] w-[400px] h-[400px] rounded-full bg-blue-400/10 blur-[80px]" />
+        <div className="absolute top-[-20%] left-[-10%] w-[700px] h-[700px] rounded-full bg-blue-600/20 blur-[120px] orb-1" />
+        <div className="absolute top-[10%] right-[-15%] w-[600px] h-[600px] rounded-full bg-indigo-500/15 blur-[100px] orb-2" />
+        <div className="absolute bottom-[5%] left-[20%] w-[500px] h-[500px] rounded-full bg-cyan-600/10 blur-[100px] orb-3" />
+        <div className="absolute bottom-[-10%] right-[5%] w-[400px] h-[400px] rounded-full bg-blue-400/10 blur-[80px] orb-2" />
       </div>
 
       {/* ── Navigation ── */}
@@ -331,11 +488,14 @@ export default function LandingPage() {
 
       {/* ── Hero ── */}
       <section className="relative flex-1 max-w-7xl mx-auto w-full px-6 pt-20 pb-16">
-        <div className="grid lg:grid-cols-[1fr_400px] gap-14 items-start">
+        {/* Dot grid behind hero */}
+        <DotGrid />
 
-          {/* Left */}
+        <div className="relative grid lg:grid-cols-[1fr_400px] gap-14 items-start">
+
+          {/* Left column */}
           <div className="space-y-8">
-            {/* Badge */}
+            {/* Animated badge */}
             <div className="inline-flex items-center gap-2 rounded-full border border-blue-400/25 bg-blue-500/10 px-4 py-1.5">
               <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
               <span className="text-xs font-semibold text-blue-300 tracking-wide uppercase">
@@ -343,11 +503,13 @@ export default function LandingPage() {
               </span>
             </div>
 
-            {/* Headline */}
+            {/* Shimmer headline */}
             <div>
               <h1 className="text-5xl sm:text-6xl font-extrabold leading-[1.08] tracking-tight mb-6">
                 Run your cleaning{" "}
-                <span className="bg-gradient-to-r from-blue-400 via-cyan-400 to-blue-300 bg-clip-text text-transparent">
+                <span
+                  className="bg-gradient-to-r from-blue-400 via-cyan-300 via-blue-300 to-indigo-400 bg-clip-text text-transparent text-shimmer"
+                >
                   business smarter.
                 </span>
               </h1>
@@ -363,8 +525,12 @@ export default function LandingPage() {
                 "Invoice clients and accept Stripe payments with one click",
                 "Sync Airbnb calendars to keep cleans perfectly timed",
                 "Get up and running in minutes — no IT team required",
-              ].map((point) => (
-                <li key={point} className="flex items-start gap-3 text-sm text-slate-300">
+              ].map((point, i) => (
+                <li
+                  key={point}
+                  className="flex items-start gap-3 text-sm text-slate-300"
+                  style={{ transitionDelay: `${i * 80}ms` }}
+                >
                   <div className="w-5 h-5 rounded-full bg-blue-500/20 border border-blue-400/30 flex items-center justify-center shrink-0 mt-0.5">
                     <CheckCircle2 className="w-3 h-3 text-blue-400" />
                   </div>
@@ -373,9 +539,24 @@ export default function LandingPage() {
               ))}
             </ul>
 
+            {/* App mockup with scroll reveal */}
+            <div
+              ref={mockupReveal.ref}
+              className={`transition-all duration-700 delay-100 ${mockupReveal.visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
+            >
+              <TiltCard>
+                <AppMockup />
+              </TiltCard>
+            </div>
+
             {/* Stat pills */}
             <div className="flex flex-wrap gap-3">
-              {STATS.map((s) => (
+              {[
+                { value: "Real-time", label: "Inventory" },
+                { value: "Stripe", label: "Payments" },
+                { value: "iCal", label: "Sync" },
+                { value: "All-in-one", label: "Platform" },
+              ].map((s) => (
                 <div
                   key={s.label}
                   className="flex flex-col items-center justify-center rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md px-5 py-3 shadow-[0_4px_16px_rgba(0,0,0,0.2)]"
@@ -399,7 +580,7 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* Right — Signup */}
+          {/* Right — sticky signup */}
           <div className="lg:sticky lg:top-24">
             <SignupForm />
           </div>
@@ -408,11 +589,12 @@ export default function LandingPage() {
 
       {/* ── Features ── */}
       <section className="relative py-20 border-t border-white/6">
-        <div className="max-w-7xl mx-auto px-6">
+        <div
+          ref={featuresReveal.ref}
+          className={`max-w-7xl mx-auto px-6 transition-all duration-700 ${featuresReveal.visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
+        >
           <div className="text-center mb-12">
-            <p className="text-xs font-semibold tracking-widest text-blue-400 uppercase mb-3">
-              Platform Features
-            </p>
+            <p className="text-xs font-semibold tracking-widest text-blue-400 uppercase mb-3">Platform Features</p>
             <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
               Everything your team needs
             </h2>
@@ -420,21 +602,28 @@ export default function LandingPage() {
               Purpose-built for cleaning service operations — from supply rooms to client billing.
             </p>
           </div>
+
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {FEATURES.map((f) => (
-              <div
+            {FEATURES.map((f, i) => (
+              <TiltCard
                 key={f.title}
-                className="group relative rounded-2xl border border-white/8 bg-white/4 backdrop-blur-md p-6 flex gap-4 hover:border-white/15 hover:bg-white/7 transition-all duration-300 overflow-hidden"
+                className={`transition-all duration-700 ${featuresReveal.visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
+                // stagger via inline style
               >
-                <div className={`absolute inset-0 bg-gradient-to-br ${f.color} opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl`} />
-                <div className="relative shrink-0 w-10 h-10 rounded-xl bg-white/8 border border-white/10 flex items-center justify-center">
-                  <f.icon className={`w-5 h-5 ${f.iconColor}`} />
+                <div
+                  className="group relative h-full rounded-2xl border border-white/8 bg-white/4 backdrop-blur-md p-6 flex gap-4 overflow-hidden"
+                  style={{ transitionDelay: featuresReveal.visible ? `${i * 60}ms` : "0ms" }}
+                >
+                  <div className={`absolute inset-0 bg-gradient-to-br ${f.grad} opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl`} />
+                  <div className={`relative shrink-0 w-10 h-10 rounded-xl border flex items-center justify-center ${f.iconBg}`}>
+                    <f.icon className={`w-5 h-5 ${f.iconColor}`} />
+                  </div>
+                  <div className="relative">
+                    <h3 className="font-semibold text-white mb-1.5">{f.title}</h3>
+                    <p className="text-sm text-slate-400 leading-relaxed">{f.desc}</p>
+                  </div>
                 </div>
-                <div className="relative">
-                  <h3 className="font-semibold text-white mb-1.5">{f.title}</h3>
-                  <p className="text-sm text-slate-400 leading-relaxed">{f.desc}</p>
-                </div>
-              </div>
+              </TiltCard>
             ))}
           </div>
         </div>
@@ -442,14 +631,15 @@ export default function LandingPage() {
 
       {/* ── Why Cleanex ── */}
       <section className="relative py-20 border-t border-white/6">
-        <div className="max-w-7xl mx-auto px-6">
+        <div
+          ref={whyReveal.ref}
+          className={`max-w-7xl mx-auto px-6 transition-all duration-700 ${whyReveal.visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
+        >
           <div className="grid lg:grid-cols-2 gap-12 items-center">
 
-            {/* Problem / Solution list */}
+            {/* Problems → Solutions */}
             <div>
-              <p className="text-xs font-semibold tracking-widest text-blue-400 uppercase mb-3">
-                Why Cleanex
-              </p>
+              <p className="text-xs font-semibold tracking-widest text-blue-400 uppercase mb-3">Why Cleanex</p>
               <h2 className="text-3xl font-bold text-white mb-8">
                 Why cleaning businesses switch to Cleanex
               </h2>
@@ -487,7 +677,7 @@ export default function LandingPage() {
               </div>
             </div>
 
-            {/* CTA glass card */}
+            {/* CTA glass card with pulsing button */}
             <div className="relative">
               <div className="absolute inset-0 bg-gradient-to-br from-blue-600/30 to-indigo-600/20 rounded-3xl blur-xl" />
               <GlassCard className="relative p-8">
@@ -513,10 +703,11 @@ export default function LandingPage() {
                     </li>
                   ))}
                 </ul>
+                {/* Pulsing CTA button */}
                 <button
                   data-testid="button-landing-cta"
                   onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-                  className="w-full flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-400 text-white font-semibold rounded-xl py-3 transition-all shadow-[0_0_24px_rgba(59,130,246,0.4)] hover:shadow-[0_0_32px_rgba(59,130,246,0.6)]"
+                  className="cta-pulse-ring w-full flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-400 text-white font-semibold rounded-xl py-3 transition-all shadow-[0_0_24px_rgba(59,130,246,0.4)] hover:shadow-[0_0_32px_rgba(59,130,246,0.6)]"
                 >
                   Start your free trial <ArrowRight className="w-4 h-4" />
                 </button>
@@ -530,7 +721,10 @@ export default function LandingPage() {
 
       {/* ── Portal links ── */}
       <section className="relative py-12 border-t border-white/6">
-        <div className="max-w-7xl mx-auto px-6 text-center">
+        <div
+          ref={portalReveal.ref}
+          className={`max-w-7xl mx-auto px-6 text-center transition-all duration-700 ${portalReveal.visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
+        >
           <p className="text-slate-500 text-sm mb-6">Already have an account? Jump into your portal</p>
           <div className="flex flex-wrap justify-center gap-3">
             {[
