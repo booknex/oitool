@@ -509,6 +509,8 @@ export class DatabaseStorage implements IStorage {
     if (data.sortOrder !== undefined) updates.sortOrder = data.sortOrder;
     if (data.imageUrl !== undefined) updates.imageUrl = data.imageUrl;
     if (data.icalUrl !== undefined) updates.icalUrl = data.icalUrl;
+    if (data.lat !== undefined) updates.lat = data.lat !== null ? String(data.lat) : null;
+    if (data.lng !== undefined) updates.lng = data.lng !== null ? String(data.lng) : null;
 
     const [updated] = await db.update(properties).set(updates).where(eq(properties.id, data.id)).returning();
     return updated;

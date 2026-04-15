@@ -11,6 +11,24 @@ import path from "path";
 const UPLOADS_DIR = path.join(process.cwd(), "public", "uploads");
 fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 
+// ─── Geocoding via Nominatim (OpenStreetMap) ──────────────────────────────────
+
+async function geocodeAddress(address: string): Promise<{ lat: number; lng: number } | null> {
+  if (!address?.trim()) return null;
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(address)}`;
+    const res = await fetch(url, {
+      headers: { "User-Agent": "CleanexApp/1.0 contact@cleanexinc.com" },
+    });
+    if (!res.ok) return null;
+    const data: { lat: string; lon: string }[] = await res.json();
+    if (data.length > 0) {
+      return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+    }
+  } catch { /* silently skip geocode failures */ }
+  return null;
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Serve uploaded images as static files
   app.use("/uploads", express.static(UPLOADS_DIR));
@@ -281,6 +299,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Invalid property data", details: result.error.issues });
       }
       const prop = await storage.createProperty(result.data);
+      // Geocode in background then update lat/lng
+      if (prop.address) {
+        geocodeAddress(prop.address).then(coords => {
+          if (coords) storage.updateProperty({ id: prop.id, lat: coords.lat, lng: coords.lng }).catch(() => null);
+        });
+      }
       res.status(201).json(prop);
     } catch {
       res.status(500).json({ error: "Failed to create property" });
@@ -296,6 +320,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Invalid update data", details: result.error.issues });
       }
       const updated = await storage.updateProperty(result.data);
+      // Re-geocode if address changed
+      if (result.data.address !== undefined && result.data.address !== "") {
+        geocodeAddress(result.data.address).then(coords => {
+          if (coords) storage.updateProperty({ id, lat: coords.lat, lng: coords.lng }).catch(() => null);
+        });
+      }
       res.json(updated);
     } catch (error) {
       if (error instanceof Error && error.message.includes("not found")) {

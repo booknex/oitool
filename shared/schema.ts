@@ -95,6 +95,8 @@ export const properties = pgTable("properties", {
   imageUrl: text("image_url").default(""),
   icalUrl: text("ical_url"),
   lastSynced: timestamp("last_synced"),
+  lat: numeric("lat", { precision: 12, scale: 8 }),
+  lng: numeric("lng", { precision: 12, scale: 8 }),
 });
 
 export const insertPropertySchema = createInsertSchema(properties).omit({ id: true });
@@ -120,6 +122,8 @@ export const updatePropertySchema = z.object({
   sortOrder: z.number().optional(),
   imageUrl: z.string().optional(),
   icalUrl: z.string().optional(),
+  lat: z.number().nullable().optional(),
+  lng: z.number().nullable().optional(),
 });
 
 export type CreatePropertyPayload = z.infer<typeof createPropertySchema>;
