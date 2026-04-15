@@ -91,6 +91,16 @@ A self-service inventory kiosk application for cleaning service operations. Maid
   - Editable in manage modal and add item form
   - Restock dropdown shows per-item and total restock costs
 
+### Team / Staff Management
+- **Route** `/team` — accessible from the "Team" tile on the dashboard
+- **Stats header** — 4 cards: Total Staff, Active, Inactive, Supervisors
+- **Search** — filter by name, email, or role
+- **Staff card grid** — colored avatar (initials), name, role badge (Cleaner/Supervisor), status badge (Active/Inactive), email, phone, notes
+- **Add/Edit modal** — react-hook-form with Zod validation; fields: name, role, status, email, phone, avatar color picker, notes
+- **Two-tap delete** — first tap shows "Confirm" button, second tap deletes
+- **API** — `GET/POST /api/staff`, `PATCH/DELETE /api/staff/:id`
+- **Table** — `staff` (id serial PK, name, email, phone, role, status, color, notes, created_at)
+
 ### Cleaning Supply Items (12 items)
 1. All-Purpose Cleaner (Sprays)
 2. Glass Cleaner (Sprays)

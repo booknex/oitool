@@ -517,6 +517,48 @@ export type AnalyticsResponse = {
   monthlyTrend?: AnalyticsMonthRow[];
 };
 
+// ─── Staff / Team Members ─────────────────────────────────────────────────────
+
+export const staff = pgTable("staff", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  email: text("email").notNull().default(""),
+  phone: text("phone").notNull().default(""),
+  role: text("role").notNull().default("cleaner"),
+  status: text("status").notNull().default("active"),
+  color: text("color").notNull().default("#3B82F6"),
+  notes: text("notes").notNull().default(""),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertStaffSchema = createInsertSchema(staff).omit({ id: true, createdAt: true });
+export type InsertStaff = z.infer<typeof insertStaffSchema>;
+export type StaffMember = typeof staff.$inferSelect;
+
+export const createStaffSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  email: z.string().default(""),
+  phone: z.string().default(""),
+  role: z.enum(["cleaner", "supervisor"]).default("cleaner"),
+  status: z.enum(["active", "inactive"]).default("active"),
+  color: z.string().default("#3B82F6"),
+  notes: z.string().default(""),
+});
+
+export const updateStaffSchema = z.object({
+  id: z.number(),
+  name: z.string().min(1).optional(),
+  email: z.string().optional(),
+  phone: z.string().optional(),
+  role: z.enum(["cleaner", "supervisor"]).optional(),
+  status: z.enum(["active", "inactive"]).optional(),
+  color: z.string().optional(),
+  notes: z.string().optional(),
+});
+
+export type CreateStaffPayload = z.infer<typeof createStaffSchema>;
+export type UpdateStaffPayload = z.infer<typeof updateStaffSchema>;
+
 // ── Company Settings ──────────────────────────────────────────────────────────
 export const companySettings = pgTable("company_settings", {
   id: serial("id").primaryKey(),

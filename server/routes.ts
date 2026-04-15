@@ -4,7 +4,7 @@ import { createServer, type Server } from "http";
 import { z } from "zod";
 import { storage } from "./storage";
 import { isStripeConfigured, getUncachableStripeClient } from "./stripeClient";
-import { checkoutSchema, restockSchema, createItemSchema, updateItemSchema, createDashboardAppSchema, updateDashboardAppSchema, createPropertySchema, updatePropertySchema, createClientSchema, updateClientSchema, createInvoiceSchema, updateInvoiceSchema, createSaasAffiliateSchema, updateSaasAffiliateSchema, createSaasCompanySchema, updateSaasCompanySchema, createCatalogItemSchema, updateCatalogItemSchema, type AnalyticsRange } from "@shared/schema";
+import { checkoutSchema, restockSchema, createItemSchema, updateItemSchema, createDashboardAppSchema, updateDashboardAppSchema, createPropertySchema, updatePropertySchema, createClientSchema, updateClientSchema, createInvoiceSchema, updateInvoiceSchema, createSaasAffiliateSchema, updateSaasAffiliateSchema, createSaasCompanySchema, updateSaasCompanySchema, createCatalogItemSchema, updateCatalogItemSchema, createStaffSchema, updateStaffSchema, type AnalyticsRange } from "@shared/schema";
 import fs from "fs";
 import path from "path";
 
@@ -765,6 +765,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.deleteSaasCompany(id);
       res.json({ success: true });
     } catch { res.status(500).json({ error: "Failed to delete company" }); }
+  });
+
+  // ─── Staff ────────────────────────────────────────────────────────────────
+
+  app.get("/api/staff", async (_req, res) => {
+    try { res.json(await storage.getStaff()); }
+    catch { res.status(500).json({ error: "Failed to fetch staff" }); }
+  });
+
+  app.post("/api/staff", async (req, res) => {
+    try {
+      const parsed = createStaffSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: parsed.error.errors });
+      res.status(201).json(await storage.createStaffMember(parsed.data));
+    } catch { res.status(500).json({ error: "Failed to create staff member" }); }
+  });
+
+  app.patch("/api/staff/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid id" });
+      const parsed = updateStaffSchema.safeParse({ id, ...req.body });
+      if (!parsed.success) return res.status(400).json({ error: parsed.error.errors });
+      res.json(await storage.updateStaffMember(parsed.data));
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Failed to update staff member";
+      res.status(msg.includes("not found") ? 404 : 500).json({ error: msg });
+    }
+  });
+
+  app.delete("/api/staff/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid id" });
+      await storage.deleteStaffMember(id);
+      res.json({ success: true });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Failed to delete staff member";
+      res.status(msg.includes("not found") ? 404 : 500).json({ error: msg });
+    }
   });
 
   // ── Company Settings ────────────────────────────────────────────────────────

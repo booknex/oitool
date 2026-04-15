@@ -46,6 +46,10 @@ import {
   companySettings,
   type CompanySettings,
   type UpdateCompanySettingsPayload,
+  staff,
+  type StaffMember,
+  type CreateStaffPayload,
+  type UpdateStaffPayload,
 } from "@shared/schema";
 
 // ─── SSRF protection ─────────────────────────────────────────────────────────
@@ -186,6 +190,11 @@ export interface IStorage {
   // Company Settings
   getCompanySettings(): Promise<CompanySettings>;
   updateCompanySettings(data: UpdateCompanySettingsPayload): Promise<CompanySettings>;
+  // Staff
+  getStaff(): Promise<StaffMember[]>;
+  createStaffMember(data: CreateStaffPayload): Promise<StaffMember>;
+  updateStaffMember(data: UpdateStaffPayload): Promise<StaffMember>;
+  deleteStaffMember(id: number): Promise<void>;
 }
 
 const DEFAULT_DASHBOARD_APPS: Omit<CreateDashboardAppPayload, "sortOrder">[] = [
@@ -193,7 +202,7 @@ const DEFAULT_DASHBOARD_APPS: Omit<CreateDashboardAppPayload, "sortOrder">[] = [
   { name: "Calendar",     description: "Property bookings & iCal sync",        icon: "CalendarDays", color: "#E8F5E9", iconColor: "#22C55E", route: "/calendar",   available: true  },
   { name: "Invoicing",    description: "Bill clients & track payments",         icon: "Receipt",      color: "#EDE9FE", iconColor: "#7C3AED", route: "/invoicing",  available: true  },
   { name: "Analytics",    description: "Usage trends & cost tracking",          icon: "BarChart3",    color: "#F3E5F5", iconColor: "#9C27B0", route: "/analytics",  available: true  },
-  { name: "Team",         description: "Staff management & schedules",          icon: "Users",        color: "#FBE9E7", iconColor: "#FF5722", route: "/team",       available: false },
+  { name: "Team",         description: "Staff management & schedules",          icon: "Users",        color: "#FBE9E7", iconColor: "#FF5722", route: "/team",       available: true  },
 ];
 
 const REQUIRED_APPS = [
@@ -201,6 +210,7 @@ const REQUIRED_APPS = [
   { route: "/calendar",   name: "Calendar",     description: "Property bookings & iCal sync",        icon: "CalendarDays", color: "#E8F5E9", iconColor: "#22C55E", available: true },
   { route: "/invoicing",  name: "Invoicing",    description: "Bill clients & track payments",        icon: "Receipt",      color: "#EDE9FE", iconColor: "#7C3AED", available: true },
   { route: "/analytics",  name: "Analytics",    description: "Usage trends & cost tracking",         icon: "BarChart3",    color: "#F3E5F5", iconColor: "#9C27B0", available: true },
+  { route: "/team",       name: "Team",         description: "Staff management & schedules",         icon: "Users",        color: "#FBE9E7", iconColor: "#FF5722", available: true },
 ];
 
 export class DatabaseStorage implements IStorage {
@@ -414,6 +424,14 @@ export class DatabaseStorage implements IStorage {
         const maxSort = apps.reduce((m, a) => Math.max(m, a.sortOrder), -1);
         const inserted = await db.insert(dashboardApps).values(missing.map((app, i) => ({ ...app, sortOrder: maxSort + 1 + i }))).returning();
         apps = [...apps, ...inserted].sort((a, b) => a.sortOrder - b.sortOrder);
+      }
+      // Ensure apps required to be available are enabled (e.g. newly built features)
+      for (const req of REQUIRED_APPS.filter(r => r.available)) {
+        const existing = apps.find(a => a.route === req.route);
+        if (existing && !existing.available) {
+          await db.update(dashboardApps).set({ available: true }).where(eq(dashboardApps.id, existing.id));
+          existing.available = true;
+        }
       }
     }
 
@@ -812,6 +830,46 @@ export class DatabaseStorage implements IStorage {
       .where(eq(companySettings.id, existing.id))
       .returning();
     return updated;
+  }
+
+  // ─── Staff ─────────────────────────────────────────────────────────────────
+
+  async getStaff(): Promise<StaffMember[]> {
+    return await db.select().from(staff).orderBy(staff.name);
+  }
+
+  async createStaffMember(data: CreateStaffPayload): Promise<StaffMember> {
+    const [member] = await db.insert(staff).values({
+      name: data.name,
+      email: data.email ?? "",
+      phone: data.phone ?? "",
+      role: data.role ?? "cleaner",
+      status: data.status ?? "active",
+      color: data.color ?? "#3B82F6",
+      notes: data.notes ?? "",
+    }).returning();
+    return member;
+  }
+
+  async updateStaffMember(data: UpdateStaffPayload): Promise<StaffMember> {
+    const [existing] = await db.select().from(staff).where(eq(staff.id, data.id));
+    if (!existing) throw new Error(`Staff member with id ${data.id} not found`);
+    const updates: Partial<typeof staff.$inferInsert> = {};
+    if (data.name !== undefined) updates.name = data.name;
+    if (data.email !== undefined) updates.email = data.email;
+    if (data.phone !== undefined) updates.phone = data.phone;
+    if (data.role !== undefined) updates.role = data.role;
+    if (data.status !== undefined) updates.status = data.status;
+    if (data.color !== undefined) updates.color = data.color;
+    if (data.notes !== undefined) updates.notes = data.notes;
+    const [updated] = await db.update(staff).set(updates).where(eq(staff.id, data.id)).returning();
+    return updated;
+  }
+
+  async deleteStaffMember(id: number): Promise<void> {
+    const [existing] = await db.select().from(staff).where(eq(staff.id, id));
+    if (!existing) throw new Error(`Staff member with id ${id} not found`);
+    await db.delete(staff).where(eq(staff.id, id));
   }
 }
 
