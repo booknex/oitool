@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useForm } from "react-hook-form";
@@ -7,12 +7,12 @@ import { z } from "zod";
 import {
   CalendarClock, ChevronLeft, ChevronRight, Plus, Pencil, Trash2,
   Clock, MapPin, User, Check, List, CalendarDays, X, Building2,
+  ChevronUp, ChevronDown, ChevronsUpDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -25,7 +25,7 @@ import { createJobSchema } from "@shared/schema";
 
 function getMondayOf(date: Date): Date {
   const d = new Date(date);
-  const day = d.getDay(); // 0=Sun ... 6=Sat
+  const day = d.getDay();
   const diff = day === 0 ? -6 : 1 - day;
   d.setDate(d.getDate() + diff);
   d.setHours(0, 0, 0, 0);
@@ -49,13 +49,6 @@ const STATUS_COLORS: Record<string, string> = {
   "in-progress": "bg-amber-100 text-amber-700 border-amber-200",
   completed: "bg-green-100 text-green-700 border-green-200",
   cancelled: "bg-red-100 text-red-700 border-red-200",
-};
-
-const STATUS_DOT: Record<string, string> = {
-  scheduled: "bg-blue-500",
-  "in-progress": "bg-amber-500",
-  completed: "bg-green-500",
-  cancelled: "bg-red-500",
 };
 
 const STATUS_OPTIONS = [
@@ -85,47 +78,74 @@ function initials(name: string) {
   return name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2);
 }
 
+type SortField = "date" | "title" | "status" | "staffMember";
+type SortDir = "asc" | "desc";
+
 // ─── Job Form ─────────────────────────────────────────────────────────────────
 
 type FormValues = z.infer<typeof createJobSchema>;
+
+interface Property { id: number; name: string; address: string; }
 
 interface JobModalProps {
   editing: CleaningJobWithDetails | null;
   open: boolean;
   onClose: () => void;
+  onDelete?: () => void;
   staffList: StaffMember[];
+  properties: Property[];
   defaultDate?: string;
 }
 
-function JobModal({ editing, open, onClose, staffList, defaultDate }: JobModalProps) {
+function JobModal({ editing, open, onClose, onDelete, staffList, properties, defaultDate }: JobModalProps) {
   const { toast } = useToast();
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(createJobSchema),
-    defaultValues: editing
-      ? {
-          title: editing.title,
-          staffId: editing.staffId,
-          propertyId: editing.propertyId ?? null,
-          address: editing.address,
-          date: editing.date,
-          startTime: editing.startTime,
-          endTime: editing.endTime,
-          status: editing.status as FormValues["status"],
-          notes: editing.notes,
-        }
-      : {
-          title: "",
-          staffId: staffList[0]?.id ?? 0,
-          propertyId: null,
-          address: "",
-          date: defaultDate ?? dateToISO(new Date()),
-          startTime: "",
-          endTime: "",
-          status: "scheduled",
-          notes: "",
-        },
+    defaultValues: {
+      title: "",
+      staffId: staffList[0]?.id ?? 0,
+      propertyId: null,
+      address: "",
+      date: dateToISO(new Date()),
+      startTime: "",
+      endTime: "",
+      status: "scheduled",
+      notes: "",
+    },
   });
+
+  // Reset form whenever the modal opens or the editing target changes
+  useEffect(() => {
+    if (!open) return;
+    if (editing) {
+      form.reset({
+        title: editing.title,
+        staffId: editing.staffId,
+        propertyId: editing.propertyId ?? null,
+        address: editing.address,
+        date: editing.date,
+        startTime: editing.startTime,
+        endTime: editing.endTime,
+        status: editing.status as FormValues["status"],
+        notes: editing.notes,
+      });
+    } else {
+      form.reset({
+        title: "",
+        staffId: staffList[0]?.id ?? 0,
+        propertyId: null,
+        address: "",
+        date: defaultDate ?? dateToISO(new Date()),
+        startTime: "",
+        endTime: "",
+        status: "scheduled",
+        notes: "",
+      });
+    }
+    setConfirmDelete(false);
+  }, [open, editing, defaultDate]);
 
   const createMutation = useMutation({
     mutationFn: (data: FormValues) => apiRequest("POST", "/api/jobs", data),
@@ -147,7 +167,27 @@ function JobModal({ editing, open, onClose, staffList, defaultDate }: JobModalPr
     onError: () => toast({ title: "Failed to update job", variant: "destructive" }),
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: () => apiRequest("DELETE", `/api/jobs/${editing!.id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/jobs"] });
+      toast({ title: "Job deleted" });
+      if (onDelete) onDelete();
+      onClose();
+    },
+    onError: () => toast({ title: "Failed to delete job", variant: "destructive" }),
+  });
+
   const isPending = createMutation.isPending || updateMutation.isPending;
+
+  // Auto-fill address when a property is selected
+  const watchedPropertyId = form.watch("propertyId");
+  useEffect(() => {
+    if (watchedPropertyId) {
+      const prop = properties.find(p => p.id === watchedPropertyId);
+      if (prop) form.setValue("address", prop.address);
+    }
+  }, [watchedPropertyId]);
 
   function onSubmit(data: FormValues) {
     if (editing) updateMutation.mutate(data);
@@ -271,6 +311,37 @@ function JobModal({ editing, open, onClose, staffList, defaultDate }: JobModalPr
               />
             </div>
 
+            {/* Property selector (optional) */}
+            <FormField
+              control={form.control}
+              name="propertyId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Property <span className="text-muted-foreground font-normal">(optional)</span></FormLabel>
+                  <Select
+                    value={field.value ? String(field.value) : "none"}
+                    onValueChange={v => field.onChange(v === "none" ? null : parseInt(v, 10))}
+                  >
+                    <FormControl>
+                      <SelectTrigger data-testid="select-property">
+                        <Building2 className="w-3.5 h-3.5 mr-1.5 text-muted-foreground" />
+                        <SelectValue placeholder="None — enter address manually" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="none">None — enter address manually</SelectItem>
+                      {properties.map(p => (
+                        <SelectItem key={p.id} value={String(p.id)} data-testid={`option-property-${p.id}`}>
+                          {p.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <FormField
               control={form.control}
               name="address"
@@ -299,13 +370,48 @@ function JobModal({ editing, open, onClose, staffList, defaultDate }: JobModalPr
               )}
             />
 
-            <div className="flex justify-end gap-2 pt-1">
-              <Button type="button" variant="outline" onClick={onClose} data-testid="button-cancel-job">
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isPending} data-testid="button-save-job">
-                {isPending ? "Saving…" : editing ? "Save Changes" : "Create Job"}
-              </Button>
+            <div className="flex items-center justify-between gap-2 pt-1">
+              {editing ? (
+                confirmDelete ? (
+                  <div className="flex items-center gap-1">
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => deleteMutation.mutate()}
+                      disabled={deleteMutation.isPending}
+                      data-testid="button-confirm-delete-modal"
+                    >
+                      <Check className="w-3 h-3 mr-1" />
+                      Confirm Delete
+                    </Button>
+                    <Button type="button" size="icon" variant="ghost" onClick={() => setConfirmDelete(false)}>
+                      <X className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setConfirmDelete(true)}
+                    data-testid="button-delete-job-modal"
+                  >
+                    <Trash2 className="w-3.5 h-3.5 mr-1" />
+                    Delete
+                  </Button>
+                )
+              ) : (
+                <span />
+              )}
+              <div className="flex gap-2">
+                <Button type="button" variant="outline" onClick={onClose} data-testid="button-cancel-job">
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={isPending} data-testid="button-save-job">
+                  {isPending ? "Saving…" : editing ? "Save Changes" : "Create Job"}
+                </Button>
+              </div>
             </div>
           </form>
         </Form>
@@ -314,83 +420,13 @@ function JobModal({ editing, open, onClose, staffList, defaultDate }: JobModalPr
   );
 }
 
-// ─── Job Card ─────────────────────────────────────────────────────────────────
+// ─── Sort icon helper ─────────────────────────────────────────────────────────
 
-interface JobCardProps {
-  job: CleaningJobWithDetails;
-  onEdit: () => void;
-  onDelete: () => void;
-  confirmDelete: boolean;
-  onConfirmDelete: () => void;
-  onCancelDelete: () => void;
-}
-
-function JobCard({ job, onEdit, onDelete, confirmDelete, onConfirmDelete, onCancelDelete }: JobCardProps) {
-  const sm = job.staffMember;
-
-  return (
-    <div
-      className="rounded-md border bg-card p-3 space-y-1.5 hover-elevate"
-      data-testid={`card-job-${job.id}`}
-      style={{ borderLeftColor: sm?.color ?? "#888", borderLeftWidth: 3 }}
-    >
-      <div className="flex items-start justify-between gap-2">
-        <p className="font-medium text-sm leading-snug flex-1">{job.title}</p>
-        <div className="flex items-center gap-1 shrink-0">
-          <Button size="icon" variant="ghost" onClick={onEdit} data-testid={`button-edit-job-${job.id}`}>
-            <Pencil className="w-3.5 h-3.5" />
-          </Button>
-          {confirmDelete ? (
-            <div className="flex items-center gap-1">
-              <Button size="sm" variant="destructive" onClick={onConfirmDelete} data-testid={`button-confirm-delete-${job.id}`}>
-                <Check className="w-3 h-3 mr-1" />Confirm
-              </Button>
-              <Button size="icon" variant="ghost" onClick={onCancelDelete}>
-                <X className="w-3.5 h-3.5" />
-              </Button>
-            </div>
-          ) : (
-            <Button size="icon" variant="ghost" onClick={onDelete} data-testid={`button-delete-job-${job.id}`}>
-              <Trash2 className="w-3.5 h-3.5 text-muted-foreground" />
-            </Button>
-          )}
-        </div>
-      </div>
-
-      <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
-        {sm && (
-          <span className="flex items-center gap-1">
-            <span
-              className="w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-bold text-white shrink-0"
-              style={{ backgroundColor: sm.color }}
-            >
-              {initials(sm.name)}
-            </span>
-            {sm.name}
-          </span>
-        )}
-        {(job.startTime || job.endTime) && (
-          <span className="flex items-center gap-1">
-            <Clock className="w-3 h-3" />
-            {fmtTime(job.startTime)}{job.endTime ? ` – ${fmtTime(job.endTime)}` : ""}
-          </span>
-        )}
-        {job.address && (
-          <span className="flex items-center gap-1">
-            <MapPin className="w-3 h-3" />
-            <span className="truncate max-w-[160px]">{job.address}</span>
-          </span>
-        )}
-      </div>
-
-      <Badge
-        className={`text-[10px] px-1.5 py-0 border ${STATUS_COLORS[job.status] ?? "bg-muted"}`}
-        data-testid={`status-job-${job.id}`}
-      >
-        {STATUS_OPTIONS.find(s => s.value === job.status)?.label ?? job.status}
-      </Badge>
-    </div>
-  );
+function SortIcon({ field, current, dir }: { field: SortField; current: SortField; dir: SortDir }) {
+  if (field !== current) return <ChevronsUpDown className="w-3 h-3 text-muted-foreground" />;
+  return dir === "asc"
+    ? <ChevronUp className="w-3 h-3 text-primary" />
+    : <ChevronDown className="w-3 h-3 text-primary" />;
 }
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
@@ -402,13 +438,15 @@ export default function Scheduling() {
   const [monday, setMonday] = useState<Date>(() => getMondayOf(new Date()));
   const [filterStaff, setFilterStaff] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [filterDateFrom, setFilterDateFrom] = useState("");
+  const [filterDateTo, setFilterDateTo] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<CleaningJobWithDetails | null>(null);
   const [defaultDate, setDefaultDate] = useState<string | undefined>(undefined);
-  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
+  const [sortField, setSortField] = useState<SortField>("date");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
 
-  const weekStr = dateToISO(monday);
-  const weekDates = Array.from({ length: 7 }, (_, i) => addDays(monday, i));
+  const weekDates = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(monday, i)), [monday]);
   const todayStr = dateToISO(new Date());
 
   const { data: jobs = [], isLoading: jobsLoading } = useQuery<CleaningJobWithDetails[]>({
@@ -419,41 +457,51 @@ export default function Scheduling() {
     queryKey: ["/api/staff"],
   });
 
-  const deleteMutation = useMutation({
-    mutationFn: (id: number) => apiRequest("DELETE", `/api/jobs/${id}`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/jobs"] });
-      toast({ title: "Job deleted" });
-      setConfirmDeleteId(null);
-    },
-    onError: () => toast({ title: "Failed to delete", variant: "destructive" }),
+  const { data: propertiesRaw = [] } = useQuery<Property[]>({
+    queryKey: ["/api/properties"],
   });
 
-  // Filter jobs for the current week view
+  // Shared filter logic (used in both views)
+  function applyFilters(list: CleaningJobWithDetails[]) {
+    return list.filter(j => {
+      if (filterStaff !== "all" && j.staffId !== parseInt(filterStaff, 10)) return false;
+      if (filterStatus !== "all" && j.status !== filterStatus) return false;
+      if (filterDateFrom && j.date < filterDateFrom) return false;
+      if (filterDateTo && j.date > filterDateTo) return false;
+      return true;
+    });
+  }
+
+  // Calendar week jobs
   const weekJobs = useMemo(() => {
     const monStr = dateToISO(monday);
     const sunStr = dateToISO(addDays(monday, 6));
-    return jobs.filter(j => {
-      if (j.date < monStr || j.date > sunStr) return false;
-      if (filterStaff !== "all" && j.staffId !== parseInt(filterStaff, 10)) return false;
-      if (filterStatus !== "all" && j.status !== filterStatus) return false;
-      return true;
+    return applyFilters(jobs).filter(j => j.date >= monStr && j.date <= sunStr);
+  }, [jobs, monday, filterStaff, filterStatus, filterDateFrom, filterDateTo]);
+
+  // List view jobs (sorted)
+  const sortedJobs = useMemo(() => {
+    const filtered = applyFilters(jobs);
+    return [...filtered].sort((a, b) => {
+      let av = "", bv = "";
+      if (sortField === "date") { av = a.date + a.startTime; bv = b.date + b.startTime; }
+      else if (sortField === "title") { av = a.title.toLowerCase(); bv = b.title.toLowerCase(); }
+      else if (sortField === "status") { av = a.status; bv = b.status; }
+      else if (sortField === "staffMember") {
+        av = a.staffMember?.name?.toLowerCase() ?? "";
+        bv = b.staffMember?.name?.toLowerCase() ?? "";
+      }
+      if (av < bv) return sortDir === "asc" ? -1 : 1;
+      if (av > bv) return sortDir === "asc" ? 1 : -1;
+      return 0;
     });
-  }, [jobs, monday, filterStaff, filterStatus]);
+  }, [jobs, filterStaff, filterStatus, filterDateFrom, filterDateTo, sortField, sortDir]);
 
-  // All jobs filtered (for list view)
-  const filteredJobs = useMemo(() => {
-    return jobs.filter(j => {
-      if (filterStaff !== "all" && j.staffId !== parseInt(filterStaff, 10)) return false;
-      if (filterStatus !== "all" && j.status !== filterStatus) return false;
-      return true;
-    }).sort((a, b) => (a.date + a.startTime).localeCompare(b.date + b.startTime));
-  }, [jobs, filterStaff, filterStatus]);
-
-  // Stats
+  // Stats (current ISO week, unfiltered)
   const thisWeekJobs = useMemo(() => {
-    const monStr = dateToISO(getMondayOf(new Date()));
-    const sunStr = dateToISO(addDays(getMondayOf(new Date()), 6));
+    const mon = getMondayOf(new Date());
+    const monStr = dateToISO(mon);
+    const sunStr = dateToISO(addDays(mon, 6));
     return jobs.filter(j => j.date >= monStr && j.date <= sunStr);
   }, [jobs]);
 
@@ -463,6 +511,11 @@ export default function Scheduling() {
     inProgress: thisWeekJobs.filter(j => j.status === "in-progress").length,
     completed: thisWeekJobs.filter(j => j.status === "completed").length,
   }), [thisWeekJobs]);
+
+  function toggleSort(field: SortField) {
+    if (sortField === field) setSortDir(d => d === "asc" ? "desc" : "asc");
+    else { setSortField(field); setSortDir("asc"); }
+  }
 
   function openNew(date?: string) {
     setEditing(null);
@@ -518,9 +571,8 @@ export default function Scheduling() {
         ))}
       </div>
 
-      {/* Filters + view toggle */}
+      {/* Filters */}
       <div className="flex flex-wrap items-center gap-2">
-        {/* Employee filter */}
         <Select value={filterStaff} onValueChange={setFilterStaff}>
           <SelectTrigger className="w-44" data-testid="filter-staff">
             <User className="w-3.5 h-3.5 mr-1.5 text-muted-foreground" />
@@ -534,7 +586,6 @@ export default function Scheduling() {
           </SelectContent>
         </Select>
 
-        {/* Status filter */}
         <Select value={filterStatus} onValueChange={setFilterStatus}>
           <SelectTrigger className="w-40" data-testid="filter-status">
             <SelectValue placeholder="All Statuses" />
@@ -546,6 +597,37 @@ export default function Scheduling() {
             ))}
           </SelectContent>
         </Select>
+
+        {/* Date range filter */}
+        <div className="flex items-center gap-1.5">
+          <Input
+            type="date"
+            className="w-36"
+            value={filterDateFrom}
+            onChange={e => setFilterDateFrom(e.target.value)}
+            placeholder="From"
+            data-testid="filter-date-from"
+          />
+          <span className="text-muted-foreground text-xs">–</span>
+          <Input
+            type="date"
+            className="w-36"
+            value={filterDateTo}
+            onChange={e => setFilterDateTo(e.target.value)}
+            placeholder="To"
+            data-testid="filter-date-to"
+          />
+          {(filterDateFrom || filterDateTo) && (
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={() => { setFilterDateFrom(""); setFilterDateTo(""); }}
+              data-testid="button-clear-dates"
+            >
+              <X className="w-3.5 h-3.5" />
+            </Button>
+          )}
+        </div>
 
         <div className="ml-auto flex items-center gap-1">
           <Button
@@ -600,7 +682,7 @@ export default function Scheduling() {
         </div>
       )}
 
-      {/* Calendar view */}
+      {/* ── Calendar view ── */}
       {view === "calendar" && (
         <div className="grid grid-cols-7 gap-2 min-w-0">
           {weekDates.map((date, i) => {
@@ -610,7 +692,6 @@ export default function Scheduling() {
 
             return (
               <div key={iso} className="min-w-0" data-testid={`col-day-${iso}`}>
-                {/* Day header */}
                 <div
                   className={`mb-2 text-center rounded-md py-1.5 ${isToday ? "bg-primary text-primary-foreground" : "bg-muted"}`}
                 >
@@ -618,7 +699,6 @@ export default function Scheduling() {
                   <p className="text-base font-bold leading-none">{date.getDate()}</p>
                 </div>
 
-                {/* Jobs */}
                 <div className="space-y-1.5">
                   {dayJobs.map(job => (
                     <div
@@ -644,7 +724,6 @@ export default function Scheduling() {
                       </div>
                     </div>
                   ))}
-                  {/* Add button */}
                   <button
                     className="w-full text-xs text-muted-foreground py-1 rounded-md border border-dashed border-border hover:border-primary hover:text-primary transition-colors"
                     onClick={() => openNew(iso)}
@@ -660,37 +739,115 @@ export default function Scheduling() {
         </div>
       )}
 
-      {/* List view */}
+      {/* ── List / Table view ── */}
       {view === "list" && (
-        <div className="space-y-3">
-          {jobsLoading && <p className="text-muted-foreground text-sm">Loading…</p>}
-          {!jobsLoading && filteredJobs.length === 0 && (
+        <div className="rounded-md border overflow-hidden">
+          {/* Table header */}
+          <div className="grid grid-cols-[2fr_1fr_1fr_1fr_auto] gap-0 bg-muted text-xs font-semibold text-muted-foreground">
+            {(
+              [
+                { field: "title" as SortField, label: "Job" },
+                { field: "staffMember" as SortField, label: "Employee" },
+                { field: "date" as SortField, label: "Date & Time" },
+                { field: "status" as SortField, label: "Status" },
+              ] as { field: SortField; label: string }[]
+            ).map(col => (
+              <button
+                key={col.field}
+                className="flex items-center gap-1 px-4 py-2.5 hover:text-foreground transition-colors text-left"
+                onClick={() => toggleSort(col.field)}
+                data-testid={`sort-${col.field}`}
+              >
+                {col.label}
+                <SortIcon field={col.field} current={sortField} dir={sortDir} />
+              </button>
+            ))}
+            <div className="px-4 py-2.5">Actions</div>
+          </div>
+
+          {/* Table rows */}
+          {jobsLoading && (
+            <div className="text-center py-8 text-muted-foreground text-sm">Loading…</div>
+          )}
+          {!jobsLoading && sortedJobs.length === 0 && (
             <div className="text-center py-16 text-muted-foreground">
               <CalendarClock className="w-10 h-10 mx-auto mb-3 opacity-30" />
               <p className="font-medium">No jobs found</p>
-              <p className="text-sm">Create your first job using the button above.</p>
+              <p className="text-sm">Adjust filters or create a new job.</p>
             </div>
           )}
-          {filteredJobs.map(job => (
-            <JobCard
-              key={job.id}
-              job={job}
-              onEdit={() => openEdit(job)}
-              onDelete={() => setConfirmDeleteId(job.id)}
-              confirmDelete={confirmDeleteId === job.id}
-              onConfirmDelete={() => deleteMutation.mutate(job.id)}
-              onCancelDelete={() => setConfirmDeleteId(null)}
-            />
-          ))}
+          {sortedJobs.map((job, idx) => {
+            const sm = job.staffMember;
+            return (
+              <div
+                key={job.id}
+                className={`grid grid-cols-[2fr_1fr_1fr_1fr_auto] gap-0 items-center border-t text-sm ${idx % 2 === 1 ? "bg-muted/30" : ""}`}
+                data-testid={`row-job-${job.id}`}
+              >
+                <div className="px-4 py-3">
+                  <p className="font-medium truncate">{job.title}</p>
+                  {job.address && (
+                    <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                      <MapPin className="w-3 h-3 shrink-0" />
+                      <span className="truncate">{job.address}</span>
+                    </p>
+                  )}
+                </div>
+                <div className="px-4 py-3">
+                  {sm ? (
+                    <span className="flex items-center gap-1.5">
+                      <span
+                        className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold text-white shrink-0"
+                        style={{ backgroundColor: sm.color }}
+                      >
+                        {initials(sm.name)}
+                      </span>
+                      <span className="truncate">{sm.name}</span>
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground">—</span>
+                  )}
+                </div>
+                <div className="px-4 py-3">
+                  <p>{fmtDate(job.date)}</p>
+                  {job.startTime && (
+                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Clock className="w-3 h-3" />
+                      {fmtTime(job.startTime)}{job.endTime ? ` – ${fmtTime(job.endTime)}` : ""}
+                    </p>
+                  )}
+                </div>
+                <div className="px-4 py-3">
+                  <Badge
+                    className={`text-[10px] px-1.5 py-0 border ${STATUS_COLORS[job.status] ?? "bg-muted"}`}
+                    data-testid={`status-job-${job.id}`}
+                  >
+                    {STATUS_OPTIONS.find(s => s.value === job.status)?.label ?? job.status}
+                  </Badge>
+                </div>
+                <div className="px-3 py-2 flex items-center gap-1">
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => openEdit(job)}
+                    data-testid={`button-edit-job-${job.id}`}
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 
-      {/* Modal */}
+      {/* Modal — handles both add and edit; delete is available in edit mode */}
       <JobModal
         open={modalOpen}
         editing={editing}
         onClose={closeModal}
         staffList={staffList}
+        properties={propertiesRaw as Property[]}
         defaultDate={defaultDate}
       />
     </div>
