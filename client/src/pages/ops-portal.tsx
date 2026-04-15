@@ -4,7 +4,7 @@ import { queryClient, apiRequest, getQueryFn } from "@/lib/queryClient";
 import { useLocation } from "wouter";
 import {
   Building2, Users, DollarSign, TrendingUp, Plus, Pencil, Trash2,
-  X, Check, Phone, Mail, ArrowUpRight,
+  X, Check, Phone, Mail, ArrowUpRight, ArrowLeft,
   BadgeCheck, Clock, AlertCircle, Ban, RefreshCw,
   LogOut, Shield, Search,
 } from "lucide-react";
@@ -779,7 +779,17 @@ export function AdminPortalLogin() {
   if (isLoading || meCheck) return null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 flex flex-col items-center justify-center p-4">
+    <div className="relative min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 flex flex-col items-center justify-center p-4">
+      {/* Back button */}
+      <button
+        data-testid="button-ops-back"
+        onClick={() => navigate("/")}
+        className="absolute top-5 left-5 flex items-center gap-1.5 text-indigo-300 hover:text-white transition-colors text-sm font-medium"
+      >
+        <ArrowLeft className="w-4 h-4" />
+        Back
+      </button>
+
       <div className="w-full max-w-sm space-y-6">
         {/* Logo */}
         <div className="text-center">
@@ -833,8 +843,6 @@ export function AdminPortalLogin() {
         <p className="text-center text-xs text-indigo-400">
           Not an admin?{" "}
           <button onClick={() => navigate("/portal")} className="underline text-indigo-300">Affiliate portal</button>
-          {" · "}
-          <button onClick={() => navigate("/")} className="underline text-indigo-300">Back to home</button>
         </p>
       </div>
     </div>

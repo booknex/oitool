@@ -5,7 +5,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import {
   Building2, Users, DollarSign, TrendingUp, LogOut, RefreshCw,
   BadgeCheck, Clock, AlertCircle, Ban, Mail, Phone,
-  Sparkles, Plus,
+  Sparkles, Plus, ArrowLeft,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -251,7 +251,17 @@ function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
+    <div className="relative min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
+      {/* Back button */}
+      <button
+        data-testid="button-affiliate-back"
+        onClick={() => navigate("/")}
+        className="absolute top-5 left-5 flex items-center gap-1.5 text-slate-400 hover:text-white transition-colors text-sm font-medium"
+      >
+        <ArrowLeft className="w-4 h-4" />
+        Back
+      </button>
+
       <div className="w-full max-w-md">
         {/* Logo / Brand */}
         <div className="text-center mb-8">
