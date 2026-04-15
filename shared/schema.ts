@@ -559,6 +559,38 @@ export const updateStaffSchema = z.object({
 export type CreateStaffPayload = z.infer<typeof createStaffSchema>;
 export type UpdateStaffPayload = z.infer<typeof updateStaffSchema>;
 
+// ─── Staff Locations (Real-time GPS tracking) ─────────────────────────────────
+
+export const staffLocations = pgTable("staff_locations", {
+  id: serial("id").primaryKey(),
+  staffId: integer("staff_id").notNull().unique().references(() => staff.id, { onDelete: "cascade" }),
+  lat: numeric("lat", { precision: 12, scale: 8 }).notNull(),
+  lng: numeric("lng", { precision: 12, scale: 8 }).notNull(),
+  accuracy: numeric("accuracy", { precision: 10, scale: 2 }).notNull().default("0"),
+  lastSeen: timestamp("last_seen").notNull().defaultNow(),
+});
+
+export type StaffLocation = typeof staffLocations.$inferSelect;
+
+export type ActiveLocation = {
+  staffId: number;
+  name: string;
+  color: string;
+  lat: number;
+  lng: number;
+  accuracy: number;
+  lastSeen: string;
+};
+
+export const pingLocationSchema = z.object({
+  staffId: z.number({ required_error: "staffId required" }),
+  lat: z.number(),
+  lng: z.number(),
+  accuracy: z.number().default(0),
+});
+
+export type PingLocationPayload = z.infer<typeof pingLocationSchema>;
+
 // ─── Cleaning Jobs (Scheduling) ───────────────────────────────────────────────
 
 export const cleaningJobs = pgTable("cleaning_jobs", {

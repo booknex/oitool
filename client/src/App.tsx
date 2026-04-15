@@ -16,6 +16,7 @@ import Analytics from "@/pages/analytics";
 import Support from "@/pages/support";
 import Team from "@/pages/team";
 import Scheduling from "@/pages/scheduling";
+import Tracking from "@/pages/tracking";
 import NotFound from "@/pages/not-found";
 import { ArrowLeft, LogOut, Shield, Users, LayoutDashboard } from "lucide-react";
 
@@ -192,6 +193,8 @@ function Router() {
       <Route path="/support" component={Support} />
       <Route path="/team" component={Team} />
       <Route path="/scheduling" component={Scheduling} />
+      <Route path="/tracking" component={Tracking} />
+      <Route path="/tracking/employee" component={Tracking} />
       <Route component={NotFound} />
     </Switch>
   );

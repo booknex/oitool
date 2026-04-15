@@ -101,6 +101,16 @@ A self-service inventory kiosk application for cleaning service operations. Maid
 - **API** — `GET/POST /api/staff`, `PATCH/DELETE /api/staff/:id`
 - **Table** — `staff` (id serial PK, name, email, phone, role, status, color, notes, created_at)
 
+### Real-Time Employee Location Tracking
+- **Route** `/tracking` — admin map view; `/tracking/employee` — employee GPS sharing view
+- **Admin map view** — Leaflet + OpenStreetMap, colored circle-pin markers per employee with initials, auto-refresh every 30s, sidebar shows active employee list with last-seen timestamps; clicking a sidebar entry centers the map on that employee
+- **Employee view** — staff name picker (active staff only), "Start Sharing Location" button uses `navigator.geolocation.getCurrentPosition`, pings every 30s while sharing; live ping counter + last-ping timestamp; "Stop Sharing" stops the interval
+- **Expiry** — pings expire after 10 minutes (server filters by `last_seen >= now - 10min`)
+- **Upsert pattern** — one row per employee in `staff_locations`; updated in-place on each ping
+- **API** — `POST /api/location/ping` (validates staffId, lat, lng, accuracy), `GET /api/location/active` (returns pings with staff name/color)
+- **Table** — `staff_locations` (id serial PK, staff_id FK→staff UNIQUE, lat/lng numeric(12,8), accuracy numeric(10,2), last_seen timestamp)
+- **Tracking tile** — teal/cyan palette, MapPin icon, seeded in `DEFAULT_DASHBOARD_APPS` + `REQUIRED_APPS`
+
 ### Scheduling
 - **Route** `/scheduling` — accessible from the "Scheduling" tile on the dashboard
 - **Stats header** — 4 cards: This Week, Scheduled, In Progress, Completed (current week only)

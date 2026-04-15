@@ -4,7 +4,7 @@ import { createServer, type Server } from "http";
 import { z } from "zod";
 import { storage } from "./storage";
 import { isStripeConfigured, getUncachableStripeClient } from "./stripeClient";
-import { checkoutSchema, restockSchema, createItemSchema, updateItemSchema, createDashboardAppSchema, updateDashboardAppSchema, createPropertySchema, updatePropertySchema, createClientSchema, updateClientSchema, createInvoiceSchema, updateInvoiceSchema, createSaasAffiliateSchema, updateSaasAffiliateSchema, createSaasCompanySchema, updateSaasCompanySchema, createCatalogItemSchema, updateCatalogItemSchema, createStaffSchema, updateStaffSchema, createJobSchema, updateJobSchema, type AnalyticsRange } from "@shared/schema";
+import { checkoutSchema, restockSchema, createItemSchema, updateItemSchema, createDashboardAppSchema, updateDashboardAppSchema, createPropertySchema, updatePropertySchema, createClientSchema, updateClientSchema, createInvoiceSchema, updateInvoiceSchema, createSaasAffiliateSchema, updateSaasAffiliateSchema, createSaasCompanySchema, updateSaasCompanySchema, createCatalogItemSchema, updateCatalogItemSchema, createStaffSchema, updateStaffSchema, createJobSchema, updateJobSchema, pingLocationSchema, type AnalyticsRange } from "@shared/schema";
 import fs from "fs";
 import path from "path";
 
@@ -854,6 +854,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const msg = e instanceof Error ? e.message : "Failed to delete job";
       res.status(msg.includes("not found") ? 404 : 500).json({ error: msg });
     }
+  });
+
+  // ── Location Tracking ───────────────────────────────────────────────────────
+  app.post("/api/location/ping", async (req, res) => {
+    try {
+      const parsed = pingLocationSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message });
+      await storage.pingLocation(parsed.data);
+      res.json({ success: true });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Failed to ping location";
+      res.status(500).json({ error: msg });
+    }
+  });
+
+  app.get("/api/location/active", async (_req, res) => {
+    try {
+      const locations = await storage.getActiveLocations();
+      res.json(locations);
+    } catch { res.status(500).json({ error: "Failed to fetch locations" }); }
   });
 
   // ── Company Settings ────────────────────────────────────────────────────────

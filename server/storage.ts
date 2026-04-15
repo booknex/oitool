@@ -54,6 +54,9 @@ import {
   type CleaningJobWithDetails,
   type CreateJobPayload,
   type UpdateJobPayload,
+  staffLocations,
+  type ActiveLocation,
+  type PingLocationPayload,
 } from "@shared/schema";
 
 // ─── SSRF protection ─────────────────────────────────────────────────────────
@@ -204,6 +207,9 @@ export interface IStorage {
   createJob(data: CreateJobPayload): Promise<CleaningJobWithDetails>;
   updateJob(data: UpdateJobPayload): Promise<CleaningJobWithDetails>;
   deleteJob(id: number): Promise<void>;
+  // Location tracking
+  pingLocation(data: PingLocationPayload): Promise<void>;
+  getActiveLocations(): Promise<ActiveLocation[]>;
 }
 
 const DEFAULT_DASHBOARD_APPS: Omit<CreateDashboardAppPayload, "sortOrder">[] = [
@@ -213,6 +219,7 @@ const DEFAULT_DASHBOARD_APPS: Omit<CreateDashboardAppPayload, "sortOrder">[] = [
   { name: "Analytics",     description: "Usage trends & cost tracking",          icon: "BarChart3",     color: "#F3E5F5", iconColor: "#9C27B0", route: "/analytics",   available: true  },
   { name: "Team",          description: "Staff management & schedules",          icon: "Users",         color: "#FBE9E7", iconColor: "#FF5722", route: "/team",        available: true  },
   { name: "Scheduling",    description: "Assign cleaning jobs to employees",     icon: "CalendarClock", color: "#FFF3E0", iconColor: "#F97316", route: "/scheduling",  available: true  },
+  { name: "Tracking",     description: "Live employee GPS location map",         icon: "MapPin",        color: "#E0F7FA", iconColor: "#00ACC1", route: "/tracking",    available: true  },
 ];
 
 const REQUIRED_APPS = [
@@ -222,6 +229,7 @@ const REQUIRED_APPS = [
   { route: "/analytics",   name: "Analytics",     description: "Usage trends & cost tracking",         icon: "BarChart3",     color: "#F3E5F5", iconColor: "#9C27B0", available: true },
   { route: "/team",        name: "Team",          description: "Staff management & schedules",         icon: "Users",         color: "#FBE9E7", iconColor: "#FF5722", available: true },
   { route: "/scheduling",  name: "Scheduling",    description: "Assign cleaning jobs to employees",    icon: "CalendarClock", color: "#FFF3E0", iconColor: "#F97316", available: true },
+  { route: "/tracking",   name: "Tracking",      description: "Live employee GPS location map",        icon: "MapPin",        color: "#E0F7FA", iconColor: "#00ACC1", available: true },
 ];
 
 export class DatabaseStorage implements IStorage {
@@ -967,6 +975,52 @@ export class DatabaseStorage implements IStorage {
     const [existing] = await db.select().from(cleaningJobs).where(eq(cleaningJobs.id, id));
     if (!existing) throw new Error(`Job with id ${id} not found`);
     await db.delete(cleaningJobs).where(eq(cleaningJobs.id, id));
+  }
+
+  // ─── Location Tracking ──────────────────────────────────────────────────────
+
+  async pingLocation(data: PingLocationPayload): Promise<void> {
+    // Upsert: one row per employee, updated in place
+    const existing = await db.select().from(staffLocations).where(eq(staffLocations.staffId, data.staffId));
+    if (existing.length > 0) {
+      await db.update(staffLocations)
+        .set({
+          lat: String(data.lat),
+          lng: String(data.lng),
+          accuracy: String(data.accuracy),
+          lastSeen: new Date(),
+        })
+        .where(eq(staffLocations.staffId, data.staffId));
+    } else {
+      await db.insert(staffLocations).values({
+        staffId: data.staffId,
+        lat: String(data.lat),
+        lng: String(data.lng),
+        accuracy: String(data.accuracy),
+        lastSeen: new Date(),
+      });
+    }
+  }
+
+  async getActiveLocations(): Promise<ActiveLocation[]> {
+    const cutoff = new Date(Date.now() - 10 * 60 * 1000); // 10 minutes ago
+    const rows = await db.select().from(staffLocations).where(
+      sql`${staffLocations.lastSeen} >= ${cutoff}`
+    );
+    if (rows.length === 0) return [];
+    const staffList = await db.select().from(staff);
+    return rows.map(row => {
+      const sm = staffList.find(s => s.id === row.staffId);
+      return {
+        staffId: row.staffId,
+        name: sm?.name ?? "Unknown",
+        color: sm?.color ?? "#888888",
+        lat: parseFloat(String(row.lat)),
+        lng: parseFloat(String(row.lng)),
+        accuracy: parseFloat(String(row.accuracy)),
+        lastSeen: row.lastSeen.toISOString(),
+      };
+    });
   }
 }
 
