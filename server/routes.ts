@@ -786,7 +786,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id, 10);
       if (isNaN(id)) return res.status(400).json({ error: "Invalid id" });
-      const parsed = updateStaffSchema.safeParse({ id, ...req.body });
+      const parsed = updateStaffSchema.safeParse({ ...req.body, id });
       if (!parsed.success) return res.status(400).json({ error: parsed.error.errors });
       res.json(await storage.updateStaffMember(parsed.data));
     } catch (e) {
