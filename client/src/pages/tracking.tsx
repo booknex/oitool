@@ -63,7 +63,7 @@ function buildPropertyMarkerHtml(_color: string, label: string, address?: string
       <div style="
         background:#ffffff;
         border:2px solid #5BAFD6;
-        border-radius:4px;
+        border-radius:0px;
         padding:4px 10px;
         margin-bottom:5px;
         font-size:10px;font-weight:700;color:#1e3a4f;
