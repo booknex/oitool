@@ -52,7 +52,8 @@ function buildStaffMarkerHtml(color: string, init: string): string {
   `;
 }
 
-function buildPropertyMarkerHtml(color: string, label: string): string {
+function buildPropertyMarkerHtml(_color: string, label: string): string {
+  const babyBlue = "#5BAFD6";
   return `
     <div style="
       position:relative;
@@ -61,7 +62,7 @@ function buildPropertyMarkerHtml(color: string, label: string): string {
     ">
       <div style="
         width:38px;height:38px;
-        background:${color};
+        background:${babyBlue};
         border-radius:10px;
         border:3px solid #fff;
         box-shadow:0 2px 12px rgba(0,0,0,0.22);
@@ -74,7 +75,7 @@ function buildPropertyMarkerHtml(color: string, label: string): string {
         width:0;height:0;
         border-left:5px solid transparent;
         border-right:5px solid transparent;
-        border-top:7px solid ${color};
+        border-top:7px solid ${babyBlue};
         margin-top:-1px;
       "></div>
     </div>
@@ -212,7 +213,7 @@ function AdminMap() {
               min-width:160px;padding:4px 0;
             ">
               <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-                <div style="width:30px;height:30px;border-radius:8px;background:${prop.color};display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700;">${initials(prop.name)}</div>
+                <div style="width:30px;height:30px;border-radius:8px;background:#5BAFD6;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700;">${initials(prop.name)}</div>
                 <strong style="font-size:14px;font-weight:600;">${prop.name}</strong>
               </div>
               ${prop.address ? `<div style="color:#888;font-size:12px;">${prop.address}</div>` : ""}
@@ -367,7 +368,7 @@ function AdminMap() {
                       >
                         <div
                           className="w-8 h-8 rounded-[9px] flex-shrink-0 flex items-center justify-center text-white text-[11px] font-bold border-2 border-white"
-                          style={{ background: prop.color, boxShadow: "0 1px 4px rgba(0,0,0,0.18)" }}
+                          style={{ background: "#5BAFD6", boxShadow: "0 1px 4px rgba(0,0,0,0.18)" }}
                         >
                           {initials(prop.name)}
                         </div>
