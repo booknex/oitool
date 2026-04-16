@@ -11,21 +11,32 @@ import path from "path";
 const UPLOADS_DIR = path.join(process.cwd(), "public", "uploads");
 fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 
-// ─── Geocoding via Nominatim (OpenStreetMap) ──────────────────────────────────
+// ─── Geocoding: US Census (primary) → Nominatim (fallback) ───────────────────
 
 async function geocodeAddress(address: string): Promise<{ lat: number; lng: number } | null> {
   if (!address?.trim()) return null;
+
+  // 1. US Census Geocoder — best for US street addresses
+  try {
+    const url = `https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address=${encodeURIComponent(address)}&benchmark=2020&format=json`;
+    const res = await fetch(url, { headers: { "User-Agent": "CleanexApp/1.0 contact@cleanexinc.com" } });
+    if (res.ok) {
+      const data: { result?: { addressMatches?: { coordinates: { x: number; y: number } }[] } } = await res.json();
+      const match = data?.result?.addressMatches?.[0];
+      if (match) return { lat: match.coordinates.y, lng: match.coordinates.x };
+    }
+  } catch { /* fall through to Nominatim */ }
+
+  // 2. Nominatim (OpenStreetMap) — good fallback for non-US or city-level
   try {
     const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(address)}`;
-    const res = await fetch(url, {
-      headers: { "User-Agent": "CleanexApp/1.0 contact@cleanexinc.com" },
-    });
-    if (!res.ok) return null;
-    const data: { lat: string; lon: string }[] = await res.json();
-    if (data.length > 0) {
-      return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+    const res = await fetch(url, { headers: { "User-Agent": "CleanexApp/1.0 contact@cleanexinc.com" } });
+    if (res.ok) {
+      const data: { lat: string; lon: string }[] = await res.json();
+      if (data.length > 0) return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
     }
-  } catch { /* silently skip geocode failures */ }
+  } catch { /* silently skip */ }
+
   return null;
 }
 
