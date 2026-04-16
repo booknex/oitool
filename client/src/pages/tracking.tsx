@@ -52,14 +52,29 @@ function buildStaffMarkerHtml(color: string, init: string): string {
   `;
 }
 
-function buildPropertyMarkerHtml(_color: string, label: string): string {
+function buildPropertyMarkerHtml(_color: string, label: string, address?: string): string {
   const babyBlue = "#5BAFD6";
   return `
     <div style="
       position:relative;
-      width:38px;height:46px;
       display:flex;flex-direction:column;align-items:center;
     ">
+      ${address ? `
+      <div style="
+        background:rgba(255,255,255,0.92);
+        backdrop-filter:blur(6px);
+        border:1px solid rgba(91,175,214,0.35);
+        border-radius:6px;
+        padding:3px 7px;
+        margin-bottom:4px;
+        font-size:10px;font-weight:600;color:#374151;
+        font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display',sans-serif;
+        white-space:nowrap;
+        box-shadow:0 1px 6px rgba(0,0,0,0.12);
+        max-width:180px;
+        overflow:hidden;
+        text-overflow:ellipsis;
+      ">${address}</div>` : ""}
       <div style="
         width:38px;height:38px;
         background:${babyBlue};
@@ -199,11 +214,11 @@ function AdminMap() {
         if (isNaN(lat) || isNaN(lng)) return;
 
         const icon = L.divIcon({
-          html: buildPropertyMarkerHtml(prop.color, initials(prop.name)),
+          html: buildPropertyMarkerHtml(prop.color, initials(prop.name), prop.address ?? undefined),
           className: "",
-          iconSize: [38, 46],
-          iconAnchor: [19, 46],
-          popupAnchor: [0, -48],
+          iconSize: [200, 72],
+          iconAnchor: [100, 72],
+          popupAnchor: [0, -72],
         });
         const marker = L.marker([lat, lng], { icon })
           .addTo(mapInstance.current!)
@@ -375,7 +390,7 @@ function AdminMap() {
                         <div className="min-w-0 flex-1">
                           <p className="text-[13px] font-semibold text-gray-900 truncate">{prop.name}</p>
                           {prop.address && (
-                            <p className="text-[11px] text-gray-400 truncate">{prop.address}</p>
+                            <p className="text-[11px] text-gray-400 leading-snug">{prop.address}</p>
                           )}
                         </div>
                       </button>
