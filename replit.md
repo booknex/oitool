@@ -1,209 +1,63 @@
 # Supply Kiosk - Inventory Management System
 
 ## Overview
-
-A self-service inventory kiosk application for cleaning service operations. Maids use the kiosk to select cleaning supplies they need for a property, add items to their cart, and check out to update inventory levels. The application features a dark gaming aesthetic with real-time stock tracking displayed as current/max (e.g., 3/10). Built with React, TypeScript, and Express.
-
-## Features
-
-### Dashboard Home Screen
-- **Two-panel layout** — Dark teal hero panel on the left (branding/tagline) + clean white app list on the right
-- **App tiles** — Stored in `dashboard_apps` DB table; fetched from `GET /api/dashboard-apps`
-- **Edit mode** — Tap the gear icon (top-right) to enter edit mode:
-  - **Edit** each app tile (name, description, icon, background color, icon color, route, available toggle)
-  - **Delete** a tile (two-tap confirmation)
-  - **Add** a new app tile
-- **Icon picker** — Curated set of Lucide icons selectable via a grid
-- **Color swatches** — Preset background and icon colors to choose from
-- **Live clock** — Shown in the right panel header
-- **Mobile fallback** — Compact teal brand bar shown on small screens when the left panel is hidden
-- Auto-seeds the default 5 apps on first load if the table is empty
-
-### Affiliate Portal
-- **Route** `/portal` — login page (served to affiliates); `/portal/dashboard` — authenticated dashboard
-- **Login** — affiliate enters their email + access code (set by admin in SaaS Admin); session-based auth via express-session
-- **Dashboard (post-login)**:
-  - 4 KPI cards: Est. Monthly Payout, MRR Generated, Active Accounts, Total Referred
-  - Account info card with commission structure breakdown
-  - Companies table showing all their referred accounts, status, plan, MRR, and their per-account commission cut
-  - Running totals row showing total MRR and total payout
-- **Session** — 7-day cookie, httpOnly, SESSION_SECRET from env
-- **Auth API** — `POST /api/affiliate/login`, `POST /api/affiliate/logout`, `GET /api/affiliate/me` (returns affiliate + stats + companies)
-- Admin sets `access_code` per affiliate in SaaS Admin; affiliates table shows the code for easy sharing
-
-### Admin Portal (Protected)
-- **Routes** — `/ops` = login page, `/ops/dashboard` = protected dashboard (accessible from landing page Sign In → Admin Portal)
-- **Authentication** — email + password login; session-based auth via `req.session.isAdmin`; credentials from `ADMIN_EMAIL`/`ADMIN_PASSWORD` env vars (default: `admin@cleanex.com` / `cleanex2024`)
-- **Auth API** — `POST /api/admin/login`, `POST /api/admin/logout`, `GET /api/admin/me`
-- **Overview tab** — 7 KPI cards (MRR, ARR, Active Accounts, Trials, Avg MRR, Affiliates, Payout); subscription status & revenue by plan breakdowns
-- **Companies tab** — full CRUD: status/plan filter bar + search, inline plan and status quick-edits, create/edit modal with all fields, two-step delete confirmation; totals footer
-- **Affiliates tab** — full CRUD: affiliate table with MRR attribution, commission payout calculation, access code display; create/edit modal; two-tap delete
-- **API** (reuses SaaS routes) — `GET/POST /api/saas/companies`, `PATCH/DELETE /api/saas/companies/:id`, `GET/POST /api/saas/affiliates`, `PATCH/DELETE /api/saas/affiliates/:id`
-- **Tables** — `saas_affiliates` (id, name, email, phone, commission_rate, status, access_code, notes, created_at), `saas_companies` (id, name, owner_name, email, phone, status, plan, mrr, affiliate_id FK, trial_ends_at, notes, address, city, state, country, zip, website, created_at)
-- **Removed from dashboard** — the old `/saas` and `/admin` tiles are no longer seeded or shown in the staff dashboard
-
-### Invoicing
-- **Route** `/invoicing` — accessible from the "Invoicing" tile on the dashboard
-- **Clients** — manage customers: name, email, phone, address, notes; stored in `clients` DB table; `stripe_customer_id` column links to Stripe
-- **Invoices** — create invoices with line items (description, qty, unit price); stored in `invoices` + `invoice_items` tables
-- **Auto-numbering** — invoice numbers auto-generated: INV-0001, INV-0002, …
-- **Status tracking** — draft / sent / paid / overdue; status can be changed inline via dropdown per invoice
-- **Payment tracking** — `paid_at` timestamp set automatically when status → paid
-- **Stripe payments** — "Payment Link" button on invoice detail creates a Stripe Checkout Session; link opens in new tab + copies to clipboard; `stripe_checkout_url` and `stripe_payment_intent_id` stored on invoice; "Paid via Stripe" badge shown after payment; requires `STRIPE_SECRET_KEY` env var or Replit Stripe integration
-- **Stripe setup** — `server/stripeClient.ts`, `server/webhookHandlers.ts`; webhook registered BEFORE `express.json()` in index.ts; `initStripe()` runs on startup (graceful skip if not configured)
-- **Summary stats** — header cards show Outstanding balance, Collected (paid) total, Overdue count
-- **API** — `GET/POST /api/clients`, `PATCH/DELETE /api/clients/:id`, `GET/POST /api/invoices`, `GET/PATCH/DELETE /api/invoices/:id`, `POST /api/invoices/:id/payment-link`, `POST /api/stripe/webhook`
-
-### Calendar
-- **Route** `/calendar` — accessible from the "Calendar" tile on the dashboard
-- **Summary cards** — Checkouts Today, Check-ins Today, Occupied Now
-- **Property status list** — all iCal-linked properties with status badge, next checkout/checkin dates, last sync time
-- **Upcoming bookings timeline** — all bookings sorted by date; today's events highlighted
-- **API** — uses `GET /api/bookings/upcoming` and `GET /api/properties`
-
-### Airbnb iCal Calendar Sync
-- **iCal URL per property** — optional field stored in `properties.ical_url`
-- **Auto-sync** — server syncs all iCal URLs every 15 minutes via `setInterval` in `server/index.ts`
-- **Manual sync** — "Sync Now" button in property edit modal triggers `POST /api/properties/:id/sync`
-- **Upcoming bookings** — `bookings` table stores uid, startDate, endDate, summary per property
-- **Status badges** — property cards show colored pill: Available / Occupied / Checkout Today / Check-in Today
-- **Next date hint** — calendar icon + next check-in date shown below cards with iCal configured
-- **Last synced** — edit modal shows "Last synced X ago" after first sync
-- **API** — `POST /api/properties/:id/sync`, `GET /api/bookings/upcoming`
-- **Deploy script** — migrations for `ical_url`, `last_synced` columns and `bookings` table
-
-### Inventory Kiosk
-- **Item Grid** - 12 cleaning supply items displayed as cards with custom-generated images
-- **Stock Display** - Each item shows current stock vs max stock (e.g., 3/10) with color-coded indicators:
-  - Green: stock above 50%
-  - Yellow: stock between 25-50%
-  - Red: stock below 25%
-  - Out of Stock overlay when at 0
-- **Cart System** - Slide-out cart sidebar for reviewing selected items
-  - Add items by clicking on item cards
-  - Increase/decrease quantities with +/- buttons
-  - Remove individual items from cart
-  - Shows total item count
-- **Checkout** - Deducts selected quantities from inventory with server-side validation
-- **Restock All** - Admin button to reset all items to full stock
-- **Cost Tracking** - Each item has a per-unit cost for restock budgeting
-  - Cost displayed on item cards (when > $0)
-  - Editable in manage modal and add item form
-  - Restock dropdown shows per-item and total restock costs
-
-### Team / Staff Management
-- **Route** `/team` — accessible from the "Team" tile on the dashboard
-- **Stats header** — 4 cards: Total Staff, Active, Inactive, Supervisors
-- **Search** — filter by name, email, or role
-- **Staff card grid** — colored avatar (initials), name, role badge (Cleaner/Supervisor), status badge (Active/Inactive), email, phone, notes
-- **Add/Edit modal** — react-hook-form with Zod validation; fields: name, role, status, email, phone, avatar color picker, notes
-- **Two-tap delete** — first tap shows "Confirm" button, second tap deletes
-- **API** — `GET/POST /api/staff`, `PATCH/DELETE /api/staff/:id`
-- **Table** — `staff` (id serial PK, name, email, phone, role, status, color, notes, created_at)
-
-### Real-Time Employee Location Tracking
-- **Route** `/tracking` — admin map view; `/tracking/employee` — employee GPS sharing view
-- **Admin map view** — Leaflet + OpenStreetMap, colored circle-pin markers per employee with initials, auto-refresh every 30s, sidebar shows active employee list with last-seen timestamps; clicking a sidebar entry centers the map on that employee
-- **Employee view** — staff name picker (active staff only), "Start Sharing Location" button uses `navigator.geolocation.getCurrentPosition`, pings every 30s while sharing; live ping counter + last-ping timestamp; "Stop Sharing" stops the interval
-- **Expiry** — pings expire after 10 minutes (server filters by `last_seen >= now - 10min`)
-- **Upsert pattern** — one row per employee in `staff_locations`; updated in-place on each ping
-- **API** — `POST /api/location/ping` (validates staffId, lat, lng, accuracy), `GET /api/location/active` (returns pings with staff name/color)
-- **Table** — `staff_locations` (id serial PK, staff_id FK→staff UNIQUE, lat/lng numeric(12,8), accuracy numeric(10,2), last_seen timestamp)
-- **Tracking tile** — teal/cyan palette, MapPin icon, seeded in `DEFAULT_DASHBOARD_APPS` + `REQUIRED_APPS`
-
-### Scheduling
-- **Route** `/scheduling` — accessible from the "Scheduling" tile on the dashboard
-- **Stats header** — 4 cards: This Week, Scheduled, In Progress, Completed (current week only)
-- **Calendar view** — weekly grid (Mon–Sun) with today highlighted; job blocks colored by employee color; click to edit; "+ Add" button per day
-- **List view** — sorted chronological list with job cards showing title, employee, time, address, status badge
-- **Week navigation** — prev/next week buttons + Today shortcut
-- **Filter bar** — filter by employee and/or status; toggles between calendar/list views
-- **Add/Edit modal** — react-hook-form + Zod; fields: title, assigned employee, date, status, start/end time, address, notes
-- **Two-tap delete** — first tap shows "Confirm" button, second tap deletes
-- **API** — `GET /api/jobs`, `POST /api/jobs`, `PATCH /api/jobs/:id`, `DELETE /api/jobs/:id`
-- **Table** — `cleaning_jobs` (id serial PK, title, staff_id FK→staff, property_id FK→properties nullable, address, date, start_time, end_time, status, notes, created_at)
-
-### Cleaning Supply Items (12 items)
-1. All-Purpose Cleaner (Sprays)
-2. Glass Cleaner (Sprays)
-3. Disinfectant Spray (Sprays)
-4. Microfiber Cloths (Cloths & Wipes)
-5. Sponges (Cloths & Wipes)
-6. Trash Bags (Supplies)
-7. Toilet Bowl Cleaner (Bathroom)
-8. Floor Cleaner (Floors)
-9. Dusting Spray (Sprays)
-10. Rubber Gloves (Supplies)
-11. Mop Heads (Floors)
-12. Vacuum Bags (Supplies)
+The Supply Kiosk is a self-service inventory management system designed for cleaning service operations. Its primary purpose is to allow maids to select cleaning supplies, add them to a cart, and check out, which updates inventory levels in real-time. The application aims to streamline supply management, reduce manual tracking, and provide an intuitive user experience with a dark, gaming-inspired aesthetic. Key capabilities include real-time stock tracking, a robust cart system, and administrative tools for inventory management and reporting.
 
 ## User Preferences
-
 Preferred communication style: Simple, everyday language.
 
 ## System Architecture
 
 ### Frontend Architecture
-
-**Framework & Build Tool**
-- React 18 with TypeScript for type-safe component development
-- Vite as the build tool and development server
-- Wouter for lightweight client-side routing
-
-**UI Component System**
-- Shadcn UI component library (New York style) with Radix UI primitives
-- Tailwind CSS for utility-first styling with custom design tokens
-- Gaming-focused design system with dark mode by default
-
-**State Management**
-- TanStack Query (React Query) for server state management (items)
-- Local React state for cart management
-- Mutations with cache invalidation for checkout and restock
+The frontend is built with React 18 and TypeScript, utilizing Vite for fast development and bundling. Routing is handled by Wouter. The UI is constructed using Shadcn UI (New York style) based on Radix UI primitives, styled with Tailwind CSS, and features a default dark mode with a gaming aesthetic. State management for server data uses TanStack Query, while local React state manages the shopping cart.
 
 ### Backend Architecture
+The backend is an Express.js application written in TypeScript, running in ESM mode. Data persistence is managed by a PostgreSQL database, with Drizzle ORM handling database interactions. The API is RESTful, providing endpoints for inventory management, checkout processes, and dashboard application configuration. Zod schemas ensure robust server-side validation, with shared schemas for client-server consistency.
 
-**Server Framework**
-- Express.js with TypeScript running in ESM mode
-- Vite middleware integration for development hot reload
+### System Design Choices
+- **Dashboard:** Features a two-panel layout with customizable app tiles, an icon picker, and color swatches. Includes a live clock and mobile responsiveness.
+- **Affiliate Portal:** Secure, session-based access for affiliates to view KPIs, commission structures, and referred accounts.
+- **Admin Portal:** Protected access for managing companies, affiliates, and viewing comprehensive business analytics. Includes full CRUD operations for entities.
+- **Invoicing:** Manages clients and invoices, supports auto-numbering, status tracking, and integrates with Stripe for payment links.
+- **Calendar:** Displays upcoming bookings, property statuses, and supports iCal sync for properties with manual and automated sync options.
+- **Inventory Kiosk:** Features an item grid with stock levels (current/max) and color-coded indicators, a slide-out cart system, and checkout functionality that deducts stock. Includes admin-only restock capabilities and cost tracking.
+- **Team / Staff Management:** Provides tools for managing staff details, roles, and statuses, with search and CRUD functionalities.
+- **Real-Time Employee Location Tracking:** Utilizes Leaflet + OpenStreetMap to display employee locations, with employees able to share their GPS data. Locations are updated periodically and expire after a set time. Property markers are baby blue (#5BAFD6) with full address displayed above each marker. Geocoding uses US Census Bureau API (primary) with Nominatim as fallback.
+- **Scheduling:** Offers calendar and list views for managing cleaning jobs, with filtering, weekly navigation, and CRUD operations for job entries.
 
-**Data Storage**
-- PostgreSQL database with Drizzle ORM (DatabaseStorage class)
-- Table: inventory_items (id serial PK, name, description, category, stock, max_stock, visible, cost numeric(10,2))
-- Cart is client-side only; checkout validates and decrements server-side
-- Production deployment uses separate PostgreSQL instance on VPS
+## External Dependencies
 
-**API Design**
-- RESTful endpoints:
-  - `GET /api/items` - Fetch all inventory items with current stock levels
-  - `POST /api/cart/checkout` - Checkout cart items, validates stock and decrements
-  - `POST /api/items/restock` - Restock a single item (by id, optional quantity)
-  - `POST /api/items/restock-all` - Reset all items to max stock
-  - `POST /api/items` - Create a new item
-  - `PATCH /api/items/:id` - Update an existing item
-  - `DELETE /api/items/:id` - Delete an item
-  - `GET /api/dashboard-apps` - Fetch all dashboard app tiles (auto-seeds defaults if empty)
-  - `POST /api/dashboard-apps` - Create a new dashboard app tile
-  - `PATCH /api/dashboard-apps/:id` - Update a dashboard app tile
-  - `DELETE /api/dashboard-apps/:id` - Delete a dashboard app tile
-
-**Validation**
-- Zod schemas for runtime type validation
-- Shared schema definitions between client and server (`shared/schema.ts`)
-- Server-side stock validation prevents negative inventory
-
-### External Dependencies
-
-**UI & Styling**
-- Radix UI component primitives (@radix-ui/* packages)
-- Tailwind CSS with PostCSS for processing
-- Google Fonts (Inter, Orbitron) for typography
+### UI & Styling
+- Radix UI primitives (`@radix-ui/* packages`)
+- Tailwind CSS
+- Google Fonts (Inter, Orbitron)
 - Lucide React for iconography
 
-**Development Tools**
-- TypeScript for type safety across the stack
-- tsx for running TypeScript in Node.js
-- esbuild for production server bundling
+### Development Tools
+- TypeScript
+- tsx
+- esbuild
 
-**Build & Runtime**
+### Build & Runtime
 - Vite with React plugin
 - Replit-specific plugins for development
+- PostgreSQL (external instance for production)
+- Stripe API for payment processing
+- `express-session` for session management
+- `node-ical` for iCal parsing
+- Leaflet and OpenStreetMap for mapping
+
+## VPS Deployment (app.cleanexinc.com)
+
+**Server:** 187.77.21.175, pm2 process `office-inventory` (id 84), port 5004
+**Nginx:** Proxies `app.cleanexinc.com` → `localhost:5004`
+**Deploy script:** `./deploy-vps.sh` — builds frontend + server bundle, deploys via SCP, restarts pm2
+
+**Bundle strategy (critical):**
+- `server/vite.ts` uses `await import("vite")` (dynamic import inside `setupVite()`) so vite is only loaded in dev mode
+- esbuild flags: `--format=esm --bundle --external:vite --external:"../vite.config"`
+- Banner: `import { createRequire } from 'module'; const require = createRequire(import.meta.url);` — this fixes `Dynamic require of "path" is not supported` for CJS deps bundled into ESM
+- Output: `dist/index.vps.js` (SCP'd to VPS as `dist/index.js`), ~2.5MB
+
+**pm2 config:** `/var/www/office-inventory/ecosystem.config.cjs`, runs `dist/index.js` in cluster mode
+**Postgres on VPS:** `PGPASSWORD=postgres psql -U postgres -h localhost -d office_inventory`
