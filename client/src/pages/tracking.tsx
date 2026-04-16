@@ -71,9 +71,6 @@ function buildPropertyMarkerHtml(_color: string, label: string, address?: string
         font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display',sans-serif;
         white-space:nowrap;
         box-shadow:0 1px 6px rgba(0,0,0,0.12);
-        max-width:180px;
-        overflow:hidden;
-        text-overflow:ellipsis;
       ">${address}</div>` : ""}
       <div style="
         width:38px;height:38px;
