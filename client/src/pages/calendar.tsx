@@ -4,7 +4,7 @@ import { useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { ArrowLeft, CalendarDays, LogIn, LogOut, RefreshCw, Clock, Plus, Pencil, Trash2, Check, Loader2 } from "lucide-react";
+import { ArrowLeft, CalendarDays, LogIn, LogOut, RefreshCw, Clock, Plus, Pencil, Trash2, Check, Loader2, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,12 +25,38 @@ const COLOR_PRESETS = [
 
 const propertyFormSchema = z.object({
   name: z.string().min(1, "Name is required"),
-  address: z.string().default(""),
+  street: z.string().default(""),
+  city: z.string().default(""),
+  state: z.string().default(""),
+  zip: z.string().default(""),
   icalUrl: z.string().default(""),
   airbnbUrl: z.string().default(""),
   color: z.string().default("#E8F4FD"),
 });
 type PropertyFormValues = z.infer<typeof propertyFormSchema>;
+
+function parseAddress(address: string) {
+  const parts = address.split(",").map(p => p.trim()).filter(Boolean);
+  if (parts.length >= 3) {
+    const stateZipRaw = parts[parts.length - 1];
+    const stateZipParts = stateZipRaw.split(" ").filter(Boolean);
+    return {
+      street: parts.slice(0, parts.length - 2).join(", "),
+      city: parts[parts.length - 2],
+      state: stateZipParts[0] ?? "",
+      zip: stateZipParts[1] ?? "",
+    };
+  } else if (parts.length === 2) {
+    const stateZipParts = parts[1].split(" ").filter(Boolean);
+    return { street: "", city: parts[0], state: stateZipParts[0] ?? "", zip: stateZipParts[1] ?? "" };
+  }
+  return { street: address, city: "", state: "", zip: "" };
+}
+
+function buildAddress(street: string, city: string, state: string, zip: string): string {
+  const parts = [street.trim(), city.trim(), [state.trim(), zip.trim()].filter(Boolean).join(" ")].filter(Boolean);
+  return parts.join(", ");
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -88,18 +114,26 @@ function PropertyModal({
 }) {
   const { toast } = useToast();
 
+  const parsed = parseAddress(editing?.address ?? "");
+
   const form = useForm<PropertyFormValues>({
     resolver: zodResolver(propertyFormSchema),
     defaultValues: {
       name: editing?.name ?? "",
-      address: editing?.address ?? "",
+      street: parsed.street,
+      city: parsed.city,
+      state: parsed.state,
+      zip: parsed.zip,
       icalUrl: editing?.icalUrl ?? "",
       airbnbUrl: editing?.airbnbUrl ?? "",
       color: editing?.color ?? "#E8F4FD",
     },
     values: {
       name: editing?.name ?? "",
-      address: editing?.address ?? "",
+      street: parsed.street,
+      city: parsed.city,
+      state: parsed.state,
+      zip: parsed.zip,
       icalUrl: editing?.icalUrl ?? "",
       airbnbUrl: editing?.airbnbUrl ?? "",
       color: editing?.color ?? "#E8F4FD",
@@ -107,12 +141,14 @@ function PropertyModal({
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: PropertyFormValues) => apiRequest("POST", "/api/properties", data),
+    mutationFn: (data: PropertyFormValues) => {
+      const address = buildAddress(data.street, data.city, data.state, data.zip);
+      return apiRequest("POST", "/api/properties", { ...data, address });
+    },
     onSuccess: async (res) => {
       const prop: Property = await res.json();
       queryClient.invalidateQueries({ queryKey: ["/api/properties"] });
       queryClient.invalidateQueries({ queryKey: ["/api/bookings/upcoming"] });
-      // Auto-sync if an iCal URL was provided
       if (form.getValues("icalUrl")) {
         apiRequest("POST", `/api/properties/${prop.id}/sync`).catch(() => null);
       }
@@ -123,8 +159,10 @@ function PropertyModal({
   });
 
   const updateMutation = useMutation({
-    mutationFn: (data: PropertyFormValues) =>
-      apiRequest("PATCH", `/api/properties/${editing!.id}`, { ...data, id: editing!.id }),
+    mutationFn: (data: PropertyFormValues) => {
+      const address = buildAddress(data.street, data.city, data.state, data.zip);
+      return apiRequest("PATCH", `/api/properties/${editing!.id}`, { ...data, address, id: editing!.id });
+    },
     onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ["/api/properties"] });
       queryClient.invalidateQueries({ queryKey: ["/api/bookings/upcoming"] });
@@ -164,19 +202,63 @@ function PropertyModal({
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="address"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Address</FormLabel>
-                  <FormControl>
-                    <Input placeholder="e.g. 123 Ocean Dr, Port Richey, FL" {...field} data-testid="input-property-address" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {/* Address section */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-1.5">
+                <MapPin className="w-3.5 h-3.5 text-muted-foreground" />
+                <span className="text-sm font-medium">Address <span className="text-xs text-muted-foreground font-normal">(used for GPS map)</span></span>
+              </div>
+              <FormField
+                control={form.control}
+                name="street"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormControl>
+                      <Input placeholder="Street address (e.g. 123 Ocean Dr)" {...field} data-testid="input-property-street" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="grid grid-cols-5 gap-2">
+                <FormField
+                  control={form.control}
+                  name="city"
+                  render={({ field }) => (
+                    <FormItem className="col-span-2">
+                      <FormControl>
+                        <Input placeholder="City" {...field} data-testid="input-property-city" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="state"
+                  render={({ field }) => (
+                    <FormItem className="col-span-2">
+                      <FormControl>
+                        <Input placeholder="State (FL)" {...field} data-testid="input-property-state" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="zip"
+                  render={({ field }) => (
+                    <FormItem className="col-span-1">
+                      <FormControl>
+                        <Input placeholder="ZIP" {...field} data-testid="input-property-zip" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
             <FormField
               control={form.control}
               name="icalUrl"
