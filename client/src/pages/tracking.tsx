@@ -63,12 +63,16 @@ function buildPropertyMarkerHtml(_color: string, label: string, address?: string
       <div style="
         background:#ffffff;
         border:2px solid #5BAFD6;
-        border-radius:0px;
-        padding:4px 10px;
+        border-radius:6px;
+        padding:6px 10px;
         margin-bottom:5px;
         font-size:10px;font-weight:700;color:#1e3a4f;
         font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display',sans-serif;
-        white-space:nowrap;
+        white-space:normal;
+        word-break:break-word;
+        width:110px;
+        text-align:center;
+        line-height:1.4;
         box-shadow:0 2px 8px rgba(0,0,0,0.15);
         letter-spacing:0.2px;
       ">${address}</div>` : ""}
