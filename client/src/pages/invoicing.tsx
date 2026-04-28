@@ -101,6 +101,14 @@ const SALUTATIONS = ["", "Mr.", "Ms.", "Mrs.", "Miss", "Dr.", "Prof."];
 const CURRENCIES = ["USD", "EUR", "GBP", "CAD", "AUD", "MXN"];
 const LANGUAGES = ["English", "Spanish", "French", "Portuguese", "German"];
 
+function formatPhone(value: string): string {
+  const digits = value.replace(/\D/g, "").slice(0, 10);
+  if (digits.length === 0) return "";
+  if (digits.length <= 3) return digits;
+  if (digits.length <= 6) return `${digits.slice(0, 3)}-${digits.slice(3)}`;
+  return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`;
+}
+
 function FormRow({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
   return (
     <div className="space-y-1">
@@ -224,7 +232,7 @@ function ClientModal({ open, onClose, initial }: {
               </FormRow>
 
               <FormRow label="Phone">
-                <Input value={form.phone} onChange={e => set("phone", e.target.value)} placeholder="Work phone" data-testid="input-client-phone" />
+                <Input value={form.phone} onChange={e => set("phone", formatPhone(e.target.value))} placeholder="000-000-0000" data-testid="input-client-phone" />
               </FormRow>
 
               <FormRow label="Language">
