@@ -1133,7 +1133,7 @@ export default function Invoicing() {
                   <div className="grid grid-cols-[32px_1fr_1fr_1fr_1fr_120px_120px_80px] items-center border-b border-border px-3 py-2 gap-3">
                     <div />
                     <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Property Address</span>
-                    <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Name</span>
+                    <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Customer Name</span>
                     <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Email</span>
                     <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Work Phone</span>
                     <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground text-right">Receivables</span>
