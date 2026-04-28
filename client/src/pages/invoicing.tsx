@@ -1124,8 +1124,8 @@ export default function Invoicing() {
                   {/* Table header */}
                   <div className="grid grid-cols-[32px_1fr_1fr_1fr_1fr_120px_120px_80px] items-center border-b border-border px-3 py-2 gap-3">
                     <div />
+                    <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Property Address</span>
                     <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Name</span>
-                    <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Company Name</span>
                     <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Email</span>
                     <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Work Phone</span>
                     <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground text-right">Receivables</span>
@@ -1137,6 +1137,12 @@ export default function Invoicing() {
                     const unpaid = invoiceList
                       .filter(i => i.clientId === client.id && (i.status === "sent" || i.status === "overdue"))
                       .reduce((s, i) => s + i.total, 0);
+                    const propertyAddress = [
+                      client.propertyStreet,
+                      client.propertyCity,
+                      client.propertyState,
+                      client.propertyZip,
+                    ].filter(Boolean).join(", ");
                     return (
                       <div
                         key={client.id}
@@ -1147,11 +1153,11 @@ export default function Invoicing() {
                         <button
                           className="text-sm text-[#1677ff] hover:underline text-left truncate font-medium"
                           onClick={() => navigate(`/invoicing/customers/${client.id}`)}
-                          data-testid={`text-client-name-${client.id}`}
+                          data-testid={`text-property-address-${client.id}`}
                         >
-                          {client.name}
+                          {propertyAddress || "—"}
                         </button>
-                        <span className="text-sm text-foreground truncate">{client.companyName ?? "—"}</span>
+                        <span className="text-sm text-foreground truncate" data-testid={`text-client-name-${client.id}`}>{client.name ?? "—"}</span>
                         <span className="text-sm text-foreground truncate">{client.email ?? "—"}</span>
                         <span className="text-sm text-foreground truncate">{client.phone ?? "—"}</span>
                         <span className="text-sm text-foreground text-right tabular-nums">{fmt(unpaid)}</span>
