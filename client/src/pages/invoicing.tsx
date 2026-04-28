@@ -215,10 +215,6 @@ function ClientModal({ open, onClose, initial }: {
                 <Input value={form.propertyZip} onChange={e => set("propertyZip", e.target.value)} placeholder="ZIP" data-testid="input-property-zip" />
               </FormRow>
 
-              <FormRow label="Fax">
-                <Input value={form.propertyFax} onChange={e => set("propertyFax", e.target.value)} placeholder="Fax" data-testid="input-property-fax" />
-              </FormRow>
-
               <FormRow label="Display Name" required>
                 <Input value={form.name} onChange={e => set("name", e.target.value)} placeholder="How this appears on invoices" data-testid="input-client-name" />
               </FormRow>
@@ -271,10 +267,6 @@ function ClientModal({ open, onClose, initial }: {
 
               <FormRow label="ZIP Code">
                 <Input value={form.zipCode} onChange={e => set("zipCode", e.target.value)} data-testid="input-zip" />
-              </FormRow>
-
-              <FormRow label="Fax">
-                <Input value={form.fax} onChange={e => set("fax", e.target.value)} data-testid="input-fax" />
               </FormRow>
             </div>
 
