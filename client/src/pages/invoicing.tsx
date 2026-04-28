@@ -232,35 +232,25 @@ function ClientModal({ open, onClose, initial }: {
             <div className="space-y-3 pl-8">
               <SectionTitle>Billing Address</SectionTitle>
 
-              <FormRow label="Country / Region">
-                <Input value={form.country} onChange={e => set("country", e.target.value)} placeholder="Country or region" data-testid="input-country" />
+              <FormRow label="Street">
+                <Input value={form.street1} onChange={e => set("street1", e.target.value)} placeholder="Street" data-testid="input-street1" />
               </FormRow>
 
-              <FormRow label="Street 1">
-                <Input value={form.street1} onChange={e => set("street1", e.target.value)} placeholder="Street 1" data-testid="input-street1" />
+              <FormRow label="City">
+                <Input value={form.city} onChange={e => set("city", e.target.value)} data-testid="input-city" />
               </FormRow>
 
-              <FormRow label="Street 2">
-                <Input value={form.street2} onChange={e => set("street2", e.target.value)} placeholder="Street 2" data-testid="input-street2" />
+              <FormRow label="State">
+                <Input value={form.state} onChange={e => set("state", e.target.value)} data-testid="input-state" />
               </FormRow>
 
-              <div className="grid grid-cols-2 gap-2">
-                <FormRow label="City">
-                  <Input value={form.city} onChange={e => set("city", e.target.value)} data-testid="input-city" />
-                </FormRow>
-                <FormRow label="State">
-                  <Input value={form.state} onChange={e => set("state", e.target.value)} data-testid="input-state" />
-                </FormRow>
-              </div>
+              <FormRow label="ZIP Code">
+                <Input value={form.zipCode} onChange={e => set("zipCode", e.target.value)} data-testid="input-zip" />
+              </FormRow>
 
-              <div className="grid grid-cols-2 gap-2">
-                <FormRow label="ZIP Code">
-                  <Input value={form.zipCode} onChange={e => set("zipCode", e.target.value)} data-testid="input-zip" />
-                </FormRow>
-                <FormRow label="Fax">
-                  <Input value={form.fax} onChange={e => set("fax", e.target.value)} data-testid="input-fax" />
-                </FormRow>
-              </div>
+              <FormRow label="Fax">
+                <Input value={form.fax} onChange={e => set("fax", e.target.value)} data-testid="input-fax" />
+              </FormRow>
             </div>
 
           </div>
