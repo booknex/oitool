@@ -422,7 +422,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const parsed = createClientSchema.safeParse(req.body);
       if (!parsed.success) return res.status(400).json({ error: parsed.error.errors });
-      res.status(201).json(await storage.createClient(parsed.data));
+      const client = await storage.createClient(parsed.data);
+      // Geocode property address in background then update lat/lng
+      const fullAddress = [parsed.data.propertyStreet, parsed.data.propertyCity, parsed.data.propertyState, parsed.data.propertyZip]
+        .filter(Boolean).join(", ");
+      if (fullAddress) {
+        geocodeAddress(fullAddress).then(coords => {
+          if (coords) storage.updateClientCoords(client.id, coords.lat, coords.lng).catch(() => null);
+        }).catch(() => null);
+      }
+      res.status(201).json(client);
     } catch {
       res.status(500).json({ error: "Failed to create client" });
     }
@@ -434,7 +443,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (isNaN(id)) return res.status(400).json({ error: "Invalid id" });
       const parsed = updateClientSchema.safeParse({ id, ...req.body });
       if (!parsed.success) return res.status(400).json({ error: parsed.error.errors });
-      res.json(await storage.updateClient(parsed.data));
+      const result = await storage.updateClient(parsed.data);
+      // Re-geocode if property address fields changed
+      if (
+        parsed.data.propertyStreet !== undefined ||
+        parsed.data.propertyCity !== undefined ||
+        parsed.data.propertyState !== undefined ||
+        parsed.data.propertyZip !== undefined
+      ) {
+        const fullAddress = [result.propertyStreet, result.propertyCity, result.propertyState, result.propertyZip]
+          .filter(Boolean).join(", ");
+        if (fullAddress) {
+          geocodeAddress(fullAddress).then(coords => {
+            if (coords) storage.updateClientCoords(id, coords.lat, coords.lng).catch(() => null);
+          }).catch(() => null);
+        }
+      }
+      res.json(result);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Failed to update client";
       res.status(msg.includes("not found") ? 404 : 500).json({ error: msg });

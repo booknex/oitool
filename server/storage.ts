@@ -177,6 +177,7 @@ export interface IStorage {
   createClient(data: CreateClientPayload): Promise<Client>;
   updateClient(data: UpdateClientPayload): Promise<Client>;
   updateClientStripeCustomerId(id: number, stripeCustomerId: string): Promise<void>;
+  updateClientCoords(id: number, lat: number, lng: number): Promise<void>;
   deleteClient(id: number): Promise<void>;
   // Invoices
   getInvoices(): Promise<InvoiceWithDetails[]>;
@@ -649,6 +650,10 @@ export class DatabaseStorage implements IStorage {
 
   async updateClientStripeCustomerId(id: number, stripeCustomerId: string): Promise<void> {
     await db.update(clients).set({ stripeCustomerId }).where(eq(clients.id, id));
+  }
+
+  async updateClientCoords(id: number, lat: number, lng: number): Promise<void> {
+    await db.update(clients).set({ lat: String(lat), lng: String(lng) }).where(eq(clients.id, id));
   }
 
   async deleteClient(id: number): Promise<void> {

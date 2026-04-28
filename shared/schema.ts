@@ -299,6 +299,8 @@ export const clients = pgTable("clients", {
   fax: text("fax").notNull().default(""),
   notes: text("notes").notNull().default(""),
   stripeCustomerId: text("stripe_customer_id"),
+  lat: numeric("lat", { precision: 12, scale: 8 }),
+  lng: numeric("lng", { precision: 12, scale: 8 }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

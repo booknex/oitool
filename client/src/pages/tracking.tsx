@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MapPin, Navigation, Radio, AlertCircle, RefreshCw, Building2, Eye, EyeOff, Users, Clock, ArrowLeft } from "lucide-react";
-import type { ActiveLocation, StaffMember, Property } from "@shared/schema";
+import type { ActiveLocation, StaffMember, Property, Client } from "@shared/schema";
 import "leaflet/dist/leaflet.css";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -114,9 +114,24 @@ function AdminMap() {
     refetchInterval: 30_000,
   });
 
-  const { data: allProperties = [] } = useQuery<Property[]>({
-    queryKey: ["/api/properties"],
+  const { data: allClients = [] } = useQuery<Client[]>({
+    queryKey: ["/api/clients"],
   });
+
+  // Convert clients (with property addresses) into Property-shaped objects for the map
+  const allProperties: Property[] = allClients.map(c => ({
+    id: c.id,
+    name: c.name,
+    address: [c.propertyStreet, c.propertyCity, c.propertyState, c.propertyZip].filter(Boolean).join(", "),
+    airbnbUrl: "",
+    color: "#5BAFD6",
+    sortOrder: 0,
+    imageUrl: "",
+    icalUrl: null,
+    lastSynced: null,
+    lat: c.lat,
+    lng: c.lng,
+  }));
 
   const mappableProperties = allProperties.filter(p => p.lat != null && p.lng != null);
 
@@ -366,7 +381,7 @@ function AdminMap() {
                 {mappableProperties.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-4 gap-1">
                     <p className="text-[12px] text-gray-400 text-center">No mapped properties yet</p>
-                    <p className="text-[11px] text-gray-300 text-center">Add addresses in the Calendar tab</p>
+                    <p className="text-[11px] text-gray-300 text-center">Add customers with property addresses in the Invoicing tab</p>
                   </div>
                 ) : (
                   mappableProperties.map(prop => {
