@@ -190,8 +190,8 @@ function ClientModal({ open, onClose, initial }: {
                 </div>
               </FormRow>
 
-              <FormRow label="Property to be Serviced">
-                <Input value={form.companyName} onChange={e => set("companyName", e.target.value)} placeholder="Property to be serviced" data-testid="input-company-name" />
+              <FormRow label="Property Address" required>
+                <Input value={form.companyName} onChange={e => set("companyName", e.target.value)} placeholder="Property address" data-testid="input-company-name" />
               </FormRow>
 
               <FormRow label="Display Name" required>
@@ -269,7 +269,7 @@ function ClientModal({ open, onClose, initial }: {
         {/* Footer */}
         <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
           <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={() => mutation.mutate()} disabled={!form.name.trim() || mutation.isPending} data-testid="button-save-client">
+          <Button onClick={() => mutation.mutate()} disabled={!form.name.trim() || !form.companyName.trim() || mutation.isPending} data-testid="button-save-client">
             {mutation.isPending ? "Saving…" : isEdit ? "Save Changes" : "Save"}
           </Button>
         </div>
