@@ -52,30 +52,52 @@ function buildStaffMarkerHtml(color: string, init: string): string {
   `;
 }
 
-function buildPropertyMarkerHtml(_color: string, label: string, address?: string): string {
+function buildPropertyMarkerHtml(_color: string, label: string, address: string | undefined, currentIndex: number, total: number): string {
   const babyBlue = "#5BAFD6";
+  const showArrows = total > 1;
+  const arrowBtn = (dir: "prev" | "next") => `
+    <button class="prop-arrow-${dir}" style="
+      width:18px;height:22px;
+      background:#ffffff;
+      border:2px solid #5BAFD6;
+      border-radius:4px;
+      color:#5BAFD6;
+      font-size:14px;font-weight:700;line-height:1;
+      cursor:pointer;
+      display:flex;align-items:center;justify-content:center;
+      padding:0;
+      box-shadow:0 1px 4px rgba(0,0,0,0.12);
+      flex-shrink:0;
+      pointer-events:auto;
+    ">${dir === "prev" ? "‹" : "›"}</button>`;
   return `
     <div style="
       position:relative;
       display:flex;flex-direction:column;align-items:center;
     ">
       ${address ? `
-      <div style="
-        background:#ffffff;
-        border:2px solid #5BAFD6;
-        border-radius:6px;
-        padding:6px 10px;
-        margin-bottom:5px;
-        font-size:10px;font-weight:700;color:#1e3a4f;
-        font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display',sans-serif;
-        white-space:normal;
-        word-break:break-word;
-        width:110px;
-        text-align:center;
-        line-height:1.4;
-        box-shadow:0 2px 8px rgba(0,0,0,0.15);
-        letter-spacing:0.2px;
-      ">${address}</div>` : ""}
+      <div style="display:flex;align-items:center;gap:3px;margin-bottom:5px;">
+        ${showArrows ? arrowBtn("prev") : ""}
+        <div class="prop-address-box" style="
+          background:#ffffff;
+          border:2px solid #5BAFD6;
+          border-radius:6px;
+          padding:6px 10px;
+          font-size:10px;font-weight:700;color:#1e3a4f;
+          font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display',sans-serif;
+          white-space:normal;
+          word-break:break-word;
+          width:110px;
+          text-align:center;
+          line-height:1.4;
+          box-shadow:0 2px 8px rgba(0,0,0,0.15);
+          letter-spacing:0.2px;
+        ">
+          <div class="prop-address-text">${address}</div>
+          ${showArrows ? `<div class="prop-address-counter" style="margin-top:3px;font-size:8px;font-weight:600;color:#5BAFD6;letter-spacing:0.4px;">${currentIndex + 1} / ${total}</div>` : ""}
+        </div>
+        ${showArrows ? arrowBtn("next") : ""}
+      </div>` : ""}
       <div style="
         width:38px;height:38px;
         background:${babyBlue};
@@ -223,33 +245,80 @@ function AdminMap() {
 
       if (!showProperties) return;
 
-      const bounds: [number, number][] = [];
+      // Group properties by lat/lng (rounded to ~1m precision) so multiple
+      // customers at the same location share a single marker that can be cycled.
+      const groups = new Map<string, Property[]>();
       mappableProperties.forEach(prop => {
         const lat = parseFloat(String(prop.lat));
         const lng = parseFloat(String(prop.lng));
         if (isNaN(lat) || isNaN(lng)) return;
+        const key = `${lat.toFixed(5)},${lng.toFixed(5)}`;
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key)!.push(prop);
+      });
 
-        const icon = L.divIcon({
-          html: buildPropertyMarkerHtml(prop.color, initials(prop.name), prop.address ?? undefined),
-          className: "",
-          iconSize: [200, 72],
-          iconAnchor: [100, 72],
-          popupAnchor: [0, -72],
-        });
-        const marker = L.marker([lat, lng], { icon })
-          .addTo(mapInstance.current!)
-          .bindPopup(`
+      const bounds: [number, number][] = [];
+      groups.forEach(group => {
+        const lat = parseFloat(String(group[0].lat));
+        const lng = parseFloat(String(group[0].lng));
+        let currentIndex = 0;
+
+        const buildIcon = () => {
+          const cur = group[currentIndex];
+          return L.divIcon({
+            html: buildPropertyMarkerHtml(cur.color, initials(cur.name), cur.address ?? undefined, currentIndex, group.length),
+            className: "",
+            iconSize: [220, 72],
+            iconAnchor: [110, 72],
+            popupAnchor: [0, -72],
+          });
+        };
+
+        const buildPopupHtml = () => {
+          const cur = group[currentIndex];
+          return `
             <div style="
               font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display',sans-serif;
               min-width:160px;padding:4px 0;
             ">
               <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-                <div style="width:30px;height:30px;border-radius:8px;background:#5BAFD6;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700;">${initials(prop.name)}</div>
-                <strong style="font-size:14px;font-weight:600;">${prop.name}</strong>
+                <div style="width:30px;height:30px;border-radius:8px;background:#5BAFD6;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700;">${initials(cur.name)}</div>
+                <strong style="font-size:14px;font-weight:600;">${cur.name}</strong>
               </div>
-              ${prop.address ? `<div style="color:#888;font-size:12px;">${prop.address}</div>` : ""}
+              ${cur.address ? `<div style="color:#888;font-size:12px;">${cur.address}</div>` : ""}
+              ${group.length > 1 ? `<div style="color:#5BAFD6;font-size:11px;font-weight:600;margin-top:6px;">${currentIndex + 1} of ${group.length} at this location</div>` : ""}
             </div>
-          `, { className: "ios-popup" });
+          `;
+        };
+
+        const marker = L.marker([lat, lng], { icon: buildIcon() }).addTo(mapInstance.current!);
+        marker.bindPopup(buildPopupHtml(), { className: "ios-popup" });
+
+        const attachArrowHandlers = () => {
+          const el = marker.getElement();
+          if (!el) return;
+          const prev = el.querySelector(".prop-arrow-prev") as HTMLElement | null;
+          const next = el.querySelector(".prop-arrow-next") as HTMLElement | null;
+          const cycle = (delta: number) => (e: Event) => {
+            e.stopPropagation();
+            e.preventDefault();
+            currentIndex = (currentIndex + delta + group.length) % group.length;
+            marker.setIcon(buildIcon());
+            marker.setPopupContent(buildPopupHtml());
+            // Re-attach handlers because setIcon replaces the DOM element
+            setTimeout(attachArrowHandlers, 0);
+          };
+          if (prev) {
+            prev.addEventListener("click", cycle(-1));
+            L.DomEvent.disableClickPropagation(prev);
+          }
+          if (next) {
+            next.addEventListener("click", cycle(1));
+            L.DomEvent.disableClickPropagation(next);
+          }
+        };
+        setTimeout(attachArrowHandlers, 0);
+
         propertyMarkersRef.current.push(marker);
         bounds.push([lat, lng]);
       });
