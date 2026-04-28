@@ -466,6 +466,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/clients/:id/sync-tracking", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid id" });
+      const client = await storage.getClient(id);
+      if (!client) return res.status(404).json({ error: "Client not found" });
+      const fullAddress = [client.propertyStreet, client.propertyCity, client.propertyState, client.propertyZip]
+        .filter(Boolean).join(", ");
+      if (!fullAddress) return res.status(400).json({ error: "Customer has no property address to sync" });
+      const coords = await geocodeAddress(fullAddress);
+      if (!coords) return res.status(422).json({ error: "Could not geocode that property address" });
+      await storage.updateClientCoords(id, coords.lat, coords.lng);
+      res.json({ success: true, lat: coords.lat, lng: coords.lng });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Failed to sync tracking";
+      res.status(500).json({ error: msg });
+    }
+  });
+
   app.delete("/api/clients/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id, 10);

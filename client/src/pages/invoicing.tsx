@@ -7,7 +7,7 @@ import {
   Plus, Trash2, Pencil, Receipt, Users, Check,
   ChevronDown, Send, Clock, AlertCircle, X, Home,
   Package, Tag, ChevronRight, MoreHorizontal, MoreVertical,
-  CircleDollarSign,
+  CircleDollarSign, MapPin,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -794,6 +794,17 @@ export default function Invoicing() {
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/invoices"] }); setStatusDropdown(null); },
   });
+  const syncTrackingMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await apiRequest("POST", `/api/clients/${id}/sync-tracking`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
+      toast({ title: "Synced to tracking", description: "Property location updated on the map" });
+    },
+    onError: (e: Error) => toast({ title: "Sync failed", description: e.message, variant: "destructive" }),
+  });
 
   const now = new Date();
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -1177,12 +1188,19 @@ export default function Invoicing() {
                                 <MoreVertical className="w-4 h-4" />
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-36" data-testid={`dropdown-client-${client.id}`}>
+                            <DropdownMenuContent align="end" className="w-44" data-testid={`dropdown-client-${client.id}`}>
                               <DropdownMenuItem
                                 onClick={() => { setEditClient(client); setShowClientModal(true); }}
                                 data-testid={`option-edit-client-${client.id}`}
                               >
                                 <Pencil className="w-3.5 h-3.5 mr-2" /> Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => syncTrackingMutation.mutate(client.id)}
+                                disabled={syncTrackingMutation.isPending}
+                                data-testid={`option-sync-tracking-${client.id}`}
+                              >
+                                <MapPin className="w-3.5 h-3.5 mr-2" /> Add to Tracking
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
