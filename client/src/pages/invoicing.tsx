@@ -131,6 +131,11 @@ function ClientModal({ open, onClose, initial }: {
     firstName: initial?.firstName ?? "",
     lastName: initial?.lastName ?? "",
     companyName: initial?.companyName ?? "",
+    propertyStreet: initial?.propertyStreet ?? "",
+    propertyCity: initial?.propertyCity ?? "",
+    propertyState: initial?.propertyState ?? "",
+    propertyZip: initial?.propertyZip ?? "",
+    propertyFax: initial?.propertyFax ?? "",
     name: initial?.name ?? "",
     currency: "USD",
     email: initial?.email ?? "",
@@ -190,8 +195,28 @@ function ClientModal({ open, onClose, initial }: {
                 </div>
               </FormRow>
 
-              <FormRow label="Property Address" required>
-                <Input value={form.companyName} onChange={e => set("companyName", e.target.value)} placeholder="Property address" data-testid="input-company-name" />
+              <div className="pt-1">
+                <SectionTitle>Property Address</SectionTitle>
+              </div>
+
+              <FormRow label="Street" required>
+                <Input value={form.propertyStreet} onChange={e => set("propertyStreet", e.target.value)} placeholder="Street" data-testid="input-property-street" />
+              </FormRow>
+
+              <FormRow label="City">
+                <Input value={form.propertyCity} onChange={e => set("propertyCity", e.target.value)} placeholder="City" data-testid="input-property-city" />
+              </FormRow>
+
+              <FormRow label="State">
+                <Input value={form.propertyState} onChange={e => set("propertyState", e.target.value)} placeholder="State" data-testid="input-property-state" />
+              </FormRow>
+
+              <FormRow label="ZIP Code">
+                <Input value={form.propertyZip} onChange={e => set("propertyZip", e.target.value)} placeholder="ZIP" data-testid="input-property-zip" />
+              </FormRow>
+
+              <FormRow label="Fax">
+                <Input value={form.propertyFax} onChange={e => set("propertyFax", e.target.value)} placeholder="Fax" data-testid="input-property-fax" />
               </FormRow>
 
               <FormRow label="Display Name" required>
@@ -259,7 +284,7 @@ function ClientModal({ open, onClose, initial }: {
         {/* Footer */}
         <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
           <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={() => mutation.mutate()} disabled={!form.name.trim() || !form.companyName.trim() || mutation.isPending} data-testid="button-save-client">
+          <Button onClick={() => mutation.mutate()} disabled={!form.name.trim() || !form.propertyStreet.trim() || mutation.isPending} data-testid="button-save-client">
             {mutation.isPending ? "Saving…" : isEdit ? "Save Changes" : "Save"}
           </Button>
         </div>
