@@ -132,7 +132,7 @@ function ClientModal({ open, onClose, initial }: {
     lastName: initial?.lastName ?? "",
     companyName: initial?.companyName ?? "",
     name: initial?.name ?? "",
-    currency: initial?.currency ?? "USD",
+    currency: "USD",
     email: initial?.email ?? "",
     phone: initial?.phone ?? "",
     customerLanguage: initial?.customerLanguage ?? "English",
@@ -182,49 +182,20 @@ function ClientModal({ open, onClose, initial }: {
             <div className="space-y-3 pr-8">
               <SectionTitle>Contact Info</SectionTitle>
 
-              {/* Customer Type */}
-              <FormRow label="Customer Type">
-                <div className="flex items-center gap-5 h-9">
-                  {["business", "individual"].map(type => (
-                    <label key={type} className="flex items-center gap-1.5 cursor-pointer" onClick={() => set("customerType", type)} data-testid={`radio-${type}`}>
-                      <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${form.customerType === type ? "border-blue-500" : "border-gray-300 dark:border-gray-600"}`}>
-                        {form.customerType === type && <div className="w-2 h-2 rounded-full bg-blue-500" />}
-                      </div>
-                      <span className="text-sm capitalize">{type}</span>
-                    </label>
-                  ))}
-                </div>
-              </FormRow>
-
               {/* Primary Contact */}
               <FormRow label="Primary Contact">
                 <div className="flex gap-1.5">
-                  <Select value={form.salutation} onValueChange={v => set("salutation", v)}>
-                    <SelectTrigger className="w-24" data-testid="select-salutation"><SelectValue placeholder="—" /></SelectTrigger>
-                    <SelectContent>
-                      {SALUTATIONS.map(s => <SelectItem key={s || "none"} value={s || "none"}>{s || "—"}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
                   <Input value={form.firstName} onChange={e => set("firstName", e.target.value)} placeholder="First" className="flex-1" data-testid="input-first-name" />
                   <Input value={form.lastName} onChange={e => set("lastName", e.target.value)} placeholder="Last" className="flex-1" data-testid="input-last-name" />
                 </div>
               </FormRow>
 
-              <FormRow label="Company Name">
-                <Input value={form.companyName} onChange={e => set("companyName", e.target.value)} placeholder="Company name" data-testid="input-company-name" />
+              <FormRow label="Property to be Serviced">
+                <Input value={form.companyName} onChange={e => set("companyName", e.target.value)} placeholder="Property to be serviced" data-testid="input-company-name" />
               </FormRow>
 
               <FormRow label="Display Name" required>
                 <Input value={form.name} onChange={e => set("name", e.target.value)} placeholder="How this appears on invoices" data-testid="input-client-name" />
-              </FormRow>
-
-              <FormRow label="Currency">
-                <Select value={form.currency} onValueChange={v => set("currency", v)}>
-                  <SelectTrigger data-testid="select-currency"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {CURRENCIES.map(c => <SelectItem key={c} value={c}>{c === "USD" ? "USD – United States Dollar" : c}</SelectItem>)}
-                  </SelectContent>
-                </Select>
               </FormRow>
 
               <FormRow label="Email Address">
