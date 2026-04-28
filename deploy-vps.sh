@@ -26,7 +26,7 @@ echo "Deploying server bundle..."
 sshpass -p "$VPS_PASS" scp -o StrictHostKeyChecking=no dist/index.vps.js $VPS_HOST:$VPS_DIR/dist/index.js
 
 echo "Deploying frontend assets..."
-sshpass -p "$VPS_PASS" ssh -o StrictHostKeyChecking=no $VPS_HOST "rm -rf $VPS_DIR/dist/public"
+sshpass -p "$VPS_PASS" ssh -o StrictHostKeyChecking=no $VPS_HOST "rm -rf $VPS_DIR/dist/public && mkdir -p $VPS_DIR/dist/public"
 sshpass -p "$VPS_PASS" scp -o StrictHostKeyChecking=no -r dist/public/. $VPS_HOST:$VPS_DIR/dist/public/
 
 echo "Restarting pm2..."
