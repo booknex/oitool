@@ -1137,12 +1137,7 @@ export default function Invoicing() {
                     const unpaid = invoiceList
                       .filter(i => i.clientId === client.id && (i.status === "sent" || i.status === "overdue"))
                       .reduce((s, i) => s + i.total, 0);
-                    const propertyAddress = [
-                      client.propertyStreet,
-                      client.propertyCity,
-                      client.propertyState,
-                      client.propertyZip,
-                    ].filter(Boolean).join(", ");
+                    const propertyAddress = client.propertyStreet ?? "";
                     return (
                       <div
                         key={client.id}
