@@ -21,7 +21,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -65,17 +65,27 @@ function DescriptionCombobox({ item, onChange, catalogItems }: {
 }) {
   const [open, setOpen] = useState(false);
   const hasItems = catalogItems.length > 0;
-  return (
-    <div className="relative">
+  if (!hasItems) {
+    return (
       <Input
         value={item.description}
         onChange={e => onChange({ ...item, description: e.target.value })}
-        placeholder="Description or pick an item…"
-        className={hasItems ? "pr-9" : ""}
+        placeholder="Description"
         data-testid="input-line-description"
       />
-      {hasItems && (
-        <Popover open={open} onOpenChange={setOpen}>
+    );
+  }
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverAnchor asChild>
+        <div className="relative">
+          <Input
+            value={item.description}
+            onChange={e => onChange({ ...item, description: e.target.value })}
+            placeholder="Description or pick an item…"
+            className="pr-9"
+            data-testid="input-line-description"
+          />
           <PopoverTrigger asChild>
             <Button
               size="icon"
@@ -87,18 +97,20 @@ function DescriptionCombobox({ item, onChange, catalogItems }: {
               <ChevronDown className="w-4 h-4" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent
-            align="end"
-            sideOffset={4}
-            className="p-0 w-[320px]"
-            onOpenAutoFocus={e => {
-              const input = (e.currentTarget as HTMLElement).querySelector("input");
-              if (input) {
-                e.preventDefault();
-                (input as HTMLInputElement).focus();
-              }
-            }}
-          >
+        </div>
+      </PopoverAnchor>
+      <PopoverContent
+        align="start"
+        sideOffset={4}
+        className="p-0 w-[var(--radix-popover-trigger-width)] min-w-[280px]"
+        onOpenAutoFocus={e => {
+          const input = (e.currentTarget as HTMLElement).querySelector("input");
+          if (input) {
+            e.preventDefault();
+            (input as HTMLInputElement).focus();
+          }
+        }}
+      >
             <Command
               filter={(value, search) => {
                 if (!search) return 1;
@@ -142,10 +154,8 @@ function DescriptionCombobox({ item, onChange, catalogItems }: {
                 </CommandGroup>
               </CommandList>
             </Command>
-          </PopoverContent>
-        </Popover>
-      )}
-    </div>
+      </PopoverContent>
+    </Popover>
   );
 }
 
@@ -430,11 +440,13 @@ function InvoiceModal({ open, onClose, clients, initial }: {
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader><DialogTitle>{isEdit ? `Edit ${initial!.invoiceNumber}` : "New Invoice"}</DialogTitle></DialogHeader>
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-3">
             <div>
               <Label>Property Address *</Label>
               <Select value={clientId === "" ? "" : String(clientId)} onValueChange={v => setClientId(Number(v))}>
-                <SelectTrigger data-testid="select-property-address"><SelectValue placeholder="Select a property…" /></SelectTrigger>
+                <SelectTrigger data-testid="select-property-address" className="w-full">
+                  <SelectValue placeholder="Select a property…" />
+                </SelectTrigger>
                 <SelectContent>
                   {clients.map(c => (
                     <SelectItem key={c.id} value={String(c.id)}>
@@ -444,19 +456,21 @@ function InvoiceModal({ open, onClose, clients, initial }: {
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <Label>Customer</Label>
-              <Input
-                value={selectedClient?.name ?? ""}
-                placeholder="Auto-filled from property"
-                readOnly
-                className="bg-muted/40"
-                data-testid="input-customer-name"
-              />
-            </div>
-            <div>
-              <Label>Due Date</Label>
-              <Input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} data-testid="input-due-date" />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Customer</Label>
+                <Input
+                  value={selectedClient?.name ?? ""}
+                  placeholder="Auto-filled from property"
+                  readOnly
+                  className="bg-muted/40"
+                  data-testid="input-customer-name"
+                />
+              </div>
+              <div>
+                <Label>Due Date</Label>
+                <Input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} data-testid="input-due-date" />
+              </div>
             </div>
           </div>
           <div>
