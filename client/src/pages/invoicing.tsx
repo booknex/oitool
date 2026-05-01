@@ -21,6 +21,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { Client, InvoiceWithDetails, CatalogItem } from "@shared/schema";
@@ -56,6 +58,97 @@ function StatusBadge({ status }: { status: string }) {
 
 interface LineItem { description: string; quantity: number; unitPrice: number }
 
+function DescriptionCombobox({ item, onChange, catalogItems }: {
+  item: LineItem;
+  onChange: (updated: LineItem) => void;
+  catalogItems: CatalogItem[];
+}) {
+  const [open, setOpen] = useState(false);
+  const hasItems = catalogItems.length > 0;
+  return (
+    <div className="relative">
+      <Input
+        value={item.description}
+        onChange={e => onChange({ ...item, description: e.target.value })}
+        placeholder="Description or pick an item…"
+        className={hasItems ? "pr-9" : ""}
+        data-testid="input-line-description"
+      />
+      {hasItems && (
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+              aria-label="Browse catalog items"
+              data-testid="button-line-catalog-picker"
+            >
+              <ChevronDown className="w-4 h-4" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent
+            align="end"
+            sideOffset={4}
+            className="p-0 w-[320px]"
+            onOpenAutoFocus={e => {
+              const input = (e.currentTarget as HTMLElement).querySelector("input");
+              if (input) {
+                e.preventDefault();
+                (input as HTMLInputElement).focus();
+              }
+            }}
+          >
+            <Command
+              filter={(value, search) => {
+                if (!search) return 1;
+                return value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0;
+              }}
+            >
+              <CommandInput placeholder="Search items…" data-testid="input-catalog-search" />
+              <CommandList className="max-h-72">
+                <CommandEmpty>No items found.</CommandEmpty>
+                <CommandGroup heading={`${catalogItems.length} item${catalogItems.length === 1 ? "" : "s"}`}>
+                  {catalogItems.map(ci => {
+                    const price = parseFloat(ci.unitPrice as unknown as string) || 0;
+                    const desc = ci.description?.trim() ?? "";
+                    return (
+                      <CommandItem
+                        key={ci.id}
+                        value={`${ci.name} ${desc}`}
+                        onSelect={() => {
+                          onChange({
+                            ...item,
+                            description: desc || ci.name,
+                            unitPrice: price,
+                          });
+                          setOpen(false);
+                        }}
+                        data-testid={`combobox-catalog-item-${ci.id}`}
+                        className="flex items-start gap-3 py-2.5 cursor-pointer"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-sm truncate">{ci.name}</div>
+                          {desc && (
+                            <div className="text-xs text-muted-foreground truncate mt-0.5">{desc}</div>
+                          )}
+                        </div>
+                        <span className="text-xs font-semibold text-foreground shrink-0 tabular-nums">
+                          {fmt(price)}
+                        </span>
+                      </CommandItem>
+                    );
+                  })}
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
+      )}
+    </div>
+  );
+}
+
 function LineItemRow({ item, onChange, onRemove, canRemove, catalogItems }: {
   item: LineItem;
   onChange: (updated: LineItem) => void;
@@ -65,49 +158,7 @@ function LineItemRow({ item, onChange, onRemove, canRemove, catalogItems }: {
 }) {
   return (
     <div className="grid grid-cols-[1fr_80px_90px_36px] gap-2 items-center">
-      <div className="relative">
-        <Input
-          value={item.description}
-          onChange={e => onChange({ ...item, description: e.target.value })}
-          placeholder="Description"
-          className="pr-9"
-          data-testid="input-line-description"
-        />
-        {catalogItems.length > 0 && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
-                data-testid="button-line-catalog-picker"
-              >
-                <ChevronDown className="w-4 h-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="max-h-72 overflow-y-auto w-64">
-              <DropdownMenuLabel>Select an item</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              {catalogItems.map(ci => (
-                <DropdownMenuItem
-                  key={ci.id}
-                  onSelect={() => onChange({
-                    ...item,
-                    description: ci.description?.trim() ? ci.description : ci.name,
-                    unitPrice: parseFloat(ci.unitPrice as unknown as string) || 0,
-                  })}
-                  data-testid={`dropdown-catalog-item-${ci.id}`}
-                >
-                  <div className="flex items-center justify-between w-full gap-2">
-                    <span className="truncate">{ci.name}</span>
-                    <span className="text-xs text-muted-foreground shrink-0">{fmt(parseFloat(ci.unitPrice as unknown as string) || 0)}</span>
-                  </div>
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
-      </div>
+      <DescriptionCombobox item={item} onChange={onChange} catalogItems={catalogItems} />
       <Input
         type="number"
         min="0.01"
