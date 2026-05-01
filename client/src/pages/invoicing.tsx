@@ -22,7 +22,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from "@/components/ui/command";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { Client, InvoiceWithDetails, CatalogItem } from "@shared/schema";
@@ -103,21 +103,8 @@ function DescriptionCombobox({ item, onChange, catalogItems }: {
         align="start"
         sideOffset={4}
         className="p-0 w-[var(--radix-popover-trigger-width)] min-w-[280px]"
-        onOpenAutoFocus={e => {
-          const input = (e.currentTarget as HTMLElement).querySelector("input");
-          if (input) {
-            e.preventDefault();
-            (input as HTMLInputElement).focus();
-          }
-        }}
       >
-            <Command
-              filter={(value, search) => {
-                if (!search) return 1;
-                return value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0;
-              }}
-            >
-              <CommandInput placeholder="Search items…" data-testid="input-catalog-search" />
+            <Command shouldFilter={false}>
               <CommandList className="max-h-72">
                 <CommandEmpty>No items found.</CommandEmpty>
                 <CommandGroup heading={`${catalogItems.length} item${catalogItems.length === 1 ? "" : "s"}`}>
