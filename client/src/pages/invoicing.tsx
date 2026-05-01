@@ -56,20 +56,58 @@ function StatusBadge({ status }: { status: string }) {
 
 interface LineItem { description: string; quantity: number; unitPrice: number }
 
-function LineItemRow({ item, onChange, onRemove, canRemove }: {
+function LineItemRow({ item, onChange, onRemove, canRemove, catalogItems }: {
   item: LineItem;
   onChange: (updated: LineItem) => void;
   onRemove: () => void;
   canRemove: boolean;
+  catalogItems: CatalogItem[];
 }) {
   return (
     <div className="grid grid-cols-[1fr_80px_90px_36px] gap-2 items-center">
-      <Input
-        value={item.description}
-        onChange={e => onChange({ ...item, description: e.target.value })}
-        placeholder="Description"
-        data-testid="input-line-description"
-      />
+      <div className="relative">
+        <Input
+          value={item.description}
+          onChange={e => onChange({ ...item, description: e.target.value })}
+          placeholder="Description"
+          className="pr-9"
+          data-testid="input-line-description"
+        />
+        {catalogItems.length > 0 && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                data-testid="button-line-catalog-picker"
+              >
+                <ChevronDown className="w-4 h-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="max-h-72 overflow-y-auto w-64">
+              <DropdownMenuLabel>Select an item</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {catalogItems.map(ci => (
+                <DropdownMenuItem
+                  key={ci.id}
+                  onSelect={() => onChange({
+                    ...item,
+                    description: ci.description?.trim() ? ci.description : ci.name,
+                    unitPrice: parseFloat(ci.unitPrice as unknown as string) || 0,
+                  })}
+                  data-testid={`dropdown-catalog-item-${ci.id}`}
+                >
+                  <div className="flex items-center justify-between w-full gap-2">
+                    <span className="truncate">{ci.name}</span>
+                    <span className="text-xs text-muted-foreground shrink-0">{fmt(parseFloat(ci.unitPrice as unknown as string) || 0)}</span>
+                  </div>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+      </div>
       <Input
         type="number"
         min="0.01"
@@ -310,6 +348,12 @@ function InvoiceModal({ open, onClose, clients, initial }: {
       unitPrice: Number(it.unitPrice),
     })) ?? [{ description: "", quantity: 1, unitPrice: 0 }]
   );
+  const { data: catalogItems = [] } = useQuery<CatalogItem[]>({ queryKey: ["/api/catalog-items"] });
+  const selectedClient = clients.find(c => c.id === clientId);
+  const propertyAddress = (c: Client) => {
+    const parts = [c.propertyStreet, c.propertyCity, c.propertyState, c.propertyZip].filter(Boolean);
+    return parts.length > 0 ? parts.join(", ") : "(no property address)";
+  };
   const total = lineItems.reduce((s, it) => s + it.quantity * it.unitPrice, 0);
   const addLine = () => setLineItems(l => [...l, { description: "", quantity: 1, unitPrice: 0 }]);
   const removeLine = (i: number) => setLineItems(l => l.filter((_, idx) => idx !== i));
@@ -337,13 +381,27 @@ function InvoiceModal({ open, onClose, clients, initial }: {
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label>Client *</Label>
+              <Label>Property Address *</Label>
               <Select value={clientId === "" ? "" : String(clientId)} onValueChange={v => setClientId(Number(v))}>
-                <SelectTrigger data-testid="select-client"><SelectValue placeholder="Select client…" /></SelectTrigger>
+                <SelectTrigger data-testid="select-property-address"><SelectValue placeholder="Select a property…" /></SelectTrigger>
                 <SelectContent>
-                  {clients.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
+                  {clients.map(c => (
+                    <SelectItem key={c.id} value={String(c.id)}>
+                      {propertyAddress(c)}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
+            </div>
+            <div>
+              <Label>Customer</Label>
+              <Input
+                value={selectedClient?.name ?? ""}
+                placeholder="Auto-filled from property"
+                readOnly
+                className="bg-muted/40"
+                data-testid="input-customer-name"
+              />
             </div>
             <div>
               <Label>Due Date</Label>
@@ -365,7 +423,7 @@ function InvoiceModal({ open, onClose, clients, initial }: {
             </div>
             <div className="space-y-2">
               {lineItems.map((item, i) => (
-                <LineItemRow key={i} item={item} onChange={v => updateLine(i, v)} onRemove={() => removeLine(i)} canRemove={lineItems.length > 1} />
+                <LineItemRow key={i} item={item} onChange={v => updateLine(i, v)} onRemove={() => removeLine(i)} canRemove={lineItems.length > 1} catalogItems={catalogItems} />
               ))}
             </div>
             <div className="flex justify-end mt-3 pt-3 border-t">
