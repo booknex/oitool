@@ -78,12 +78,12 @@ function DescriptionCombobox({ item, onChange, catalogItems }: {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverAnchor asChild>
-        <div className="relative">
+        <div className="relative h-9">
           <Input
             value={item.description}
             onChange={e => onChange({ ...item, description: e.target.value })}
             placeholder="Description or pick an item…"
-            className="pr-9"
+            className="pr-9 h-9"
             data-testid="input-line-description"
           />
           <PopoverTrigger asChild>
