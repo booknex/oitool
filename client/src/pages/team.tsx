@@ -102,7 +102,7 @@ function StaffModal({ open, onClose, editing }: StaffModalProps) {
     defaultValues: editing
       ? {
           name: editing.name,
-          email: editing.email,
+          email: editing.email ?? "",
           phone: editing.phone,
           role: editing.role as "cleaner" | "supervisor",
           status: editing.status as "active" | "inactive",
@@ -202,16 +202,6 @@ function StaffModal({ open, onClose, editing }: StaffModalProps) {
                 </FormItem>
               )} />
             </div>
-
-            <FormField control={form.control} name="email" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Email</FormLabel>
-                <FormControl>
-                  <Input data-testid="input-staff-email" type="email" placeholder="email@example.com" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )} />
 
             <FormField control={form.control} name="phone" render={({ field }) => (
               <FormItem>
@@ -411,7 +401,7 @@ export default function Team() {
 
   const filtered = staffList.filter(m =>
     m.name.toLowerCase().includes(search.toLowerCase()) ||
-    m.email.toLowerCase().includes(search.toLowerCase()) ||
+    (m.phone ?? "").toLowerCase().includes(search.toLowerCase()) ||
     m.role.toLowerCase().includes(search.toLowerCase())
   );
 
@@ -466,7 +456,7 @@ export default function Team() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
             <Input
               data-testid="input-staff-search"
-              placeholder="Search by name, email, or role…"
+              placeholder="Search by name, phone, or role…"
               value={search}
               onChange={e => setSearch(e.target.value)}
               className="pl-9"
